@@ -1,0 +1,433 @@
+import { CONFIG, CROPS } from './config.js';
+import { designateBuild, designateChop, designateMine, cancelDesignation } from './building.js';
+import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from './farming.js';
+import { isPassable } from './map.js';
+
+export class InputHandler {
+    constructor(game, preElement) {
+        this.game = game;
+        this.pre = preElement;
+        this.mode = 'normal';
+        this.buildType = 'wall';
+        this.cropType = 'wheat';
+        this.dragStart = null;
+        this.dragEnd = null;
+        this.dragging = false;
+        this.keysDown = new Set();
+
+        this.buildOptions = ['wall', 'floor', 'door', 'bed', 'workbench', 'cauldron', 'storage_chest', 'torch', 'fence', 'arcanum', 'beast_circle', 'mana_crystal', 'glowstone', 'enchanting_table', 'ember_ward', 'arcane_sentinel'];
+        this.dragBuildTypes = new Set(['wall', 'floor', 'door', 'fence', 'torch']);
+        this.cropOptions = Object.keys(CROPS);
+        this.designateMode = 'chop';
+
+        this.charWidth = 0;
+        this.charHeight = 0;
+        this.measureCharSize();
+
+        document.addEventListener('keydown', (e) => this.onKeyDown(e));
+        document.addEventListener('keyup', (e) => this.onKeyUp(e));
+        preElement.addEventListener('mousedown', (e) => this.onMouseDown(e));
+        preElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        preElement.addEventListener('mouseup', (e) => this.onMouseUp(e));
+        preElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        preElement.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
+        preElement.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
+        preElement.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
+    }
+
+    measureCharSize() {
+        const gameEl = document.getElementById('game');
+        const computedSize = gameEl
+            ? getComputedStyle(gameEl).fontSize
+            : '14px';
+
+        const pre = document.createElement('pre');
+        pre.style.fontFamily = "'Courier New', monospace";
+        pre.style.fontSize = computedSize;
+        pre.style.lineHeight = '1.15';
+        pre.style.position = 'absolute';
+        pre.style.visibility = 'hidden';
+        pre.style.padding = '0';
+        pre.style.margin = '0';
+        pre.innerHTML = '<span>X</span>';
+        document.body.appendChild(pre);
+        const span = pre.querySelector('span');
+        this.charWidth = span.getBoundingClientRect().width;
+        this.charHeight = pre.getBoundingClientRect().height;
+        document.body.removeChild(pre);
+        if (this.charWidth === 0) this.charWidth = 8.4;
+        if (this.charHeight === 0) this.charHeight = 16.1;
+    }
+
+    getMouseTile(e) {
+        const rect = this.pre.getBoundingClientRect();
+        const px = e.clientX - rect.left - 2;
+        const py = e.clientY - rect.top - 2;
+        const sx = Math.max(0, Math.floor(px / this.charWidth));
+        const sy = Math.max(0, Math.floor(py / this.charHeight));
+        return this.game.camera.screenToWorld(sx, sy);
+    }
+
+    getSelectionRect() {
+        if (!this.dragging || !this.dragStart || !this.dragEnd) return null;
+        return {
+            x1: Math.min(this.dragStart.x, this.dragEnd.x),
+            y1: Math.min(this.dragStart.y, this.dragEnd.y),
+            x2: Math.max(this.dragStart.x, this.dragEnd.x),
+            y2: Math.max(this.dragStart.y, this.dragEnd.y),
+        };
+    }
+
+    onKeyDown(e) {
+        this.keysDown.add(e.key.toLowerCase());
+
+        switch (e.key.toLowerCase()) {
+            case 'w': case 'arrowup': this.game.camera.pan(0, -3); break;
+            case 's': case 'arrowdown': this.game.camera.pan(0, 3); break;
+            case 'a': case 'arrowleft': this.game.camera.pan(-3, 0); break;
+            case 'd': case 'arrowright': this.game.camera.pan(3, 0); break;
+            case 'b': this.setMode('build'); break;
+            case 'z': this.setMode('zone'); break;
+            case 'g': this.setMode('designate'); break;
+            case 'escape': {
+                const ui = this.game.ui;
+                const hadPanel = ui.priorityPanelVisible || ui.craftPanelVisible ||
+                    ui.researchPanelVisible || ui.inventoryVisible ||
+                    ui.tamingPanelVisible || ui.settingsPanelVisible;
+                if (hadPanel) {
+                    if (ui.priorityPanelVisible) ui.togglePriorityPanel();
+                    if (ui.craftPanelVisible) ui.toggleCraftPanel();
+                    if (ui.researchPanelVisible) ui.toggleResearchPanel();
+                    if (ui.inventoryVisible) ui.toggleInventoryPanel();
+                    if (ui.tamingPanelVisible) ui.toggleTamingPanel();
+                    if (ui.settingsPanelVisible) ui.toggleSettingsPanel();
+                } else if (this.mode !== 'normal') {
+                    this.setMode('normal');
+                }
+                break;
+            }
+            case 'p': this.game.ui.togglePriorityPanel(); break;
+            case 'c': this.game.ui.toggleCraftPanel(); break;
+            case 'r':
+                if (this.mode === 'normal') this.game.ui.toggleResearchPanel();
+                break;
+            case 't': this.game.ui.toggleTamingPanel(); break;
+            case 'i': this.game.ui.toggleInventoryPanel(); break;
+            case ',': this.game.ui.toggleSettingsPanel(); break;
+            case ' ':
+                e.preventDefault();
+                this.game.togglePause();
+                break;
+            case '=': case '+': this.game.speedUp(); break;
+            case '-': this.game.speedDown(); break;
+            case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+                this.handleNumberKey(e.key === '0' ? 10 : parseInt(e.key));
+                break;
+            case 'tab':
+                e.preventDefault();
+                if (this.mode === 'designate') {
+                    this.designateMode = this.designateMode === 'chop' ? 'mine' : 'chop';
+                    this.game.ui.updateModeDisplay(this);
+                }
+                break;
+        }
+    }
+
+    onKeyUp(e) {
+        this.keysDown.delete(e.key.toLowerCase());
+    }
+
+    handleNumberKey(num) {
+        if (this.mode === 'build') {
+            const idx = num - 1;
+            if (idx < this.buildOptions.length) {
+                this.buildType = this.buildOptions[idx];
+                this.game.ui.updateModeDisplay(this);
+            }
+        } else if (this.mode === 'zone') {
+            const idx = num - 1;
+            if (idx < this.cropOptions.length) {
+                const crop = this.cropOptions[idx];
+                const req = CROP_RESEARCH_REQS[crop];
+                if (req && !this.game.research.isResearched(req)) return;
+                this.cropType = crop;
+                this.game.ui.updateModeDisplay(this);
+            }
+        }
+    }
+
+    setMode(mode) {
+        this.mode = mode;
+        this.dragStart = null;
+        this.dragEnd = null;
+        this.dragging = false;
+        this.game.ui.updateModeDisplay(this);
+    }
+
+    onMouseDown(e) {
+        const pos = this.getMouseTile(e);
+        if (pos.x < 0 || pos.x >= CONFIG.MAP_WIDTH || pos.y < 0 || pos.y >= CONFIG.MAP_HEIGHT) return;
+
+        if (e.button === 2) {
+            if (this.mode === 'build') {
+                this.dragStart = pos;
+                this.dragEnd = pos;
+                this.dragging = true;
+                this._rightDrag = true;
+                return;
+            }
+            this.handleRightClick(pos);
+            return;
+        }
+
+        if (this.mode === 'zone' || this.mode === 'designate') {
+            this.dragStart = pos;
+            this.dragEnd = pos;
+            this.dragging = true;
+            return;
+        }
+
+        if (this.mode === 'build' && this.dragBuildTypes.has(this.buildType)) {
+            this.dragStart = pos;
+            this.dragEnd = pos;
+            this.dragging = true;
+            return;
+        }
+
+        if (this.mode === 'normal') {
+            this.dragStart = pos;
+            this.dragEnd = pos;
+            this.dragging = true;
+            this._clickPos = pos;
+            return;
+        }
+
+        this.handleLeftClick(pos);
+    }
+
+    onMouseMove(e) {
+        const pos = this.getMouseTile(e);
+        if (pos.x >= 0 && pos.x < CONFIG.MAP_WIDTH && pos.y >= 0 && pos.y < CONFIG.MAP_HEIGHT) {
+            this.game.cursor = pos;
+            if (this.dragging) {
+                this.dragEnd = pos;
+            }
+        }
+    }
+
+    onMouseUp(e) {
+        if (this.dragging && this.dragStart) {
+            const pos = this.getMouseTile(e);
+            if (this._rightDrag && this.mode === 'build') {
+                this.deconstructArea(this.dragStart, pos);
+            } else if (this.mode === 'build' && this.dragBuildTypes.has(this.buildType)) {
+                this.buildArea(this.dragStart, pos);
+            } else if (this.mode === 'zone') {
+                designateFarmZone(this.game, this.dragStart.x, this.dragStart.y, pos.x, pos.y, this.cropType);
+            } else if (this.mode === 'designate') {
+                this.designateArea(this.dragStart, pos);
+            } else if (this.mode === 'normal') {
+                const wasDrag = this.dragStart.x !== pos.x || this.dragStart.y !== pos.y;
+                if (wasDrag) {
+                    this.selectColonistsInRect(this.dragStart, pos);
+                } else {
+                    this.selectAt(this._clickPos);
+                }
+            }
+            this.dragStart = null;
+            this.dragEnd = null;
+            this.dragging = false;
+            this._clickPos = null;
+            this._rightDrag = false;
+        }
+    }
+
+    getTouchTile(touch) {
+        const rect = this.pre.getBoundingClientRect();
+        const px = touch.clientX - rect.left - 2;
+        const py = touch.clientY - rect.top - 2;
+        const sx = Math.max(0, Math.floor(px / this.charWidth));
+        const sy = Math.max(0, Math.floor(py / this.charHeight));
+        return this.game.camera.screenToWorld(sx, sy);
+    }
+
+    onTouchStart(e) {
+        e.preventDefault();
+        if (e.touches.length !== 1) return;
+        const pos = this.getTouchTile(e.touches[0]);
+        if (pos.x < 0 || pos.x >= CONFIG.MAP_WIDTH || pos.y < 0 || pos.y >= CONFIG.MAP_HEIGHT) return;
+
+        this.game.cursor = pos;
+        if (this.mode === 'zone' || this.mode === 'designate' || (this.mode === 'build' && this.dragBuildTypes.has(this.buildType))) {
+            this.dragStart = pos;
+            this.dragEnd = pos;
+            this.dragging = true;
+        }
+    }
+
+    onTouchMove(e) {
+        e.preventDefault();
+        if (e.touches.length !== 1) return;
+        const pos = this.getTouchTile(e.touches[0]);
+        if (pos.x >= 0 && pos.x < CONFIG.MAP_WIDTH && pos.y >= 0 && pos.y < CONFIG.MAP_HEIGHT) {
+            this.game.cursor = pos;
+            if (this.dragging) {
+                this.dragEnd = pos;
+            }
+        }
+    }
+
+    onTouchEnd(e) {
+        e.preventDefault();
+        const pos = this.game.cursor;
+        if (!pos) return;
+
+        if (this.dragging && this.dragStart) {
+            if (this.mode === 'build' && this.dragBuildTypes.has(this.buildType)) {
+                this.buildArea(this.dragStart, pos);
+            } else if (this.mode === 'zone') {
+                designateFarmZone(this.game, this.dragStart.x, this.dragStart.y, pos.x, pos.y, this.cropType);
+            } else if (this.mode === 'designate') {
+                this.designateArea(this.dragStart, pos);
+            }
+            this.dragStart = null;
+            this.dragEnd = null;
+            this.dragging = false;
+        } else {
+            this.handleLeftClick(pos);
+        }
+    }
+
+    designateArea(start, end) {
+        const minX = Math.min(start.x, end.x), maxX = Math.max(start.x, end.x);
+        const minY = Math.min(start.y, end.y), maxY = Math.max(start.y, end.y);
+
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+                if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) continue;
+                if (this.designateMode === 'chop') {
+                    designateChop(this.game, x, y);
+                } else {
+                    designateMine(this.game, x, y);
+                }
+            }
+        }
+    }
+
+    buildArea(start, end) {
+        const minX = Math.min(start.x, end.x), maxX = Math.max(start.x, end.x);
+        const minY = Math.min(start.y, end.y), maxY = Math.max(start.y, end.y);
+
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+                if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) continue;
+                designateBuild(this.game, x, y, this.buildType);
+            }
+        }
+    }
+
+    deconstructArea(start, end) {
+        const minX = Math.min(start.x, end.x), maxX = Math.max(start.x, end.x);
+        const minY = Math.min(start.y, end.y), maxY = Math.max(start.y, end.y);
+
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+                if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) continue;
+                cancelDesignation(this.game, x, y);
+            }
+        }
+    }
+
+    handleLeftClick(pos) {
+        switch (this.mode) {
+            case 'normal':
+                this.selectAt(pos);
+                break;
+            case 'build':
+                designateBuild(this.game, pos.x, pos.y, this.buildType);
+                break;
+        }
+    }
+
+    handleRightClick(pos) {
+        if (this.mode === 'build' || this.mode === 'designate') {
+            cancelDesignation(this.game, pos.x, pos.y);
+        } else if (this.mode === 'zone') {
+            removeFarmZone(this.game, pos.x, pos.y);
+        } else if (this.mode === 'normal') {
+            const drafted = this.game.colonists.filter(c => c.drafted && c.hp > 0);
+            if (drafted.length <= 1) {
+                for (const c of drafted) {
+                    c.draftTarget = { x: pos.x, y: pos.y };
+                    c.path = [];
+                }
+            } else {
+                const targets = this.getSpreadPositions(pos.x, pos.y, drafted.length);
+                for (let i = 0; i < drafted.length; i++) {
+                    drafted[i].draftTarget = targets[i];
+                    drafted[i].path = [];
+                }
+            }
+        }
+    }
+
+    getSpreadPositions(cx, cy, count) {
+        const positions = [{ x: cx, y: cy }];
+        let radius = 1;
+        while (positions.length < count) {
+            for (let dx = -radius; dx <= radius && positions.length < count; dx++) {
+                for (let dy = -radius; dy <= radius && positions.length < count; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
+                    const nx = cx + dx, ny = cy + dy;
+                    if (isPassable(this.game.map, nx, ny)) {
+                        positions.push({ x: nx, y: ny });
+                    }
+                }
+            }
+            radius++;
+            if (radius > 5) break;
+        }
+        return positions;
+    }
+
+    selectColonistsInRect(start, end) {
+        const minX = Math.min(start.x, end.x), maxX = Math.max(start.x, end.x);
+        const minY = Math.min(start.y, end.y), maxY = Math.max(start.y, end.y);
+        const selected = this.game.colonists.filter(c =>
+            c.hp > 0 && c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY
+        );
+        if (selected.length === 0) return;
+        if (selected.length === 1) {
+            this.game.selectedColonist = selected[0];
+            this.game.selectedColonists = [selected[0]];
+            this.game.ui.showColonistInfo(selected[0]);
+            return;
+        }
+        this.game.selectedColonist = selected[0];
+        this.game.selectedColonists = selected;
+        this.game.ui.showMultiColonistInfo(selected);
+        this.game.notifications.push({
+            text: `Selected ${selected.length} colonists`,
+            tick: this.game.tick,
+            type: 'success'
+        });
+    }
+
+    selectAt(pos) {
+        const colonistsHere = this.game.colonists.filter(c => c.x === pos.x && c.y === pos.y && c.hp > 0);
+        const animalsHere = this.game.wildlife.filter(a => a.x === pos.x && a.y === pos.y && a.hp > 0);
+        const raidersHere = this.game.raiders.filter(r => r.x === pos.x && r.y === pos.y && r.hp > 0);
+        const tile = this.game.map[pos.y][pos.x];
+
+        if (colonistsHere.length > 0) {
+            this.game.selectedColonist = colonistsHere[0];
+            this.game.selectedColonists = colonistsHere;
+        } else {
+            this.game.selectedColonist = null;
+            this.game.selectedColonists = [];
+        }
+        this.game.ui.showTileEntities(tile, pos.x, pos.y, colonistsHere, animalsHere, raidersHere);
+    }
+}
