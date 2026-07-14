@@ -434,7 +434,10 @@ export class UI {
             html += `<span>${inputStr} → ${outputStr}</span>`;
             html += `</div>`;
         }
-        this.elements.craftPanel.innerHTML = html;
+        if (html !== this._lastCraftHtml) {
+            this._lastCraftHtml = html;
+            this.elements.craftPanel.innerHTML = html;
+        }
     }
 
     updateColonistHud() {
@@ -571,7 +574,10 @@ export class UI {
         let html = '<div class="panel-close" data-panel-close="taming">&times;</div><h3>Beast Binding</h3>';
         if (!this.game.research.isResearched('beast_binding')) {
             html += '<div class="info-row" style="color:#888">Requires research: Beast Binding</div>';
-            this.elements.tamingPanel.innerHTML = html;
+            if (html !== this._lastTamingHtml) {
+                this._lastTamingHtml = html;
+                this.elements.tamingPanel.innerHTML = html;
+            }
             return;
         }
 
@@ -594,7 +600,10 @@ export class UI {
             }
         }
 
-        this.elements.tamingPanel.innerHTML = html;
+        if (html !== this._lastTamingHtml) {
+            this._lastTamingHtml = html;
+            this.elements.tamingPanel.innerHTML = html;
+        }
     }
 
     toggleSettingsPanel() {
