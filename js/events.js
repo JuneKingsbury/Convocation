@@ -67,6 +67,7 @@ export class EventSystem {
         if (accept && this.pendingEvent?.data) {
             game.colonists.push(this.pendingEvent.data);
             game.notifications.push({ text: `${this.pendingEvent.data.name} joined!`, tick: game.tick, type: 'success' });
+            game.eventLog.add(game, `${this.pendingEvent.data.name} joined the colony`, 'success', { type: 'colonist', id: this.pendingEvent.data.id });
             for (const c of game.colonists) {
                 if (c.id !== this.pendingEvent.data.id) {
                     addThought(c, 'New colonist arrived', 5, 200, game.tick);
@@ -152,6 +153,7 @@ export class EventSystem {
         }
         if (placed > 0) {
             game.notifications.push({ text: `Mineral vein discovered! ${placed} new stone deposits.`, tick: game.tick, type: 'event' });
+            game.eventLog.add(game, `Mineral windfall: ${placed} new stone deposits`, 'event', { type: 'position', x: cx, y: cy });
         }
     }
 
@@ -201,6 +203,7 @@ export class EventSystem {
             game.wildlife.push(createAnimal('deer', edge.x, edge.y));
         }
         game.notifications.push({ text: `Animal migration! ${count} deer passing through.`, tick: game.tick, type: 'event' });
+        game.eventLog.add(game, `Animal migration: ${count} deer passing through`, 'event', null);
     }
 
     eventInspiration(game) {
@@ -209,6 +212,7 @@ export class EventSystem {
         const colonist = alive[Math.floor(Math.random() * alive.length)];
         addThought(colonist, 'Feeling inspired!', 25, 300, game.tick);
         game.notifications.push({ text: `${colonist.name} is feeling inspired!`, tick: game.tick, type: 'success' });
+        game.eventLog.add(game, `${colonist.name} is feeling inspired!`, 'success', { type: 'colonist', id: colonist.id });
     }
 }
 

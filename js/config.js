@@ -5,7 +5,7 @@
 // ============================================================================
 
 export const CONFIG = {
-    MAP_WIDTH: 100,
+    MAP_WIDTH: 150,
     MAP_HEIGHT: 80,
     VIEWPORT_WIDTH: 80,
     VIEWPORT_HEIGHT: 40,
@@ -32,7 +32,7 @@ export const TILE_CHARS = {
 
 export const TILE_COLORS = {
     grass: '#5a8c3a', dirt: '#a07040', rock: '#777', water: '#4488ff',
-    tree: '#2d7a2d', tree_autumn: '#cc8822', stone_resource: '#999', runite_ore: '#cc8844',
+    tree: '#2d7a2d', tree_autumn: '#cc8822', stone_resource: '#999', runite_ore: '#44cccc',
     wall: '#aa7744', floor: '#666666', door: '#cc9955',
     bed: '#8855aa', workbench: '#bb8833', cauldron: '#ff6633',
     storage_chest: '#997744', torch: '#ffcc00', fence: '#886644',
@@ -197,6 +197,11 @@ export const RESEARCH = {
     alchemy: { name: 'Alchemy', cost: 60, requires: [], unlocks: { recipes: ['cook_feast'] }, description: 'Cook feasts for mood boost' },
     warding: { name: 'Warding', cost: 100, requires: ['runecraft'], unlocks: { buildings: ['arcane_sentinel'] }, description: 'Conjure defensive wards' },
     ember_magic: { name: 'Ember Magic', cost: 90, requires: ['ley_channeling'], unlocks: { buildings: ['ember_ward'] }, description: 'Warmth wards for winter' },
+    brilliance: { name: 'Brilliance', cost: 160, requires: ['luminance'], unlocks: { buildings: ['beacon'] }, description: 'Radiant beacon lights large areas' },
+    mana_weaving: { name: 'Mana Weaving', cost: 180, requires: ['arcane_infusion'], unlocks: { recipes: ['craft_mana_robes'] }, description: 'Weave mana into protective garb' },
+    pyroclasm: { name: 'Pyroclasm', cost: 200, requires: ['ember_magic', 'warding'], unlocks: { buildings: ['fire_ward'] }, description: 'Fire ward incinerates nearby foes' },
+    verdant_growth: { name: 'Verdant Growth', cost: 140, requires: ['beast_binding', 'alchemy'], unlocks: { crops: ['herbs'] }, description: 'Grow rare herbs for potent brews' },
+    masterwork: { name: 'Masterwork', cost: 220, requires: ['runeforging', 'arcane_infusion'], unlocks: { recipes: ['craft_masterwork_blade'] }, description: 'Forge legendary enchanted weapons' },
 };
 
 // To add a tameable animal: add entry here. Needs beast_binding research.

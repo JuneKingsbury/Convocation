@@ -114,6 +114,7 @@ export class UI {
         this.updateStatusBar();
         this.updateNotifications();
         this.updateEventPanel();
+        this.updateMinimapControls();
         if (this.priorityPanelVisible) this.updatePriorityPanel();
         if (this.craftPanelVisible) this.updateCraftPanel();
         if (this.researchPanelVisible) this.updateResearchPanel();
@@ -121,6 +122,17 @@ export class UI {
         this.updateEventLog();
         if (this.inventoryVisible) this.updateInventoryPanel();
         if (this.tamingPanelVisible) this.updateTamingPanel();
+    }
+
+    updateMinimapControls() {
+        const controls = document.getElementById('minimap-controls');
+        if (!controls) return;
+        const btns = controls.querySelectorAll('.speed-btn');
+        for (const btn of btns) {
+            const sp = btn.dataset.speed;
+            const active = this.game.paused ? sp === 'pause' : sp === String(this.game.speed);
+            btn.classList.toggle('active', active);
+        }
     }
 
     updateStatusBar() {
@@ -141,19 +153,16 @@ export class UI {
         this.elements.statusBar.innerHTML =
             `<span class="res">Wood:${r.wood}</span>` +
             `<span class="res">Stone:${r.stone}</span>` +
-            `<span class="res">Planks:${r.planks}</span>` +
             `<span class="res">Food:${r.food}</span>` +
-            `<span class="res">Meat:${r.meat}</span>` +
-            (r.runite > 0 ? `<span class="res">Runite:${r.runite}</span>` : '') +
             (manaStr ? `<span class="res" style="color:${power.hasPower() ? '#aa44ff' : '#ff6666'}">${manaStr}</span>` : '') +
             `<span class="sep">|</span>` +
             `<span class="info">${season}</span>` +
-            `<span class="info">${weather} ${temp}°</span>` +
+            `<span class="info status-extra">${weather} ${temp}°</span>` +
             `<span class="info">${timeStr}</span>` +
-            `<span class="sep">|</span>` +
-            `<span class="info">Population: ${alive}</span>` +
-            `<span class="info">Happiness: ${avgMood}%</span>` +
-            (pendingTasks > 0 ? `<span class="info" style="color:#ccaa44">Tasks:${pendingTasks}</span>` : '') +
+            `<span class="sep status-extra">|</span>` +
+            `<span class="info status-extra">Pop:${alive}</span>` +
+            `<span class="info status-extra">Mood:${avgMood}%</span>` +
+            (pendingTasks > 0 ? `<span class="info status-extra" style="color:#ccaa44">Tasks:${pendingTasks}</span>` : '') +
             `<span class="info">${speed}</span>` +
             (CONFIG.PEACEFUL_MODE ? `<span class="peaceful">PEACEFUL</span>` : '');
     }
@@ -214,7 +223,26 @@ export class UI {
         this.elements.modeBar.innerHTML = html;
     }
 
+    _switchToInfoTab() {
+        const container = document.getElementById('game-container');
+        const isTabbed = container.classList.contains('tabbed-mode');
+        if (!isTabbed) return;
+
+        const footer = document.getElementById('game-footer');
+        if (footer.classList.contains('collapsed')) {
+            footer.classList.remove('collapsed');
+        }
+        const tabs = footer.querySelectorAll('.footer-tab[data-tab]');
+        const panels = footer.querySelectorAll('#footer-content > .footer-panel, #minimap-container');
+        tabs.forEach(t => { if (t.dataset.tab !== 'collapse') t.classList.remove('active'); });
+        panels.forEach(p => p.classList.remove('active'));
+        const infoTab = footer.querySelector('.footer-tab[data-tab="info"]');
+        if (infoTab) infoTab.classList.add('active');
+        this.elements.infoPanel.classList.add('active');
+    }
+
     showColonistInfo(colonist) {
+        this._switchToInfoTab();
         const moodLevel = getMoodLabel(colonist.mood);
         const traitNames = colonist.traits.map(t => TRAITS[t]?.name || t).join(', ');
         const thoughts = colonist.thoughts.slice(-5).map(t =>
@@ -243,6 +271,7 @@ export class UI {
     }
 
     showAnimalInfo(animal) {
+        this._switchToInfoTab();
         let html = `<div class="info-header">${animal.type}</div>`;
         html += `<div class="info-row">HP: ${animal.hp}/${animal.maxHp}</div>`;
         html += `<div class="info-row">${animal.hostile ? 'Hostile' : 'Passive'}</div>`;
@@ -255,6 +284,7 @@ export class UI {
     }
 
     showTileInfo(tile, x, y) {
+        this._switchToInfoTab();
         let html = `<div class="info-header">Tile (${x},${y})</div>`;
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
         if (tile.structure) html += `<div class="info-row">Structure: ${tile.structure}</div>`;
@@ -290,6 +320,7 @@ export class UI {
     }
 
     showTileEntities(tile, x, y, colonists, animals, raiders = []) {
+        this._switchToInfoTab();
         let html = '';
 
         for (const r of raiders) {
@@ -362,6 +393,7 @@ export class UI {
     }
 
     showMultiColonistInfo(colonists) {
+        this._switchToInfoTab();
         const draftedCount = colonists.filter(c => c.drafted).length;
         let html = `<div class="info-header">${colonists.length} Colonists Selected</div>`;
         html += `<div class="info-actions" style="margin-bottom:8px;">`;
@@ -386,10 +418,62 @@ export class UI {
         this.elements.infoPanel.innerHTML = html;
     }
 
+    _updateOverlay() {
+        const anyOpen = this.priorityPanelVisible || this.craftPanelVisible ||
+            this.researchPanelVisible || this.inventoryVisible ||
+            this.tamingPanelVisible || this.settingsPanelVisible;
+        const overlay = document.getElementById('panel-overlay');
+        if (overlay) overlay.classList.toggle('visible', anyOpen);
+    }
+
+    _closeAllPanels() {
+        if (this.priorityPanelVisible) {
+            this.priorityPanelVisible = false;
+            this.elements.priorityPanel.style.display = 'none';
+        }
+        if (this.craftPanelVisible) {
+            this.craftPanelVisible = false;
+            this.elements.craftPanel.style.display = 'none';
+        }
+        if (this.researchPanelVisible) {
+            this.researchPanelVisible = false;
+            this.elements.researchPanel.style.display = 'none';
+        }
+        if (this.inventoryVisible) {
+            this.inventoryVisible = false;
+            this.elements.inventoryPanel.style.display = 'none';
+        }
+        if (this.tamingPanelVisible) {
+            this.tamingPanelVisible = false;
+            this.elements.tamingPanel.style.display = 'none';
+        }
+        if (this.settingsPanelVisible) {
+            this.settingsPanelVisible = false;
+            this.elements.settingsPanel.style.display = 'none';
+        }
+    }
+
+    _panelPause(opening) {
+        if (opening) {
+            if (!this._panelSessionActive) {
+                this._panelSessionActive = true;
+                this._wasPausedBeforePanel = this.game.paused;
+                if (!this.game.paused) this.game.togglePause();
+            }
+        } else {
+            this._panelSessionActive = false;
+            if (!this._wasPausedBeforePanel && this.game.paused) this.game.togglePause();
+        }
+    }
+
     togglePriorityPanel() {
-        this.priorityPanelVisible = !this.priorityPanelVisible;
-        this.elements.priorityPanel.style.display = this.priorityPanelVisible ? 'block' : 'none';
-        if (this.priorityPanelVisible) this.updatePriorityPanel();
+        const opening = !this.priorityPanelVisible;
+        this._closeAllPanels();
+        this.priorityPanelVisible = opening;
+        this._panelPause(opening);
+        this.elements.priorityPanel.style.display = opening ? 'block' : 'none';
+        if (opening) this.updatePriorityPanel();
+        this._updateOverlay();
     }
 
     updatePriorityPanel() {
@@ -417,9 +501,13 @@ export class UI {
     }
 
     toggleCraftPanel() {
-        this.craftPanelVisible = !this.craftPanelVisible;
-        this.elements.craftPanel.style.display = this.craftPanelVisible ? 'block' : 'none';
-        if (this.craftPanelVisible) this.updateCraftPanel();
+        const opening = !this.craftPanelVisible;
+        this._closeAllPanels();
+        this.craftPanelVisible = opening;
+        this._panelPause(opening);
+        this.elements.craftPanel.style.display = opening ? 'block' : 'none';
+        if (opening) this.updateCraftPanel();
+        this._updateOverlay();
     }
 
     updateCraftPanel() {
@@ -441,7 +529,7 @@ export class UI {
     }
 
     updateColonistHud() {
-        let html = '<div class="hud-header">Colonists</div>';
+        let html = '<div class="footer-panel-header">Colonists</div>';
         for (const c of this.game.colonists) {
             if (c.hp <= 0) {
                 html += `<div class="hud-colonist dead"><span class="hud-name">${c.name}</span> <span style="color:#cc4444">DEAD</span></div>`;
@@ -449,11 +537,13 @@ export class UI {
             }
             const moodLevel = getMoodLabel(c.mood);
             const moodColor = moodLevel === 'inspired' ? '#66ffcc' : moodLevel === 'content' ? '#88cc88' : moodLevel === 'stressed' ? '#cccc44' : '#ff4444';
+            const hungerColor = statColor(c.needs.hunger);
+            const restColor = statColor(c.needs.rest);
+            const hpColor = statColor(c.maxHp > 0 ? (c.hp / c.maxHp) * 100 : 100);
+            const weapon = c.weapon?.name || 'Fists';
             html += `<div class="hud-colonist" data-colonist-id="${c.id}">`;
-            html += `<span class="hud-name">${c.name}</span> `;
-            html += `<span style="color:${moodColor}">${c.mood.toFixed(0)}</span> `;
-            html += `<span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
-            html += `<div class="hud-bars">H:${c.needs.hunger.toFixed(0)} R:${c.needs.rest.toFixed(0)} HP:${c.hp}</div>`;
+            html += `<span class="hud-name">${c.name}</span> <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
+            html += `<div class="hud-bars">Mood: <span style="color:${moodColor}">${c.mood.toFixed(0)} (${moodLevel})</span> | Hunger: <span style="color:${hungerColor}">${c.needs.hunger.toFixed(0)}</span> | Rest: <span style="color:${restColor}">${c.needs.rest.toFixed(0)}</span> | HP: <span style="color:${hpColor}">${c.hp}/${c.maxHp}</span></div>`;
             html += `</div>`;
         }
         if (html !== this._lastHudHtml) {
@@ -463,9 +553,13 @@ export class UI {
     }
 
     toggleResearchPanel() {
-        this.researchPanelVisible = !this.researchPanelVisible;
-        this.elements.researchPanel.style.display = this.researchPanelVisible ? 'block' : 'none';
-        if (this.researchPanelVisible) this.updateResearchPanel();
+        const opening = !this.researchPanelVisible;
+        this._closeAllPanels();
+        this.researchPanelVisible = opening;
+        this._panelPause(opening);
+        this.elements.researchPanel.style.display = opening ? 'block' : 'none';
+        if (opening) this.updateResearchPanel();
+        this._updateOverlay();
     }
 
     updateResearchPanel() {
@@ -474,35 +568,263 @@ export class UI {
         html += `<div class="info-row" style="color:#aa88ff; font-weight:bold; margin-bottom:6px;">Study Points: ${Math.floor(research.studyPoints)}</div>`;
         html += `<div class="info-row" style="color:#888; margin-bottom:8px;">Colonists generate study points at the Arcanum. Spend them to unlock new knowledge.</div>`;
 
-        const available = research.getAvailable();
-        if (available.length === 0) {
-            html += `<div class="info-row">All research completed!</div>`;
-        }
-        for (const tech of available) {
-            const canAfford = research.studyPoints >= tech.cost;
-            const cls = canAfford ? 'craft-available' : 'craft-unavailable';
-            html += `<div class="craft-row ${cls}">`;
-            html += `<button ${canAfford ? '' : 'disabled'} onclick="window.game.startResearch('${tech.key}')">${tech.name}</button>`;
-            html += `<span style="color:#aaa">${tech.description} (${tech.cost} pts)</span>`;
+        const layers = this._buildResearchLayers();
+        html += `<div class="research-tree">`;
+        html += `<svg class="research-lines" id="research-lines"></svg>`;
+        for (let depth = 0; depth < layers.length; depth++) {
+            html += `<div class="research-layer">`;
+            for (const key of layers[depth]) {
+                const tech = RESEARCH[key];
+                const completed = research.completed.has(key);
+                const available = !completed && tech.requires.every(r => research.completed.has(r));
+                const canAfford = available && research.studyPoints >= tech.cost;
+                let cls = 'research-node';
+                if (completed) cls += ' completed';
+                else if (canAfford) cls += ' affordable';
+                else if (available) cls += ' available';
+                else cls += ' locked';
+                html += `<div class="${cls}" data-key="${key}" data-requires="${tech.requires.join(',')}">`;
+                html += `<div class="research-node-name">${tech.name}</div>`;
+                html += `<div class="research-node-desc">${tech.description}</div>`;
+                html += `<div class="research-node-cost">${completed ? 'Researched' : `${tech.cost} pts`}</div>`;
+                if (canAfford) {
+                    html += `<button class="research-node-btn" onclick="window.game.startResearch('${key}')">Research</button>`;
+                }
+                html += `</div>`;
+            }
             html += `</div>`;
         }
-
-        const completed = [...research.completed];
-        if (completed.length > 0) {
-            html += `<div class="info-row" style="margin-top:8px;color:#66cc66;">Completed: ${completed.map(k => RESEARCH[k]?.name || k).join(', ')}</div>`;
-        }
+        html += `</div>`;
 
         if (html !== this._lastResearchHtml) {
             this._lastResearchHtml = html;
             this.elements.researchPanel.innerHTML = html;
+            requestAnimationFrame(() => this._drawResearchLines());
+            this._initResearchHover();
         }
+    }
+
+    _initResearchHover() {
+        const tree = this.elements.researchPanel.querySelector('.research-tree');
+        if (!tree) return;
+        let currentKey = null;
+        tree.addEventListener('mouseover', (e) => {
+            const node = e.target.closest('.research-node[data-key]');
+            const key = node?.dataset.key || null;
+            if (key !== currentKey) {
+                currentKey = key;
+                if (key) this._highlightResearchNode(key);
+                else this._clearResearchHighlight();
+            }
+        });
+        tree.addEventListener('mouseleave', () => {
+            currentKey = null;
+            this._clearResearchHighlight();
+        });
+    }
+
+    _getResearchFamily(key) {
+        const family = new Set([key]);
+        // Ancestors
+        const findAncestors = (k) => {
+            const tech = RESEARCH[k];
+            if (!tech) return;
+            for (const req of tech.requires) {
+                family.add(req);
+                findAncestors(req);
+            }
+        };
+        findAncestors(key);
+        // Descendants
+        const findDescendants = (k) => {
+            for (const [childKey, childTech] of Object.entries(RESEARCH)) {
+                if (childTech.requires.includes(k) && !family.has(childKey)) {
+                    family.add(childKey);
+                    findDescendants(childKey);
+                }
+            }
+        };
+        findDescendants(key);
+        return family;
+    }
+
+    _highlightResearchNode(key) {
+        const tree = this.elements.researchPanel.querySelector('.research-tree');
+        if (!tree) return;
+        const family = this._getResearchFamily(key);
+        const nodes = tree.querySelectorAll('.research-node[data-key]');
+        for (const node of nodes) {
+            node.classList.toggle('dimmed', !family.has(node.dataset.key));
+            node.classList.toggle('highlighted', node.dataset.key === key);
+        }
+        const svg = document.getElementById('research-lines');
+        if (svg) {
+            for (const path of svg.querySelectorAll('path')) {
+                path.classList.add('dimmed');
+            }
+            // Redraw highlighted connections
+            this._highlightResearchPaths(tree, family, key);
+        }
+    }
+
+    _highlightResearchPaths(tree, family, hoveredKey) {
+        const svg = document.getElementById('research-lines');
+        if (!svg) return;
+        const paths = svg.querySelectorAll('path');
+        const nodes = tree.querySelectorAll('.research-node[data-key]');
+        const nodeRects = {};
+        const treeRect = tree.getBoundingClientRect();
+        for (const node of nodes) {
+            const r = node.getBoundingClientRect();
+            nodeRects[node.dataset.key] = {
+                cx: r.left + r.width / 2 - treeRect.left,
+                top: r.top - treeRect.top,
+                bottom: r.bottom - treeRect.top
+            };
+        }
+        // Mark paths as highlighted if both endpoints are in the family
+        let idx = 0;
+        for (const node of nodes) {
+            const key = node.dataset.key;
+            const requires = node.dataset.requires;
+            if (!requires) continue;
+            for (const req of requires.split(',')) {
+                if (!req || !nodeRects[req] || !nodeRects[key]) { idx++; continue; }
+                if (family.has(key) && family.has(req)) {
+                    paths[idx]?.classList.remove('dimmed');
+                    paths[idx]?.classList.add('highlighted');
+                }
+                idx++;
+            }
+        }
+    }
+
+    _clearResearchHighlight() {
+        const tree = this.elements.researchPanel.querySelector('.research-tree');
+        if (!tree) return;
+        const nodes = tree.querySelectorAll('.research-node[data-key]');
+        for (const node of nodes) {
+            node.classList.remove('dimmed', 'highlighted');
+        }
+        const svg = document.getElementById('research-lines');
+        if (svg) {
+            for (const path of svg.querySelectorAll('path')) {
+                path.classList.remove('dimmed', 'highlighted');
+            }
+        }
+    }
+
+    _buildResearchLayers() {
+        const depths = {};
+        function getDepth(key) {
+            if (depths[key] !== undefined) return depths[key];
+            const tech = RESEARCH[key];
+            if (!tech || tech.requires.length === 0) {
+                depths[key] = 0;
+                return 0;
+            }
+            const d = 1 + Math.max(...tech.requires.map(r => getDepth(r)));
+            depths[key] = d;
+            return d;
+        }
+        for (const key of Object.keys(RESEARCH)) getDepth(key);
+        const maxDepth = Math.max(...Object.values(depths), 0);
+        const layers = [];
+        for (let i = 0; i <= maxDepth; i++) layers.push([]);
+        for (const [key, d] of Object.entries(depths)) layers[d].push(key);
+
+        // Barycenter heuristic: sort each layer so nodes are near their parents
+        for (let i = 1; i < layers.length; i++) {
+            const parentPositions = {};
+            for (let j = 0; j < layers[i - 1].length; j++) {
+                parentPositions[layers[i - 1][j]] = j;
+            }
+            layers[i].sort((a, b) => {
+                const aReqs = RESEARCH[a].requires;
+                const bReqs = RESEARCH[b].requires;
+                const aCenter = aReqs.length > 0 ? aReqs.reduce((s, r) => s + (parentPositions[r] ?? 0), 0) / aReqs.length : 0;
+                const bCenter = bReqs.length > 0 ? bReqs.reduce((s, r) => s + (parentPositions[r] ?? 0), 0) / bReqs.length : 0;
+                return aCenter - bCenter;
+            });
+        }
+
+        // Also sort layer 0 so their children cluster well
+        const childCount = {};
+        for (const key of layers[0]) childCount[key] = 0;
+        if (layers.length > 1) {
+            for (const key of layers[1]) {
+                for (const req of RESEARCH[key].requires) {
+                    if (childCount[req] !== undefined) childCount[req]++;
+                }
+            }
+        }
+        layers[0].sort((a, b) => childCount[b] - childCount[a]);
+
+        // Re-run barycenter using positions from ALL ancestor layers
+        for (let i = 1; i < layers.length; i++) {
+            const allPositions = {};
+            for (let l = 0; l < i; l++) {
+                for (let j = 0; j < layers[l].length; j++) {
+                    // Normalize position to 0-1 range for cross-layer comparison
+                    allPositions[layers[l][j]] = layers[l].length > 1 ? j / (layers[l].length - 1) : 0.5;
+                }
+            }
+            layers[i].sort((a, b) => {
+                const aReqs = RESEARCH[a].requires.filter(r => allPositions[r] !== undefined);
+                const bReqs = RESEARCH[b].requires.filter(r => allPositions[r] !== undefined);
+                const aCenter = aReqs.length > 0 ? aReqs.reduce((s, r) => s + allPositions[r], 0) / aReqs.length : 0.5;
+                const bCenter = bReqs.length > 0 ? bReqs.reduce((s, r) => s + allPositions[r], 0) / bReqs.length : 0.5;
+                return aCenter - bCenter;
+            });
+        }
+
+        return layers;
+    }
+
+    _drawResearchLines() {
+        const svg = document.getElementById('research-lines');
+        const tree = svg?.closest('.research-tree');
+        if (!svg || !tree) return;
+        const treeRect = tree.getBoundingClientRect();
+        svg.setAttribute('width', tree.scrollWidth);
+        svg.setAttribute('height', tree.scrollHeight);
+        let paths = '';
+        const nodes = tree.querySelectorAll('.research-node[data-key]');
+        const nodeRects = {};
+        for (const node of nodes) {
+            const r = node.getBoundingClientRect();
+            nodeRects[node.dataset.key] = {
+                cx: r.left + r.width / 2 - treeRect.left,
+                top: r.top - treeRect.top,
+                bottom: r.bottom - treeRect.top
+            };
+        }
+        for (const node of nodes) {
+            const key = node.dataset.key;
+            const requires = node.dataset.requires;
+            if (!requires) continue;
+            const nodeCompleted = node.classList.contains('completed');
+            for (const req of requires.split(',')) {
+                if (!req || !nodeRects[req] || !nodeRects[key]) continue;
+                const reqNode = tree.querySelector(`.research-node[data-key="${req}"]`);
+                const reqCompleted = reqNode?.classList.contains('completed');
+                const color = (reqCompleted && nodeCompleted) ? '#66cc66' : reqCompleted ? '#886622' : '#444';
+                const from = nodeRects[req];
+                const to = nodeRects[key];
+                const x1 = from.cx, y1 = from.bottom;
+                const x2 = to.cx, y2 = to.top;
+                const my = (y1 + y2) / 2;
+                paths += `<path d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" stroke="${color}" />`;
+            }
+        }
+        svg.innerHTML = paths;
     }
 
     toggleEventLog() {}
 
     updateEventLog() {
         const entries = this.game.eventLog.getRecent(10);
-        let html = '<div class="log-header">Event Log</div>';
+        let html = '<div class="footer-panel-header">Event Log</div>';
         if (entries.length === 0) {
             html += '<div class="event-log-row" style="color:#666">No events yet.</div>';
         }
@@ -525,9 +847,13 @@ export class UI {
     }
 
     toggleInventoryPanel() {
-        this.inventoryVisible = !this.inventoryVisible;
-        this.elements.inventoryPanel.style.display = this.inventoryVisible ? 'block' : 'none';
-        if (this.inventoryVisible) this.updateInventoryPanel();
+        const opening = !this.inventoryVisible;
+        this._closeAllPanels();
+        this.inventoryVisible = opening;
+        this._panelPause(opening);
+        this.elements.inventoryPanel.style.display = opening ? 'block' : 'none';
+        if (opening) this.updateInventoryPanel();
+        this._updateOverlay();
     }
 
     updateInventoryPanel() {
@@ -565,9 +891,13 @@ export class UI {
     }
 
     toggleTamingPanel() {
-        this.tamingPanelVisible = !this.tamingPanelVisible;
-        this.elements.tamingPanel.style.display = this.tamingPanelVisible ? 'block' : 'none';
-        if (this.tamingPanelVisible) this.updateTamingPanel();
+        const opening = !this.tamingPanelVisible;
+        this._closeAllPanels();
+        this.tamingPanelVisible = opening;
+        this._panelPause(opening);
+        this.elements.tamingPanel.style.display = opening ? 'block' : 'none';
+        if (opening) this.updateTamingPanel();
+        this._updateOverlay();
     }
 
     updateTamingPanel() {
@@ -607,9 +937,13 @@ export class UI {
     }
 
     toggleSettingsPanel() {
-        this.settingsPanelVisible = !this.settingsPanelVisible;
-        this.elements.settingsPanel.style.display = this.settingsPanelVisible ? 'block' : 'none';
-        if (this.settingsPanelVisible) this.updateSettingsPanel();
+        const opening = !this.settingsPanelVisible;
+        this._closeAllPanels();
+        this.settingsPanelVisible = opening;
+        this._panelPause(opening);
+        this.elements.settingsPanel.style.display = opening ? 'block' : 'none';
+        if (opening) this.updateSettingsPanel();
+        this._updateOverlay();
     }
 
     updateSettingsPanel() {
@@ -626,6 +960,16 @@ export class UI {
         html += `<div class="settings-row">`;
         html += `<input type="checkbox" id="set-peaceful" ${CONFIG.PEACEFUL_MODE ? 'checked' : ''} onchange="window.game.togglePeaceful()">`;
         html += `<label for="set-peaceful">Peaceful mode (no raids/hostile animals)</label>`;
+        html += `</div>`;
+        const isTabbed = document.getElementById('game-footer').classList.contains('tabbed');
+        html += `<div class="settings-row">`;
+        html += `<input type="checkbox" id="set-tabbed-footer" ${isTabbed ? 'checked' : ''} onchange="window.setFooterMode(this.checked)">`;
+        html += `<label for="set-tabbed-footer">Tabbed footer (show one panel at a time)</label>`;
+        html += `</div>`;
+        const uiSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ui-font-size')) || 12;
+        html += `<div class="settings-row">`;
+        html += `<label for="set-ui-font-size">UI Font Size: <span id="ui-font-size-val">${uiSize}px</span></label>`;
+        html += `<input type="range" id="set-ui-font-size" min="8" max="20" value="${uiSize}" oninput="window.setUIFontSize(this.value)">`;
         html += `</div>`;
         html += `<div class="settings-row" style="margin-top:12px; border-top:1px solid #444; padding-top:8px; gap:8px;">`;
         html += `<button onclick="window.game.save()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a4a2a;border:1px solid #4a4;color:#8c8;cursor:pointer;border-radius:3px;">Save Game</button>`;
@@ -689,4 +1033,11 @@ function getMoodLabel(mood) {
     if (mood >= 40) return 'content';
     if (mood >= 20) return 'stressed';
     return 'breaking';
+}
+
+function statColor(value) {
+    if (value >= 70) return '#88cc88';
+    if (value >= 40) return '#cccc44';
+    if (value >= 20) return '#cc8844';
+    return '#cc4444';
 }

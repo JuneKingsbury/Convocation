@@ -4,14 +4,37 @@
     box-sizing: border-box;
 }
 
+html, body {
+    overflow: hidden;
+    height: 100vh;
+    height: 100dvh;
+    position: fixed;
+    width: 100%;
+    overscroll-behavior: none;
+    touch-action: none;
+}
+
+:root {
+    --ui-font-size: 12px;
+}
+
 body {
     background: #1a1a2e;
     color: #e0e0e0;
     font-family: 'Courier New', monospace;
-    font-size: 14px;
-    overflow: hidden;
-    height: 100vh;
-    height: 100dvh;
+    font-size: var(--ui-font-size);
+}
+
+#game-container, #start-screen {
+    touch-action: manipulation;
+}
+
+.footer-panel,
+#priority-panel, #craft-panel, #research-panel,
+#inventory-panel, #taming-panel, #settings-panel,
+#start-screen {
+    touch-action: pan-y;
+    overscroll-behavior: contain;
 }
 
 #start-screen {
@@ -59,11 +82,12 @@ body {
 
 #game-container {
     display: none;
-    grid-template-rows: auto 1fr 168px auto;
-    grid-template-columns: 1fr var(--sidebar-width, 240px);
+    grid-template-rows: auto 1fr auto auto;
+    grid-template-columns: 1fr 240px;
     height: 100vh;
     height: 100dvh;
     gap: 0;
+    font-size: var(--ui-font-size);
 }
 
 #status-bar {
@@ -75,7 +99,7 @@ body {
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
-    font-size: 12px;
+    font-size: var(--ui-font-size);
 }
 
 #status-bar .res { color: #88cc88; }
@@ -92,18 +116,276 @@ body {
     position: relative;
 }
 
+#info-panel {
+    grid-column: 2;
+    grid-row: 2;
+    height: auto;
+    min-height: 0;
+    overflow-y: auto;
+    border: none;
+    border-left: 1px solid #333;
+    border-radius: 0;
+    padding: 6px;
+    background: #0d0d1a;
+    font-size: var(--ui-font-size);
+    position: relative;
+}
+
+/* === RESIZE HANDLES === */
+
+.resize-handle {
+    position: absolute;
+    z-index: 5;
+    touch-action: none;
+    transition: background 0.15s;
+}
+
+.resize-handle:hover,
+.resize-handle.dragging {
+    background: #ffcc0044;
+}
+
+.resize-handle-left {
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+}
+
+.resize-handle-top {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    cursor: row-resize;
+}
+
 #game-footer {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 3;
     display: flex;
-    align-items: stretch;
-    gap: 4px;
-    padding: 4px;
+    flex-direction: column;
     background: #0d0d1a;
     border-top: 1px solid #333;
-    height: 168px;
-    min-height: 168px;
+    height: 200px;
+    min-height: 0;
     overflow: hidden;
+    position: relative;
+}
+
+#game-footer.collapsed {
+    height: 24px;
+    min-height: 24px;
+}
+
+#game-footer.collapsed #footer-content {
+    display: none;
+}
+
+/* --- Footer toolbar (collapse button, always visible) --- */
+
+#footer-tabs {
+    display: flex;
+    gap: 0;
+    padding: 2px 4px;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+}
+
+.footer-tab {
+    padding: 3px 10px;
+    font-family: inherit;
+    font-size: 0.92em;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: #888;
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.footer-tab:hover {
+    color: #ccc;
+    background: #1a1a2e;
+}
+
+.footer-tab.active {
+    color: #ffcc00;
+    background: #1a1a2e;
+    border-color: #333;
+}
+
+
+/* --- Side-by-side mode (default) --- */
+
+#footer-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+}
+
+.footer-panel {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    overflow-y: auto;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+.footer-panel-header {
+    color: #ffcc00;
+    font-size: 0.83em;
+    font-weight: bold;
+    margin-bottom: 3px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 2px;
+}
+
+#minimap-container {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 46px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 4px;
+    gap: 4px;
+    overflow: hidden;
+}
+
+#minimap-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+}
+
+#minimap-controls button {
+    padding: 2px 4px;
+    font-family: inherit;
+    font-size: 0.92em;
+    background: #2a2a4a;
+    border: 1px solid #555;
+    color: #ccc;
+    cursor: pointer;
+    border-radius: 3px;
+    min-width: 24px;
+    text-align: center;
+}
+
+#minimap-controls button:hover {
+    background: #3a3a6a;
+}
+
+#minimap-controls button.active {
+    background: #3a3a6a;
+    border-color: #88f;
+    color: #fff;
+}
+
+#minimap-controls span {
+    font-size: 0.75em;
+    color: #aaa;
+    text-align: center;
+}
+
+.minimap-controls-sep {
+    width: 16px;
+    height: 1px;
+    background: #444;
+}
+
+.footer-panel-resize {
+    width: 5px;
+    flex-shrink: 0;
+    cursor: col-resize;
+    background: transparent;
+    border-radius: 2px;
+    transition: background 0.15s;
+    touch-action: none;
+}
+
+.footer-panel-resize:hover,
+.footer-panel-resize.dragging {
+    background: #ffcc0044;
+}
+
+/* In side-by-side mode, tab buttons only used for collapse */
+#game-footer:not(.tabbed) #footer-tabs .footer-tab:not(.footer-collapse-btn) {
+    display: none;
+}
+
+/* --- Tabbed mode (opt-in via .tabbed class) --- */
+
+#game-container.tabbed-mode {
+    grid-template-columns: 1fr;
+}
+
+#game-container.tabbed-mode .resize-handle-left {
+    display: none;
+}
+
+#game-container.tabbed-mode #info-panel {
+    display: none;
+    grid-column: unset;
+    grid-row: unset;
+    border-left: none;
+    border: none;
+    border-radius: 0;
+    padding: 4px;
+}
+
+#game-container.tabbed-mode #info-panel.active {
+    display: block;
+}
+
+#game-container.tabbed-mode #game-footer {
+    grid-column: 1;
+}
+
+#game-footer.tabbed .footer-panel-resize {
+    display: none;
+}
+
+#game-footer.tabbed #footer-content {
+    display: block;
+    position: relative;
+}
+
+#game-footer.tabbed .footer-panel {
+    display: none;
+    border: none;
+    border-radius: 0;
+    padding: 4px;
+}
+
+#game-footer.tabbed .footer-panel.active {
+    display: block;
+}
+
+#game-footer.tabbed #minimap-container {
+    display: none;
+    border: none;
+    border-radius: 0;
+}
+
+#game-footer.tabbed #minimap-container.active {
+    display: flex;
+}
+
+#game-footer.tabbed #footer-tabs .footer-tab {
+    display: inline-block;
 }
 
 #minimap {
@@ -165,7 +447,7 @@ body {
     padding: 2px 8px;
     margin-bottom: 2px;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: 1em;
     opacity: 0.9;
 }
 
@@ -173,28 +455,10 @@ body {
 .notif-success { background: #224422; color: #66ff66; border: 1px solid #336633; }
 .notif-event { background: #333322; color: #ffcc44; border: 1px solid #665533; }
 
-/* === SIDEBAR === */
-
-#sidebar {
-    grid-column: 2;
-    grid-row: 2 / 4;
-    background: #0d0d1a;
-    border-left: 1px solid #333;
-    padding: 8px;
-    overflow-y: auto;
-    font-size: 12px;
-}
-
-#sidebar-toggle {
-    display: none;
-}
-
-#info-panel {
-    min-height: 100px;
-}
+/* === INFO PANEL === */
 
 .info-header {
-    font-size: 14px;
+    font-size: 1.17em;
     font-weight: bold;
     color: #ffcc00;
     margin-bottom: 6px;
@@ -204,7 +468,7 @@ body {
 
 .info-row { margin: 3px 0; color: #ccc; }
 .info-row.fire { color: #ff4400; font-weight: bold; }
-.info-thoughts { margin-top: 8px; font-size: 11px; line-height: 1.5; }
+.info-thoughts { margin-top: 8px; font-size: 0.92em; line-height: 1.5; }
 .info-thoughts .positive { color: #66cc66; }
 .info-thoughts .negative { color: #cc6666; }
 
@@ -218,7 +482,7 @@ body {
 .info-actions button {
     padding: 3px 6px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 0.92em;
     background: #2a2a4a;
     border: 1px solid #555;
     color: #ccc;
@@ -257,7 +521,7 @@ body {
 
 .mode-options {
     color: #999;
-    font-size: 12px;
+    font-size: 1em;
 }
 
 .mode-opt {
@@ -280,7 +544,7 @@ body {
 
 .mode-hint {
     color: #777;
-    font-size: 11px;
+    font-size: 0.92em;
     font-style: italic;
     margin-left: 8px;
 }
@@ -334,31 +598,47 @@ body {
     border-radius: 6px;
     padding: 16px;
     z-index: 100;
-    max-width: 600px;
+    max-width: 90vw;
     max-height: 80vh;
     overflow-y: auto;
 }
 
+#research-panel {
+    max-width: 90vw;
+    overflow: auto;
+}
+
+#priority-panel {
+    max-width: 90vw;
+}
+
+#priority-panel table {
+    display: block;
+    overflow-x: auto;
+}
+
+.panel-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 99;
+}
+
+.panel-overlay.visible {
+    display: block;
+}
+
 #colonist-hud {
-    flex: 1;
-    min-width: 0;
     overflow-y: auto;
-    background: rgba(13, 13, 26, 0.88);
-    border: 1px solid #333;
-    border-radius: 4px;
-    padding: 6px;
-    font-size: 11px;
+    padding: 4px;
+    font-size: 0.92em;
 }
 
 #event-log {
-    flex: 1;
-    min-width: 0;
     overflow-y: auto;
-    background: rgba(13, 13, 26, 0.88);
-    border: 1px solid #333;
-    border-radius: 4px;
-    padding: 6px;
-    font-size: 11px;
+    padding: 4px;
+    font-size: 0.92em;
 }
 
 
@@ -389,12 +669,11 @@ body {
     margin-right: 8px;
 }
 
-#event-log .log-header,
-#colonist-hud .hud-header {
+.footer-panel-header {
     color: #ffcc00;
-    font-size: 11px;
+    font-size: 0.83em;
     font-weight: bold;
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     border-bottom: 1px solid #333;
     padding-bottom: 2px;
 }
@@ -415,13 +694,18 @@ body {
     color: #ffcc00;
 }
 
+.hud-weapon {
+    color: #aa88cc;
+    font-size: 0.83em;
+}
+
 .hud-colonist .hud-state {
     color: #888;
-    font-size: 10px;
+    font-size: 0.83em;
 }
 
 .hud-colonist .hud-bars {
-    font-size: 10px;
+    font-size: 0.83em;
     color: #aaa;
 }
 
@@ -484,6 +768,131 @@ body {
     border-radius: 3px;
 }
 
+/* === RESEARCH TREE === */
+
+.research-tree {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    padding: 12px 0;
+    min-width: max-content;
+}
+
+.research-lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.research-lines path {
+    fill: none;
+    stroke-width: 2;
+}
+
+.research-layer {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: nowrap;
+}
+
+.research-node {
+    border: 2px solid #444;
+    border-radius: 6px;
+    padding: 8px 10px;
+    background: #1e1e32;
+    width: 120px;
+    text-align: center;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.research-node.completed {
+    border-color: #66cc66;
+    background: #1a2e1a;
+}
+
+.research-node.completed .research-node-cost {
+    color: #66cc66;
+}
+
+.research-node.affordable {
+    border-color: #aa88ff;
+    background: #2a1e3e;
+    cursor: pointer;
+}
+
+.research-node.available {
+    border-color: #886622;
+    background: #2a2a1a;
+}
+
+.research-node.locked {
+    border-color: #333;
+    opacity: 0.5;
+}
+
+.research-node-name {
+    font-weight: bold;
+    color: #ffcc00;
+    font-size: 0.92em;
+    margin-bottom: 4px;
+}
+
+.research-node-desc {
+    color: #aaa;
+    font-size: 0.75em;
+    margin-bottom: 4px;
+}
+
+.research-node-cost {
+    color: #aa88ff;
+    font-size: 0.83em;
+    font-weight: bold;
+}
+
+.research-node-btn {
+    margin-top: 6px;
+    padding: 3px 8px;
+    font-family: inherit;
+    font-size: 0.83em;
+    background: #3a2a5a;
+    border: 1px solid #8866cc;
+    color: #ccaaff;
+    cursor: pointer;
+    border-radius: 3px;
+}
+
+.research-node-btn:hover {
+    background: #4a3a6a;
+}
+
+.research-node.dimmed {
+    opacity: 0.25;
+    transition: opacity 0.2s;
+}
+
+.research-node.highlighted {
+    box-shadow: 0 0 8px #aa88ff88;
+}
+
+.research-lines path.dimmed {
+    opacity: 0.1;
+    transition: opacity 0.2s;
+}
+
+.research-lines path.highlighted {
+    stroke: #aa88ff;
+    stroke-width: 3;
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+
+/* === EVENT PANEL === */
+
 #event-panel {
     display: none;
     position: fixed;
@@ -520,7 +929,7 @@ body {
 .event-text {
     margin-bottom: 12px;
     color: #ffcc44;
-    font-size: 14px;
+    font-size: 1.17em;
 }
 
 .event-choices {
@@ -533,7 +942,7 @@ body {
 .event-choices button {
     padding: 6px 12px;
     font-family: inherit;
-    font-size: 13px;
+    font-size: 1.08em;
     background: #3a3a2a;
     border: 1px solid #886;
     color: #dda;
@@ -569,18 +978,18 @@ body {
 }
 
 .col-name { font-weight: bold; color: #ffcc00; }
-.col-state { color: #888; font-size: 11px; }
+.col-state { color: #888; font-size: 0.92em; }
 .col-dead { color: #cc4444; }
 
 .col-list-detail {
-    font-size: 11px;
+    font-size: 0.92em;
     color: #aaa;
     margin: 1px 0;
 }
 
 #bed-assign-select {
     font-family: inherit;
-    font-size: 12px;
+    font-size: 1em;
     background: #2a2a4a;
     border: 1px solid #555;
     color: #ccc;
@@ -595,7 +1004,7 @@ body {
     padding: 3px 6px;
     margin: 2px 0;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: 1em;
     border-bottom: 1px solid #222;
 }
 
@@ -605,7 +1014,7 @@ body {
 
 .event-log-time {
     color: #888;
-    font-size: 11px;
+    font-size: 0.92em;
     margin-right: 4px;
 }
 
@@ -635,11 +1044,11 @@ body {
 
 
 #inventory-panel {
-    min-width: 300px;
+    min-width: min(250px, 85vw);
 }
 
 #settings-panel {
-    min-width: 300px;
+    min-width: min(250px, 85vw);
 }
 
 .settings-row {
@@ -664,57 +1073,13 @@ body {
 
 .info-actions label {
     color: #aaa;
-    font-size: 12px;
+    font-size: 1em;
 }
 
 /* ============================
    RESPONSIVE LAYOUT
    ============================ */
 
-/* Medium screens / portrait: sidebar becomes overlay */
-@media (max-width: 960px) {
-    #game-container {
-        grid-template-columns: 1fr;
-    }
-
-    #sidebar {
-        display: none;
-        grid-column: 1;
-        grid-row: 2;
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: min(280px, 70vw);
-        height: 100%;
-        z-index: 90;
-        border-left: 2px solid #555;
-        padding-top: 40px;
-    }
-
-    #sidebar.open {
-        display: block;
-    }
-
-    #sidebar-toggle {
-        display: block;
-        position: fixed;
-        top: 4px;
-        right: 4px;
-        z-index: 95;
-        padding: 4px 8px;
-        font-family: inherit;
-        font-size: 11px;
-        background: #2a2a4a;
-        border: 1px solid #555;
-        color: #ccc;
-        cursor: pointer;
-        border-radius: 3px;
-    }
-
-    #game-footer {
-        grid-column: 1;
-    }
-}
 
 /* Small screens / phones */
 @media (max-width: 768px) {
@@ -731,6 +1096,21 @@ body {
         grid-template-columns: 1fr;
     }
 
+    #info-panel {
+        grid-column: 1;
+        grid-row: unset;
+        border-left: none;
+        display: none;
+    }
+
+    .resize-handle-left {
+        display: none;
+    }
+
+    #info-panel.active {
+        display: block;
+    }
+
     #game-area {
         grid-column: 1;
         grid-row: 2;
@@ -738,17 +1118,52 @@ body {
 
     #game-footer {
         grid-row: 3;
-        height: 130px;
-        min-height: 130px;
+        height: 140px;
     }
 
-    #game-footer #minimap {
-        transform: scale(0.7);
-        transform-origin: top right;
+    #game-footer.collapsed {
+        height: 28px;
+    }
+
+    /* Force tabbed mode on small screens */
+    #footer-content {
+        display: block;
+        position: relative;
+    }
+
+    .footer-panel-resize {
+        display: none;
+    }
+
+    #game-footer .footer-panel {
+        display: none;
+        border: none;
+        border-radius: 0;
+        flex: none;
+        height: 100%;
+    }
+
+    #game-footer .footer-panel.active {
+        display: block;
+    }
+
+    #game-footer #minimap-container {
+        display: none;
+        border: none;
+        border-radius: 0;
+        flex: none;
+    }
+
+    #game-footer #minimap-container.active {
+        display: flex;
+    }
+
+    #game-footer #footer-tabs .footer-tab:not(.footer-collapse-btn) {
+        display: inline-block;
     }
 
     #bottom-bar {
-        grid-column: 1;
+        grid-column: 1 / -1;
         grid-row: 4;
     }
 
@@ -773,6 +1188,10 @@ body {
         font-size: 10px;
     }
 
+    #status-bar .status-extra {
+        display: none;
+    }
+
     #notifications {
         font-size: 10px;
         left: 4px;
@@ -781,17 +1200,26 @@ body {
 
     .notif { padding: 1px 5px; font-size: 10px; }
 
-    /* Popup panels - full width on mobile */
+    /* Bottom-sheet panels on mobile */
     #priority-panel, #craft-panel, #research-panel, #inventory-panel, #taming-panel, #settings-panel {
-        max-width: 95vw;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        transform: none;
+        max-width: 100vw;
+        width: 100vw;
         min-width: unset;
-        width: 95vw;
-        padding: 10px;
+        padding: 12px 10px;
         max-height: 70vh;
+        border-radius: 12px 12px 0 0;
+        border: none;
+        border-top: 2px solid #555;
     }
 
+
     #colonist-hud, #event-log {
-        font-size: 9px;
+        font-size: 10px;
     }
 
     #priority-panel th, #priority-panel td {
@@ -810,6 +1238,27 @@ body {
 
     .craft-row { gap: 6px; font-size: 11px; }
     .col-list-detail { font-size: 10px; }
+
+    .footer-tab {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+
+    .research-node {
+        width: 100px;
+        padding: 6px 6px;
+    }
+
+    .research-layer {
+        gap: 10px;
+    }
+
+    .research-tree {
+        gap: 18px;
+    }
+
+    .research-node-name { font-size: 0.83em; }
+    .research-node-desc { font-size: 0.67em; }
 }
 
 @media (max-width: 480px) {
@@ -819,7 +1268,36 @@ body {
         min-width: 30px;
     }
 
-    #minimap {
-        transform: scale(0.5);
+    #game-footer {
+        height: 120px;
+    }
+
+    #minimap-container canvas {
+        max-height: 80px;
+    }
+}
+
+/* Landscape phone - maximize game area */
+@media (max-height: 500px) and (orientation: landscape) {
+    #game-footer {
+        height: 100px;
+    }
+
+    #game-footer.collapsed {
+        height: 24px;
+    }
+
+    #status-bar {
+        padding: 2px 6px;
+        font-size: 10px;
+    }
+
+    #touch-toolbar {
+        padding: 2px 4px;
+    }
+
+    #touch-toolbar button {
+        padding: 3px 6px;
+        font-size: 9px;
     }
 }

@@ -83,6 +83,7 @@ export function tameAnimal(game, animalType) {
     const tamed = createTamedAnimal(animalType, pen.x, pen.y);
     game.tamedAnimals.push(tamed);
     game.notifications.push({ text: `Tamed a ${animalType}!`, tick: game.tick, type: 'success' });
+    game.eventLog.add(game, `Tamed a ${animalType}`, 'success', { type: 'position', x: pen.x, y: pen.y });
     return true;
 }
 

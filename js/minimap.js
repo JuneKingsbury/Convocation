@@ -1,6 +1,7 @@
 import { CONFIG, TILE_COLORS } from './config.js';
 
-const SCALE = 2;
+const SCALE_X = 2;
+const SCALE_Y = 3;
 
 export class Minimap {
     constructor(canvas, game) {
@@ -8,29 +9,46 @@ export class Minimap {
         this.game = game;
         this.ctx = canvas.getContext('2d');
 
-        canvas.width = CONFIG.MAP_WIDTH * SCALE;
-        canvas.height = CONFIG.MAP_HEIGHT * SCALE;
-        canvas.style.height = `${CONFIG.MAP_HEIGHT * SCALE}px`;
+        canvas.width = CONFIG.MAP_WIDTH * SCALE_X;
+        canvas.height = CONFIG.MAP_HEIGHT * SCALE_Y;
         canvas.style.maxHeight = '100%';
+        canvas.style.maxWidth = '100%';
         canvas.style.width = 'auto';
+        canvas.style.height = 'auto';
 
         canvas.addEventListener('mousedown', (e) => { e.stopPropagation(); this.onClick(e); });
         canvas.addEventListener('mousemove', (e) => {
             if (e.buttons === 1) { e.stopPropagation(); this.onClick(e); }
         });
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); this.onTouch(e); }, { passive: false });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); e.stopPropagation(); this.onTouch(e); }, { passive: false });
+    }
+
+    onTouch(e) {
+        if (e.touches.length !== 1) return;
+        const rect = this.canvas.getBoundingClientRect();
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const x = Math.floor((e.touches[0].clientX - rect.left) * scaleX / SCALE_X);
+        const y = Math.floor((e.touches[0].clientY - rect.top) * scaleY / SCALE_Y);
+        this.game.camera.centerOn(x, y);
     }
 
     onClick(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / SCALE);
-        const y = Math.floor((e.clientY - rect.top) / SCALE);
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const x = Math.floor((e.clientX - rect.left) * scaleX / SCALE_X);
+        const y = Math.floor((e.clientY - rect.top) * scaleY / SCALE_Y);
         this.game.camera.centerOn(x, y);
     }
 
     render() {
         const { map, colonists, wildlife, raiders, tamedAnimals, camera, weather } = this.game;
         const ctx = this.ctx;
-        const imageData = ctx.createImageData(CONFIG.MAP_WIDTH * SCALE, CONFIG.MAP_HEIGHT * SCALE);
+        const w = CONFIG.MAP_WIDTH * SCALE_X;
+        const h = CONFIG.MAP_HEIGHT * SCALE_Y;
+        const imageData = ctx.createImageData(w, h);
         const data = imageData.data;
 
         for (let y = 0; y < CONFIG.MAP_HEIGHT; y++) {
@@ -38,11 +56,11 @@ export class Minimap {
                 const tile = map[y][x];
                 const color = this.getTileColor(tile, weather.season);
 
-                for (let dy = 0; dy < SCALE; dy++) {
-                    for (let dx = 0; dx < SCALE; dx++) {
-                        const px = (x * SCALE + dx);
-                        const py = (y * SCALE + dy);
-                        const idx = (py * CONFIG.MAP_WIDTH * SCALE + px) * 4;
+                for (let dy = 0; dy < SCALE_Y; dy++) {
+                    for (let dx = 0; dx < SCALE_X; dx++) {
+                        const px = x * SCALE_X + dx;
+                        const py = y * SCALE_Y + dy;
+                        const idx = (py * w + px) * 4;
                         data[idx] = color[0];
                         data[idx + 1] = color[1];
                         data[idx + 2] = color[2];
@@ -73,20 +91,22 @@ export class Minimap {
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1;
         ctx.strokeRect(
-            camera.x * SCALE + 0.5,
-            camera.y * SCALE + 0.5,
-            CONFIG.VIEWPORT_WIDTH * SCALE - 1,
-            CONFIG.VIEWPORT_HEIGHT * SCALE - 1
+            camera.x * SCALE_X + 0.5,
+            camera.y * SCALE_Y + 0.5,
+            CONFIG.VIEWPORT_WIDTH * SCALE_X - 1,
+            CONFIG.VIEWPORT_HEIGHT * SCALE_Y - 1
         );
     }
 
     drawDot(data, x, y, color) {
-        for (let dy = 0; dy < SCALE; dy++) {
-            for (let dx = 0; dx < SCALE; dx++) {
-                const px = x * SCALE + dx;
-                const py = y * SCALE + dy;
-                if (px < 0 || px >= CONFIG.MAP_WIDTH * SCALE || py < 0 || py >= CONFIG.MAP_HEIGHT * SCALE) continue;
-                const idx = (py * CONFIG.MAP_WIDTH * SCALE + px) * 4;
+        const w = CONFIG.MAP_WIDTH * SCALE_X;
+        const h = CONFIG.MAP_HEIGHT * SCALE_Y;
+        for (let dy = 0; dy < SCALE_Y; dy++) {
+            for (let dx = 0; dx < SCALE_X; dx++) {
+                const px = x * SCALE_X + dx;
+                const py = y * SCALE_Y + dy;
+                if (px < 0 || px >= w || py < 0 || py >= h) continue;
+                const idx = (py * w + px) * 4;
                 data[idx] = color[0];
                 data[idx + 1] = color[1];
                 data[idx + 2] = color[2];

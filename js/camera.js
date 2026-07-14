@@ -16,6 +16,11 @@ export class Camera {
         this.y = Math.max(0, Math.min(CONFIG.MAP_HEIGHT - CONFIG.VIEWPORT_HEIGHT, wy - Math.floor(CONFIG.VIEWPORT_HEIGHT / 2)));
     }
 
+    clamp() {
+        this.x = Math.max(0, Math.min(CONFIG.MAP_WIDTH - CONFIG.VIEWPORT_WIDTH, this.x));
+        this.y = Math.max(0, Math.min(CONFIG.MAP_HEIGHT - CONFIG.VIEWPORT_HEIGHT, this.y));
+    }
+
     screenToWorld(sx, sy) {
         return { x: sx + this.x, y: sy + this.y };
     }

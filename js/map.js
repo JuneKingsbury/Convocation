@@ -35,7 +35,8 @@ export function generateMap() {
 }
 
 function scatterDirt(map) {
-    for (let i = 0; i < 12; i++) {
+    const count = Math.floor(12 * (CONFIG.MAP_WIDTH * CONFIG.MAP_HEIGHT) / (100 * 80));
+    for (let i = 0; i < count; i++) {
         const cx = Math.floor(Math.random() * CONFIG.MAP_WIDTH);
         const cy = Math.floor(Math.random() * CONFIG.MAP_HEIGHT);
         const radius = 2 + Math.floor(Math.random() * 4);
@@ -53,7 +54,8 @@ function scatterDirt(map) {
 }
 
 function placeRockFormations(map) {
-    for (let i = 0; i < 6; i++) {
+    const count = Math.floor(6 * (CONFIG.MAP_WIDTH * CONFIG.MAP_HEIGHT) / (100 * 80));
+    for (let i = 0; i < count; i++) {
         const cx = Math.floor(Math.random() * CONFIG.MAP_WIDTH);
         const cy = Math.floor(Math.random() * CONFIG.MAP_HEIGHT);
         const size = 2 + Math.floor(Math.random() * 3);

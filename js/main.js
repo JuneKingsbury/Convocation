@@ -20,6 +20,7 @@ import { updateTamedAnimals, tameAnimal } from './taming.js';
 import { PowerSystem } from './power.js';
 import { EventLog } from './eventlog.js';
 import { saveGame, loadGame, hasSave, exportSave, importSave } from './save.js';
+import { initResizeHandles } from './resize.js';
 
 class Game {
     constructor() {
@@ -119,7 +120,11 @@ class Game {
         this.tick++;
         this.timeOfDay = this.tick % CONFIG.TICKS_PER_DAY;
 
+        const prevSeason = this.weather.season;
         this.weather.update(this.tick);
+        if (this.weather.season !== prevSeason) {
+            this.eventLog.add(this, `Season changed to ${this.weather.season} (Year ${this.weather.year})`, 'event', null);
+        }
         if (this.tick % 50 === 0) {
             this.weather.applySnow(this.map);
         }
@@ -174,6 +179,11 @@ class Game {
 
     speedDown() {
         this.speed = Math.max(1, this.speed - 1);
+    }
+
+    setSpeed(val) {
+        this.speed = Math.max(1, Math.min(5, val));
+        if (this.paused) this.togglePause();
     }
 
     setMobileMode(mode) {
@@ -374,27 +384,182 @@ class Game {
     }
 }
 
+const CHAR_RATIO = 0.6;
+const LINE_HEIGHT = 1.15;
+const MIN_FONT = 6;
+const MAX_FONT = 24;
+const ZOOM_STEP = 2;
+
+let currentZoomFont = null;
+
 function fitGameFont() {
     const gameArea = document.getElementById('game-area');
-    const gameEl = document.getElementById('game');
-    if (!gameArea || !gameEl) return;
+    if (!gameArea) return;
 
     const availWidth = gameArea.clientWidth - 4;
     const availHeight = gameArea.clientHeight - 4;
 
-    const charRatio = 0.6;
-    const lineHeight = 1.15;
+    if (currentZoomFont === null) {
+        const isSmall = window.innerWidth <= 768;
+        currentZoomFont = isSmall ? 10 : 14;
+    }
 
-    const fontFromWidth = availWidth / (CONFIG.VIEWPORT_WIDTH * charRatio);
-    const fontFromHeight = availHeight / (CONFIG.VIEWPORT_HEIGHT * lineHeight);
+    const fontSize = Math.max(MIN_FONT, Math.min(MAX_FONT, currentZoomFont));
+    currentZoomFont = fontSize;
 
-    const fontSize = Math.max(5, Math.min(18, Math.floor(Math.min(fontFromWidth, fontFromHeight) * 10) / 10));
+    CONFIG.VIEWPORT_WIDTH = Math.max(20, Math.floor(availWidth / (fontSize * CHAR_RATIO)));
+    CONFIG.VIEWPORT_HEIGHT = Math.max(10, Math.floor(availHeight / (fontSize * LINE_HEIGHT)));
 
     document.documentElement.style.setProperty('--game-font-size', fontSize + 'px');
 
     if (window.game?.input) {
         window.game.input.measureCharSize();
     }
+    if (window.game?.camera) {
+        window.game.camera.clamp();
+    }
+}
+
+function zoomIn() {
+    if (currentZoomFont === null) currentZoomFont = 14;
+    currentZoomFont = Math.min(MAX_FONT, currentZoomFont + ZOOM_STEP);
+    fitGameFont();
+}
+
+function zoomOut() {
+    if (currentZoomFont === null) currentZoomFont = 14;
+    currentZoomFont = Math.max(MIN_FONT, currentZoomFont - ZOOM_STEP);
+    fitGameFont();
+}
+
+window.zoomIn = zoomIn;
+window.zoomOut = zoomOut;
+
+function resetMinimapSize() {
+    const container = document.getElementById('minimap-container');
+    const canvas = document.getElementById('minimap');
+    const controls = document.getElementById('minimap-controls');
+    if (!container || !canvas || !controls) return;
+
+    const footerContent = document.getElementById('footer-content');
+    const availHeight = footerContent.clientHeight - 10;
+    const aspect = canvas.width / canvas.height;
+    const fittedWidth = Math.ceil(availHeight * aspect);
+    const minWidth = controls.offsetWidth + 14;
+    const controlsWidth = controls.offsetWidth + 4 + 10;
+
+    const totalWidth = footerContent.clientWidth;
+    const resizeHandles = footerContent.querySelectorAll('.footer-panel-resize');
+    const handleSpace = resizeHandles.length * 5;
+    const panels = footerContent.querySelectorAll('.footer-panel');
+    const gapTotal = 4 * (footerContent.children.length - 1);
+    const minPanelSpace = panels.length * 60;
+    const maxWidth = totalWidth - minPanelSpace - handleSpace - gapTotal;
+
+    const idealWidth = Math.max(minWidth, Math.min(maxWidth, fittedWidth + controlsWidth));
+
+    container.style.flex = `0 0 ${idealWidth}px`;
+}
+
+window.resetMinimapSize = resetMinimapSize;
+
+function setUIFontSize(size) {
+    document.documentElement.style.setProperty('--ui-font-size', size + 'px');
+    const label = document.getElementById('ui-font-size-val');
+    if (label) label.textContent = size + 'px';
+    window.resetMinimapSize?.();
+}
+
+window.setUIFontSize = setUIFontSize;
+
+function initFooterTabs() {
+    const footer = document.getElementById('game-footer');
+    const container = document.getElementById('game-container');
+    const infoPanel = document.getElementById('info-panel');
+    const footerContent = document.getElementById('footer-content');
+
+    if (window.innerWidth <= 768) {
+        container.classList.add('tabbed-mode');
+        footerContent.insertBefore(infoPanel, footerContent.firstChild);
+        infoPanel.classList.add('active');
+        footer.querySelector('.footer-tab[data-tab="info"]').classList.add('active');
+    }
+
+    footer.addEventListener('transitionend', () => fitGameFont());
+
+    footer.addEventListener('click', (e) => {
+        const tab = e.target.closest('.footer-tab[data-tab]');
+        if (!tab) return;
+
+        const target = tab.dataset.tab;
+
+
+        const isTabbed = footer.classList.contains('tabbed') || window.innerWidth <= 768;
+        if (!isTabbed) return;
+
+        if (footer.classList.contains('collapsed')) {
+            footer.classList.remove('collapsed');
+        }
+
+        const tabs = footer.querySelectorAll('.footer-tab[data-tab]');
+        const panels = footer.querySelectorAll('#footer-content > .footer-panel, #minimap-container');
+        tabs.forEach(t => {
+            if (t.dataset.tab !== 'collapse') t.classList.remove('active');
+        });
+        tab.classList.add('active');
+        panels.forEach(p => p.classList.remove('active'));
+
+        if (target === 'info') {
+            infoPanel.classList.add('active');
+        } else if (target === 'colonists') {
+            document.getElementById('colonist-hud').classList.add('active');
+        } else if (target === 'log') {
+            document.getElementById('event-log').classList.add('active');
+        } else if (target === 'minimap') {
+            document.getElementById('minimap-container').classList.add('active');
+        }
+    });
+}
+
+function setFooterMode(tabbed) {
+    const footer = document.getElementById('game-footer');
+    const container = document.getElementById('game-container');
+    const infoPanel = document.getElementById('info-panel');
+    const footerContent = document.getElementById('footer-content');
+
+    if (tabbed) {
+        footer.classList.add('tabbed');
+        container.classList.add('tabbed-mode');
+        footerContent.insertBefore(infoPanel, footerContent.firstChild);
+        const panels = footer.querySelectorAll('#footer-content > .footer-panel, #minimap-container');
+        panels.forEach(p => p.classList.remove('active'));
+        infoPanel.classList.add('active');
+        const tabs = footer.querySelectorAll('.footer-tab[data-tab]');
+        tabs.forEach(t => { if (t.dataset.tab !== 'collapse') t.classList.remove('active'); });
+        footer.querySelector('.footer-tab[data-tab="info"]').classList.add('active');
+    } else {
+        footer.classList.remove('tabbed');
+        container.classList.remove('tabbed-mode');
+        container.insertBefore(infoPanel, footer);
+        infoPanel.classList.remove('active');
+    }
+    fitGameFont();
+}
+
+window.setFooterMode = setFooterMode;
+
+function initPanelOverlay() {
+    const overlay = document.getElementById('panel-overlay');
+    overlay.addEventListener('click', () => {
+        if (!window.game?.ui) return;
+        const ui = window.game.ui;
+        if (ui.priorityPanelVisible) ui.togglePriorityPanel();
+        if (ui.craftPanelVisible) ui.toggleCraftPanel();
+        if (ui.researchPanelVisible) ui.toggleResearchPanel();
+        if (ui.inventoryVisible) ui.toggleInventoryPanel();
+        if (ui.tamingPanelVisible) ui.toggleTamingPanel();
+        if (ui.settingsPanelVisible) ui.toggleSettingsPanel();
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -426,6 +591,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         startScreen.style.display = 'none';
         gameContainer.style.display = 'grid';
+        initFooterTabs();
+        initPanelOverlay();
+        initResizeHandles(fitGameFont);
         requestAnimationFrame(() => {
             fitGameFont();
             const game = new Game();
@@ -438,6 +606,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBtn.addEventListener('click', () => {
         startScreen.style.display = 'none';
         gameContainer.style.display = 'grid';
+        initFooterTabs();
+        initPanelOverlay();
+        initResizeHandles(fitGameFont);
         requestAnimationFrame(() => {
             fitGameFont();
             const game = new Game();
@@ -458,6 +629,9 @@ document.addEventListener('DOMContentLoaded', () => {
             loadBtn.style.display = '';
             startScreen.style.display = 'none';
             gameContainer.style.display = 'grid';
+            initFooterTabs();
+            initPanelOverlay();
+            initResizeHandles(fitGameFont);
             requestAnimationFrame(() => {
                 fitGameFont();
                 const game = new Game();

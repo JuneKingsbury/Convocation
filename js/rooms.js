@@ -70,7 +70,11 @@ function floodFill(map, startX, startY, visited) {
                 tiles.push({ x: nx, y: ny });
                 continue;
             }
-            if (neighbor.terrain === 'water' || neighbor.terrain === 'rock') continue;
+            if (neighbor.terrain === 'water') continue;
+            if (neighbor.terrain === 'rock') {
+                enclosed = false;
+                continue;
+            }
             queue.push({ x: nx, y: ny });
         }
     }

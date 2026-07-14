@@ -34,6 +34,10 @@ export class InputHandler {
         preElement.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
         preElement.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
         preElement.addEventListener('touchend', (e) => this.onTouchEnd(e), { passive: false });
+
+        this._lastPinchDist = 0;
+        preElement.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+        preElement.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
     }
 
     measureCharSize() {
@@ -119,8 +123,11 @@ export class InputHandler {
                 e.preventDefault();
                 this.game.togglePause();
                 break;
-            case '=': case '+': this.game.speedUp(); break;
-            case '-': this.game.speedDown(); break;
+            case '=': case '+': window.zoomIn?.(); break;
+            case '-': window.zoomOut?.(); break;
+            case '>': this.game.speedUp(); break;
+            case '<': this.game.speedDown(); break;
+            case '/': window.resetMinimapSize?.(); break;
             case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
                 this.handleNumberKey(e.key === '0' ? 10 : parseInt(e.key));
                 break;
@@ -254,7 +261,15 @@ export class InputHandler {
 
     onTouchStart(e) {
         e.preventDefault();
+        if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            this._lastPinchDist = Math.hypot(dx, dy);
+            this._isPinching = true;
+            return;
+        }
         if (e.touches.length !== 1) return;
+        this._isPinching = false;
         const pos = this.getTouchTile(e.touches[0]);
         if (pos.x < 0 || pos.x >= CONFIG.MAP_WIDTH || pos.y < 0 || pos.y >= CONFIG.MAP_HEIGHT) return;
 
@@ -268,7 +283,25 @@ export class InputHandler {
 
     onTouchMove(e) {
         e.preventDefault();
-        if (e.touches.length !== 1) return;
+        if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+            if (this._lastPinchDist > 0) {
+                const delta = dist - this._lastPinchDist;
+                if (delta > 20) {
+                    window.zoomIn?.();
+                    this._lastPinchDist = dist;
+                } else if (delta < -20) {
+                    window.zoomOut?.();
+                    this._lastPinchDist = dist;
+                }
+            }
+            this._lastPinchDist = dist;
+            this._isPinching = true;
+            return;
+        }
+        if (e.touches.length !== 1 || this._isPinching) return;
         const pos = this.getTouchTile(e.touches[0]);
         if (pos.x >= 0 && pos.x < CONFIG.MAP_WIDTH && pos.y >= 0 && pos.y < CONFIG.MAP_HEIGHT) {
             this.game.cursor = pos;
@@ -280,6 +313,13 @@ export class InputHandler {
 
     onTouchEnd(e) {
         e.preventDefault();
+        if (this._isPinching) {
+            if (e.touches.length === 0) {
+                this._isPinching = false;
+                this._lastPinchDist = 0;
+            }
+            return;
+        }
         const pos = this.game.cursor;
         if (!pos) return;
 
