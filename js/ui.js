@@ -489,7 +489,10 @@ export class UI {
             html += `<div class="info-row" style="margin-top:8px;color:#66cc66;">Completed: ${completed.map(k => RESEARCH[k]?.name || k).join(', ')}</div>`;
         }
 
-        this.elements.researchPanel.innerHTML = html;
+        if (html !== this._lastResearchHtml) {
+            this._lastResearchHtml = html;
+            this.elements.researchPanel.innerHTML = html;
+        }
     }
 
     toggleEventLog() {}
