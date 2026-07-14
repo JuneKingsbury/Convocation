@@ -158,6 +158,7 @@ export const MOOD_SPEED_MULT = {
 export const COLONIST_NAMES = [
     'Ada', 'Bob', 'Cal', 'Dee', 'Eve', 'Finn', 'Gail', 'Hank',
     'Iris', 'Jake', 'Kit', 'Lena', 'Max', 'Nora', 'Otto', 'Pia',
+    'Davis', 'Morgan', 'Hugh', 'Matt', 'Sam', 'Paul', 'Jim', 'Mia',
 ];
 
 export const EVENTS = {
