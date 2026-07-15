@@ -3,13 +3,15 @@ import { CONFIG } from './config.js';
 const SAVE_KEY = 'colony_save';
 
 export function saveGame(game) {
+    const layout = captureLayout();
     const data = {
-        version: 1,
+        version: 2,
         tick: game.tick,
         timeOfDay: game.timeOfDay,
         speed: game.speed,
         settings: game.settings,
         peaceful: CONFIG.PEACEFUL_MODE,
+        layout,
 
         map: serializeMap(game.map),
         colonists: game.colonists,
@@ -20,6 +22,7 @@ export function saveGame(game) {
         resources: {
             stockpile: game.resources.stockpile,
             weapons: game.resources.weapons,
+            armors: game.resources.armors,
         },
 
         weather: {
@@ -36,6 +39,20 @@ export function saveGame(game) {
             nextRaidTick: game.combat.nextRaidTick,
             raidActive: game.combat.raidActive,
             raidStartTick: game.combat.raidStartTick,
+        },
+
+        waves: {
+            highestWaveCompleted: game.waves.highestWaveCompleted,
+            active: game.waves.active,
+            currentWave: game.waves.currentWave,
+            nexusPosition: game.waves.nexusPosition,
+            nexusHp: game.waves.nexusHp,
+            nexusMaxHp: game.waves.nexusMaxHp,
+            enemies: game.waves.enemies,
+            enemiesSpawned: game.waves.enemiesSpawned,
+            enemiesToSpawn: game.waves.enemiesToSpawn,
+            spawnTimer: game.waves.spawnTimer,
+            portals: game.waves.portals,
         },
 
         events: {
@@ -77,6 +94,7 @@ export function loadGame(game) {
 
     game.resources.stockpile = data.resources.stockpile;
     game.resources.weapons = data.resources.weapons;
+    game.resources.armors = data.resources.armors || [];
 
     game.weather.season = data.weather.season;
     game.weather.seasonIndex = data.weather.seasonIndex;
@@ -92,6 +110,20 @@ export function loadGame(game) {
 
     game.events.cooldowns = data.events.cooldowns;
 
+    if (data.waves) {
+        game.waves.highestWaveCompleted = data.waves.highestWaveCompleted || 0;
+        game.waves.active = data.waves.active || false;
+        game.waves.currentWave = data.waves.currentWave || 0;
+        game.waves.nexusPosition = data.waves.nexusPosition || null;
+        game.waves.nexusHp = data.waves.nexusHp || 0;
+        game.waves.nexusMaxHp = data.waves.nexusMaxHp || 0;
+        game.waves.enemies = data.waves.enemies || [];
+        game.waves.enemiesSpawned = data.waves.enemiesSpawned || 0;
+        game.waves.enemiesToSpawn = data.waves.enemiesToSpawn || 0;
+        game.waves.spawnTimer = data.waves.spawnTimer || 0;
+        game.waves.portals = data.waves.portals || [];
+    }
+
     game.research.completed = new Set(data.research.completed);
     game.research.studyPoints = data.research.studyPoints || 0;
 
@@ -99,6 +131,10 @@ export function loadGame(game) {
     game.eventLog.entries = data.eventLog || [];
 
     game.roomsDirty = true;
+
+    if (data.layout) {
+        restoreLayout(data.layout);
+    }
 
     return true;
 }
@@ -185,4 +221,37 @@ function deserializeMap(map, data) {
             tile.items = [];
         }
     }
+}
+
+function captureLayout() {
+    const container = document.getElementById('game-container');
+    const footer = document.getElementById('game-footer');
+    const colonistHud = document.getElementById('colonist-hud');
+    const eventLog = document.getElementById('event-log');
+    const uiFontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ui-font-size')) || 12;
+    const tabbedFooter = footer?.classList.contains('tabbed') || false;
+
+    return {
+        gridColumns: container?.style.gridTemplateColumns || null,
+        footerHeight: footer?.style.height || null,
+        colonistHudFlex: colonistHud?.style.flex || null,
+        eventLogFlex: eventLog?.style.flex || null,
+        uiFontSize,
+        tabbedFooter,
+    };
+}
+
+export function restoreLayout(layout) {
+    if (!layout) return;
+    const container = document.getElementById('game-container');
+    const footer = document.getElementById('game-footer');
+    const colonistHud = document.getElementById('colonist-hud');
+    const eventLog = document.getElementById('event-log');
+
+    if (layout.gridColumns) container.style.gridTemplateColumns = layout.gridColumns;
+    if (layout.footerHeight) footer.style.height = layout.footerHeight;
+    if (layout.colonistHudFlex) colonistHud.style.flex = layout.colonistHudFlex;
+    if (layout.eventLogFlex) eventLog.style.flex = layout.eventLogFlex;
+    if (layout.uiFontSize) window.setUIFontSize(layout.uiFontSize);
+    if (layout.tabbedFooter) window.setFooterMode(true);
 }

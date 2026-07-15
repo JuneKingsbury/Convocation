@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG, RESEARCH } from './config.js';
 import { generateMap } from './map.js';
 import { Camera } from './camera.js';
 import { Renderer } from './renderer.js';
@@ -18,6 +18,7 @@ import { Minimap } from './minimap.js';
 import { ResearchSystem, updateResearch } from './research.js';
 import { updateTamedAnimals, tameAnimal } from './taming.js';
 import { PowerSystem } from './power.js';
+import { WaveSystem } from './waves.js';
 import { EventLog } from './eventlog.js';
 import { saveGame, loadGame, hasSave, exportSave, importSave } from './save.js';
 import { initResizeHandles } from './resize.js';
@@ -33,6 +34,8 @@ class Game {
         this.settings = {
             autoPauseHostile: true,
             autoPauseEvent: true,
+            tabbedFooter: false,
+            uiFontSize: 12,
         };
 
         this.map = generateMap();
@@ -44,12 +47,14 @@ class Game {
         this.events = new EventSystem();
         this.research = new ResearchSystem();
         this.power = new PowerSystem();
+        this.waves = new WaveSystem();
         this.eventLog = new EventLog();
 
         this.colonists = [];
         this.wildlife = [];
         this.raiders = [];
         this.tamedAnimals = [];
+        this.combatEffects = [];
         this.notifications = [];
         this.cursor = null;
         this.selectedColonist = null;
@@ -75,7 +80,8 @@ class Game {
         const cy = Math.floor(CONFIG.MAP_HEIGHT / 2);
         const biases = ['building', 'farming', 'crafting'];
         for (let i = 0; i < 3; i++) {
-            const c = createColonist(cx + i - 1, cy, biases[i]);
+            const existingNames = this.colonists.map(c => c.name);
+            const c = createColonist(cx + i - 1, cy, biases[i], existingNames);
             c.priorities[biases[i]] = 1;
             this.colonists.push(c);
         }
@@ -87,6 +93,7 @@ class Game {
         document.getElementById('pause-overlay').style.display = 'block';
         this.lastTime = performance.now();
         requestAnimationFrame(this.gameLoop);
+        requestAnimationFrame(() => resetMinimapSize());
     }
 
     gameLoop(timestamp) {
@@ -154,8 +161,11 @@ class Game {
             }
         }
 
+        this.combatEffects = this.combatEffects.filter(e => e.ttl-- > 0);
+
         updateWildlife(this);
         this.combat.update(this);
+        this.waves.update(this);
         this.events.update(this);
         updateFires(this);
 
@@ -342,6 +352,30 @@ class Game {
         }
     }
 
+    startWave() {
+        if (this.waves.startWave(this)) {
+            this.camera.centerOn(this.waves.nexusPosition.x, this.waves.nexusPosition.y);
+        } else if (this.waves.active) {
+            this.notifications.push({ text: 'A wave is already in progress!', tick: this.tick, type: 'danger' });
+        } else {
+            this.notifications.push({ text: 'Build a Void Nexus first!', tick: this.tick, type: 'danger' });
+        }
+    }
+
+    equipArmor(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c) return;
+        const armor = this.resources.takeArmor();
+        if (armor) {
+            if (c.armor) this.resources.addArmor(c.armor);
+            c.armor = armor;
+            this.notifications.push({ text: `${c.name} equipped ${armor.name}`, tick: this.tick, type: 'success' });
+            this.ui.showColonistInfo(c);
+        } else {
+            this.notifications.push({ text: 'No armor available! Craft some first.', tick: this.tick, type: 'danger' });
+        }
+    }
+
     tameAnimalType(type) {
         tameAnimal(this, type);
     }
@@ -381,6 +415,17 @@ class Game {
         if (exportSave()) {
             this.notifications.push({ text: 'Save exported!', tick: this.tick, type: 'success' });
         }
+    }
+
+    cheatResources() {
+        for (const key of Object.keys(this.resources.stockpile)) {
+            this.resources.stockpile[key] = 999;
+        }
+        this.research.studyPoints = 999;
+        for (const key of Object.keys(RESEARCH)) {
+            this.research.completed.add(key);
+        }
+        this.notifications.push({ text: '[DEBUG] 999 resources + all research granted', tick: this.tick, type: 'success' });
     }
 }
 
@@ -573,32 +618,55 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const glossaryPanel = document.getElementById('glossary-panel');
+    const modalBackdrop = document.getElementById('modal-backdrop');
+
+    function closeModals() {
+        settingsPanel.style.display = 'none';
+        glossaryPanel.style.display = 'none';
+        modalBackdrop.style.display = 'none';
+    }
 
     document.getElementById('start-settings').addEventListener('click', () => {
-        settingsPanel.style.display = settingsPanel.style.display === 'none' ? 'block' : 'none';
-        glossaryPanel.style.display = 'none';
+        const opening = settingsPanel.style.display === 'none';
+        closeModals();
+        if (opening) {
+            settingsPanel.style.display = 'block';
+            modalBackdrop.style.display = 'block';
+        }
     });
 
     document.getElementById('start-glossary').addEventListener('click', () => {
-        glossaryPanel.style.display = glossaryPanel.style.display === 'none' ? 'block' : 'none';
-        settingsPanel.style.display = 'none';
+        const opening = glossaryPanel.style.display === 'none';
+        closeModals();
+        if (opening) {
+            glossaryPanel.style.display = 'block';
+            modalBackdrop.style.display = 'block';
+        }
     });
+
+    modalBackdrop.addEventListener('click', closeModals);
 
     document.getElementById('start-game').addEventListener('click', () => {
         CONFIG.PEACEFUL_MODE = document.getElementById('start-peaceful-check').checked;
         const autoPauseHostile = document.getElementById('start-autopause-hostile').checked;
         const autoPauseEvent = document.getElementById('start-autopause-event').checked;
+        const tabbedFooter = document.getElementById('start-tabbed-footer').checked;
+        const uiFontSize = parseInt(document.getElementById('start-ui-font-size').value) || 12;
 
         startScreen.style.display = 'none';
         gameContainer.style.display = 'grid';
         initFooterTabs();
         initPanelOverlay();
         initResizeHandles(fitGameFont);
+        if (tabbedFooter) setFooterMode(true);
+        setUIFontSize(uiFontSize);
         requestAnimationFrame(() => {
             fitGameFont();
             const game = new Game();
             game.settings.autoPauseHostile = autoPauseHostile;
             game.settings.autoPauseEvent = autoPauseEvent;
+            game.settings.tabbedFooter = tabbedFooter;
+            game.settings.uiFontSize = uiFontSize;
             game.start();
         });
     });

@@ -25,8 +25,12 @@
         <button id="start-settings">Settings</button>
         <button id="start-glossary">Glossary</button>
         <input type="file" id="import-file" accept=".json" style="display:none">
-        <div id="start-settings-panel" style="display:none; margin-top:10px; padding:12px; border:1px solid #555; border-radius:6px; background:#2a2a4a; text-align:left; width:300px;">
-            <div style="margin-bottom:8px; color:#ffcc00; font-weight:bold;">Game Settings</div>
+        <div id="modal-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999;"></div>
+        <div id="start-settings-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px; border:1px solid #555; border-radius:8px; background:#2a2a4a; text-align:left; width:360px; max-width:90vw; z-index:1000; box-shadow:0 8px 32px rgba(0,0,0,0.7);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="color:#ffcc00; font-weight:bold;">Game Settings</div>
+                <button onclick="document.getElementById('start-settings-panel').style.display='none';document.getElementById('modal-backdrop').style.display='none'" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">&times;</button>
+            </div>
             <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
                 <input type="checkbox" id="start-peaceful-check"> Peaceful Mode (no raids/hostiles)
             </label>
@@ -36,9 +40,19 @@
             <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
                 <input type="checkbox" id="start-autopause-event" checked> Auto-pause on trade/wanderer events
             </label>
+            <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
+                <input type="checkbox" id="start-tabbed-footer"> Tabbed footer (show one panel at a time)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
+                UI Font Size: <span id="start-ui-font-val">12px</span>
+                <input type="range" id="start-ui-font-size" min="8" max="20" value="12" style="flex:1" oninput="document.getElementById('start-ui-font-val').textContent=this.value+'px'">
+            </label>
         </div>
-        <div id="glossary-panel" style="display:none; margin-top:10px; padding:16px; border:1px solid #555; border-radius:6px; background:#1e1e32; text-align:left; width:600px; max-width:90vw; max-height:60vh; overflow-y:auto; font-size:12px; line-height:1.6; color:#ccc;">
-            <div style="color:#ffcc00; font-weight:bold; font-size:14px; margin-bottom:12px;">Game Glossary</div>
+        <div id="glossary-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:24px; border:1px solid #555; border-radius:8px; background:#1e1e32; text-align:left; width:640px; max-width:90vw; max-height:80vh; overflow-y:auto; font-size:12px; line-height:1.6; color:#ccc; z-index:1000; box-shadow:0 8px 32px rgba(0,0,0,0.7);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="color:#ffcc00; font-weight:bold; font-size:14px;">Game Glossary</div>
+                <button onclick="document.getElementById('glossary-panel').style.display='none';document.getElementById('modal-backdrop').style.display='none'" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">&times;</button>
+            </div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:10px;">-- Colonists --</div>
             <div><b style="color:#fff">Priorities</b> — Each colonist has skill priorities (1-5, 0=disabled). Lower number = higher priority. Colonists pick tasks based on their priority settings.</div>
@@ -66,6 +80,9 @@
             <div><b style="color:#fff">Enchanting Table</b> (P) — 2x crafting speed. Consumes 4 mana.</div>
             <div><b style="color:#fff">Ember Ward</b> (H) — Warms nearby tiles (radius 4) in winter. Consumes 3 mana.</div>
             <div><b style="color:#fff">Arcane Sentinel</b> (X) — Auto-attacks hostile enemies in range 4. Consumes 3 mana.</div>
+            <div><b style="color:#fff">Void Nexus</b> (V) — Click to start wave defense. Needs research: Void Summoning.</div>
+            <div><b style="color:#fff">Void Wall</b> (▓) — Reinforced wall. Needs research: Void Forging.</div>
+            <div><b style="color:#fff">Void Turret</b> (Y) — Stronger sentinel, range 5, 20 dmg. Consumes 5 mana. Needs research: Void Forging.</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Rooms --</div>
             <div><b style="color:#fff">Enclosed Room</b> — An area fully surrounded by walls/fences with doors. Detected automatically. Colonists get mood bonuses for sleeping in rooms. Room size max: 100 tiles.</div>
@@ -81,7 +98,8 @@
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Crafting &amp; Cooking --</div>
             <div><b style="color:#fff">Planks</b> — 2 wood → 3 planks. Used in beds, advanced buildings.</div>
             <div><b style="color:#fff">Bricks</b> — 2 stone → 3 bricks.</div>
-            <div><b style="color:#fff">Weapons</b> — Wooden Club (3 wood), Etched Axe (2 stone + 1 wood, needs Runecraft), Runic Blade (3 runite, needs Runeforging). Equip to colonists from their info panel.</div>
+            <div><b style="color:#fff">Weapons</b> — Wooden Club (3 wood), Etched Axe (2 stone + 1 wood, needs Runecraft), Runic Blade (3 runite, needs Runeforging), Void Blade (5 void essence + 2 runite, needs Void Forging). Equip from info panel.</div>
+            <div><b style="color:#fff">Void Armor</b> — 4 void essence + 2 planks (needs Void Forging). -30% damage taken. Equip from colonist info panel.</div>
             <div><b style="color:#fff">Cooking</b> — Converts raw crops/meat into food at the cauldron. Cooked meals give mood bonus. Raw food gives mood penalty (especially for Gourmand trait).</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Resources --</div>
@@ -90,6 +108,7 @@
             <div><b style="color:#fff">Runite</b> — Rare magical ore found in rock clusters. Used for runic weapons.</div>
             <div><b style="color:#fff">Food</b> — Consumed by colonists when hungry. Produced by cooking.</div>
             <div><b style="color:#fff">Meat</b> — Dropped by hunted animals. Must be cooked.</div>
+            <div><b style="color:#fff">Void Essence</b> — Dropped by wave enemies. Used for void-tier crafting and buildings.</div>
             <div><b style="color:#fff">Global Stockpile</b> — All resources are colony-wide. No physical hauling required.</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Seasons &amp; Weather --</div>
@@ -105,16 +124,23 @@
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Wildlife &amp; Beast Binding --</div>
             <div><b style="color:#fff">Deer</b> (d) — Passive. Flees colonists. Yields 3 meat when hunted.</div>
             <div><b style="color:#fff">Rabbit</b> (r) — Passive. Fast. Yields 1 meat.</div>
-            <div><b style="color:#fff">Wolf</b> (w) — Hostile (disabled in Peaceful). Attacks colonists. Yields 2 meat.</div>
+            <div><b style="color:#fff">Wolf</b> (w) — Passive. Yields 2 meat.</div>
             <div><b style="color:#fff">Hunting</b> — Select an animal, click Hunt. Creates a task for a colonist to kill it.</div>
             <div><b style="color:#fff">Beast Binding</b> — Requires Beast Binding research + Beast Circle. Bound creatures produce resources (eggs, milk, wool).</div>
 
-            <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Combat &amp; Raids --</div>
-            <div><b style="color:#fff">Raiders</b> (R) — Hostile NPCs that spawn at map edges. Scale with colony wealth. Attack colonists and structures.</div>
-            <div><b style="color:#fff">Combat</b> — Melee, 1-tile range. Damage = base + weapon bonus. Colonists auto-defend when attacked.</div>
-            <div><b style="color:#fff">Fleeing</b> — Raiders flee when enough are killed (~40% remaining). They leave the map.</div>
-            <div><b style="color:#fff">Weapons</b> — Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22). Craft and equip for better defense.</div>
-            <div><b style="color:#fff">Peaceful Mode</b> — Disables raids, hostile wolves, and pyromaniac fires.</div>
+            <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Combat --</div>
+            <div><b style="color:#fff">Combat</b> — Melee, 1-tile range. Damage = base + weapon bonus. Colonists auto-defend when attacked. Yellow ! = colonist strikes, red ! = colonist hit.</div>
+            <div><b style="color:#fff">Weapons</b> — Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22), Void Blade (30). Craft and equip for better defense.</div>
+            <div><b style="color:#fff">Armor</b> — Void Armor (-30% damage taken). Craft with void essence. Equip from colonist info panel.</div>
+            <div><b style="color:#fff">Peaceful Mode</b> — Disables pyromaniac fires. All hostile combat comes from the Void Nexus.</div>
+
+            <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Wave Defense (Void Nexus) --</div>
+            <div><b style="color:#fff">Void Nexus</b> (V) — Build after researching Void Summoning. Click to start a wave defense challenge.</div>
+            <div><b style="color:#fff">Waves</b> — Each wave is harder (more enemies, more HP/dmg). Enemies (E, purple) spawn from all sides and attack the nexus.</div>
+            <div><b style="color:#fff">Nexus HP</b> — 200 HP. If destroyed, you must rebuild. Wave progress is kept.</div>
+            <div><b style="color:#fff">Colony Cap</b> — 3 + (waves completed) colonists, max 12. Complete waves to grow your colony.</div>
+            <div><b style="color:#fff">Void Essence</b> — Dropped by wave enemies. Used for Void Blade, Void Armor, Void Wall, Void Turret.</div>
+            <div><b style="color:#fff">Strategy</b> — Build walls to funnel enemies, place turrets along path, draft colonists at chokepoints. Turret beams show as * traveling to targets.</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Events --</div>
             <div><b style="color:#fff">Wanderer</b> — A new colonist wants to join. More likely when colony is happy. Accept or reject.</div>
@@ -134,9 +160,11 @@
             <div>Alchemy → Feast recipe</div>
             <div>Runeforging → Runic Blade, Runic Pick</div>
             <div>Warding → Arcane Sentinel</div>
+            <div>Void Summoning (Ley Channeling + Warding) → Void Nexus</div>
+            <div>Void Forging (Void Summoning + Runeforging) → Void Blade, Void Armor, Void Wall, Void Turret</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Mana (Leylines) --</div>
-            <div><b style="color:#fff">Net Mana</b> — Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels). If negative, all mana-powered buildings stop working.</div>
+            <div><b style="color:#fff">Net Mana</b> — Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels, void turrets). If negative, all mana-powered buildings stop working.</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Map Symbols --</div>
             <div style="font-family:monospace; color:#aaa;">
@@ -147,7 +175,12 @@
                 <span style="color:#228822">T</span> Tree &nbsp;
                 <span style="color:#aaaaaa">o</span> Stone/Runite deposit &nbsp;
                 <span style="color:#00ccff">@</span> Colonist &nbsp;
-                <span style="color:#ff3333">R</span> Raider
+                <span style="color:#ff2222">E</span> Void Enemy &nbsp;
+                <span style="color:#9933ff">V</span> Void Nexus &nbsp;
+                <span style="color:#6622aa">▓</span> Void Wall &nbsp;
+                <span style="color:#aa33ff">Y</span> Void Turret &nbsp;
+                <span style="color:#ffff00">!</span> Melee hit &nbsp;
+                <span style="color:#ff4444">*</span> Turret beam
             </div>
         </div>
     </div>

@@ -1,4 +1,4 @@
-import { CONFIG, POWER_BUILDINGS } from './config.js';
+import { POWER_BUILDINGS } from './config.js';
 import { manhattanDist } from './pathfinding.js';
 
 export class PowerSystem {
@@ -9,6 +9,8 @@ export class PowerSystem {
         this.heaters = [];
         this.lamps = [];
         this.turrets = [];
+        this.voidTurrets = [];
+        this.activeShots = [];
     }
 
     update(game) {
@@ -17,6 +19,7 @@ export class PowerSystem {
         this.heaters = [];
         this.lamps = [];
         this.turrets = [];
+        this.voidTurrets = [];
 
         for (let y = 0; y < game.map.length; y++) {
             for (let x = 0; x < game.map[y].length; x++) {
@@ -31,6 +34,7 @@ export class PowerSystem {
                 if (structure === 'ember_ward') this.heaters.push({ x, y });
                 else if (structure === 'glowstone') this.lamps.push({ x, y });
                 else if (structure === 'arcane_sentinel') this.turrets.push({ x, y });
+                else if (structure === 'void_turret') this.voidTurrets.push({ x, y });
             }
         }
 
@@ -66,11 +70,20 @@ export class PowerSystem {
     }
 
     updateTurrets(game) {
-        if (!this.powered || CONFIG.PEACEFUL_MODE) return;
+        if (!this.powered) return;
 
-        for (const t of this.turrets) {
-            const range = POWER_BUILDINGS.arcane_sentinel.range;
-            const damage = POWER_BUILDINGS.arcane_sentinel.damage;
+        this.activeShots = this.activeShots.filter(s => s.ttl > 0);
+        for (const s of this.activeShots) s.ttl--;
+
+        const allTurrets = [
+            ...this.turrets.map(t => ({ ...t, type: 'arcane_sentinel' })),
+            ...this.voidTurrets.map(t => ({ ...t, type: 'void_turret' })),
+        ];
+
+        for (const t of allTurrets) {
+            const def = POWER_BUILDINGS[t.type];
+            const range = def.range;
+            const damage = def.damage;
 
             let target = null;
             let bestDist = Infinity;
@@ -80,6 +93,16 @@ export class PowerSystem {
                 if (d <= range && d < bestDist) {
                     bestDist = d;
                     target = r;
+                }
+            }
+            if (!target && game.waves) {
+                for (const e of game.waves.enemies) {
+                    if (e.hp <= 0) continue;
+                    const d = manhattanDist(t.x, t.y, e.x, e.y);
+                    if (d <= range && d < bestDist) {
+                        bestDist = d;
+                        target = e;
+                    }
                 }
             }
             if (!target) {
@@ -94,6 +117,8 @@ export class PowerSystem {
             }
             if (target) {
                 target.hp -= damage;
+                const color = t.type === 'void_turret' ? '#cc00ff' : '#ff4444';
+                this.activeShots.push({ fromX: t.x, fromY: t.y, toX: target.x, toY: target.y, color, ttl: 2 });
             }
         }
     }

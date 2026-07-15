@@ -163,7 +163,7 @@ export function getTileColor(tile, season) {
     return TILE_COLORS[tile.terrain] || '#fff';
 }
 
-const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel']);
+const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret']);
 
 export function isPassable(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;

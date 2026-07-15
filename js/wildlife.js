@@ -76,11 +76,7 @@ function updateAnimal(animal, game) {
 
     const def = ANIMALS[animal.type];
 
-    if (animal.hostile && !CONFIG.PEACEFUL_MODE) {
-        updateHostileAnimal(animal, def, game);
-    } else {
-        updatePassiveAnimal(animal, def, game);
-    }
+    updatePassiveAnimal(animal, def, game);
 
     if (animal.x < 0 || animal.x >= CONFIG.MAP_WIDTH || animal.y < 0 || animal.y >= CONFIG.MAP_HEIGHT) {
         animal.hp = 0;

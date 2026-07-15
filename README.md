@@ -74,7 +74,9 @@ Planks - 2 wood → 3 planks. Used in beds, advanced buildings.
 
 Bricks - 2 stone → 3 bricks.
 
-Weapons - Wooden Club (3 wood), Etched Axe (2 stone + 1 wood, needs Runecraft), Runic Blade (3 runite, needs Runeforging). Equip to colonists from their info panel.
+Weapons - Wooden Club (3 wood), Etched Axe (2 stone + 1 wood, needs Runecraft), Runic Blade (3 runite, needs Runeforging), Void Blade (5 void essence + 2 runite, needs Void Forging). Equip to colonists from their info panel.
+
+Void Armor - 4 void essence + 2 planks (needs Void Forging). -30% damage taken. Equip from colonist info panel.
 
 Cooking - Converts raw crops/meat into food at the cauldron. Cooked meals give mood bonus. Raw food gives mood penalty (especially for Gourmand trait).
 
@@ -88,6 +90,8 @@ Runite - Rare magical ore found in rock clusters. Used for runic weapons.
 Food - Consumed by colonists when hungry. Produced by cooking.
 
 Meat - Dropped by hunted animals. Must be cooked.
+
+Void Essence - Dropped by wave enemies at the Void Nexus. Used for void-tier weapons, armor, and buildings.
 
 Global Stockpile - All resources are colony-wide. No physical hauling required.
 
@@ -113,22 +117,37 @@ Deer (d) - Passive. Flees colonists. Yields 3 meat when hunted.
 
 Rabbit (r) - Passive. Fast. Yields 1 meat.
 
-Wolf (w) - Hostile (disabled in Peaceful). Attacks colonists. Yields 2 meat.
+Wolf (w) - Passive. Yields 2 meat.
 
 Hunting - Select an animal, click Hunt. Creates a task for a colonist to kill it.
 
 Beast Binding - Requires Beast Binding research + Beast Circle. Bound creatures produce resources (eggs, milk, wool).
 
-### Combat &amp; Raids
-Raiders (R) - Hostile NPCs that spawn at map edges. Scale with colony wealth. Attack colonists and structures.
+### Combat
+Combat - Melee, 1-tile range. Damage = base + weapon bonus. Colonists auto-defend when attacked. Yellow ! appears when colonists strike, red ! when hit.
 
-Combat - Melee, 1-tile range. Damage = base + weapon bonus. Colonists auto-defend when attacked.
+Weapons - Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22), Void Blade (30). Craft and equip for better defense.
 
-Fleeing - Raiders flee when enough are killed (~40% remaining). They leave the map.
+Armor - Void Armor (-30% damage taken). Craft at workbench with void essence. Equip from colonist info panel.
 
-Weapons - Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22). Craft and equip for better defense.
+Peaceful Mode - Disables pyromaniac fires. All hostile combat comes from the Void Nexus wave defense system.
 
-Peaceful Mode - Disables raids, hostile wolves, and pyromaniac fires.
+### Wave Defense (Void Nexus)
+Void Nexus (V) - Build after researching Void Summoning. Click it to start a wave defense challenge. Enemies (E, purple) spawn from all directions and attack the nexus.
+
+Waves - Each wave is harder than the last (more enemies, more HP/damage). Enemies drop void essence on death. Bonus essence awarded for completing a wave.
+
+Nexus HP - The nexus has 200 HP. If destroyed, you lose the building and must rebuild. Wave progress (highest completed) is NOT reset.
+
+Colony Cap - Your colony can support 3 + (waves completed) colonists, max 12. Complete waves to expand your population.
+
+Void Essence - Rare material dropped by wave enemies. Used to craft Void Blade, Void Armor, Void Wall, and Void Turret.
+
+Void Wall (▓) - Reinforced wall. Blocks movement. Requires Void Forging research.
+
+Void Turret (Y) - Upgraded sentinel. 20 damage, range 5. Consumes 5 mana. Requires Void Forging research.
+
+Tower Defense Strategy - Build walls to funnel enemies, place turrets along the path, station drafted colonists at chokepoints. Turret beams show as * traveling to targets.
 
 ### Events
 Wanderer - A new colonist wants to join. More likely when colony is happy. Accept or reject.
@@ -162,8 +181,12 @@ Runeforging → Runic Blade, Runic Pick
 
 Warding → Arcane Sentinel
 
+Void Summoning (requires Ley Channeling + Warding) → Void Nexus
+
+Void Forging (requires Void Summoning + Runeforging) → Void Blade, Void Armor, Void Wall, Void Turret
+
 ### Mana (Leylines)
-Net Mana - Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels). If negative, all mana-powered buildings stop working.
+Net Mana - Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels, void turrets). If negative, all mana-powered buildings stop working.
 
 ### Map Symbols
 . Grass
@@ -180,4 +203,14 @@ o Stone/Runite deposit
 
 @ Colonist
 
-R Raider
+E Void Enemy (wave)
+
+V Void Nexus
+
+▓ Void Wall
+
+Y Void Turret
+
+\* Turret beam / combat effect
+
+! Melee hit

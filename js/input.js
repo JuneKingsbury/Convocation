@@ -15,8 +15,9 @@ export class InputHandler {
         this.dragging = false;
         this.keysDown = new Set();
 
-        this.buildOptions = ['wall', 'floor', 'door', 'bed', 'workbench', 'cauldron', 'storage_chest', 'torch', 'fence', 'arcanum', 'beast_circle', 'mana_crystal', 'glowstone', 'enchanting_table', 'ember_ward', 'arcane_sentinel'];
+        this.buildOptions = ['wall', 'floor', 'door', 'bed', 'workbench', 'cauldron', 'storage_chest', 'torch', 'fence', 'arcanum', 'beast_circle', 'mana_crystal', 'glowstone', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret'];
         this.dragBuildTypes = new Set(['wall', 'floor', 'door', 'fence', 'torch']);
+        this.singlePlaceTypes = new Set(['bed', 'workbench', 'cauldron', 'storage_chest', 'arcanum', 'beast_circle', 'mana_crystal', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus']);
         this.cropOptions = Object.keys(CROPS);
         this.designateMode = 'chop';
 
@@ -38,6 +39,12 @@ export class InputHandler {
         this._lastPinchDist = 0;
         preElement.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
         preElement.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+
+        preElement.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) window.zoomIn?.();
+            else if (e.deltaY > 0) window.zoomOut?.();
+        }, { passive: false });
     }
 
     measureCharSize() {
@@ -173,6 +180,13 @@ export class InputHandler {
     }
 
     onMouseDown(e) {
+        if (e.button === 1) {
+            e.preventDefault();
+            this._middleDrag = true;
+            this._middleLast = { x: e.clientX, y: e.clientY };
+            return;
+        }
+
         const pos = this.getMouseTile(e);
         if (pos.x < 0 || pos.x >= CONFIG.MAP_WIDTH || pos.y < 0 || pos.y >= CONFIG.MAP_HEIGHT) return;
 
@@ -214,6 +228,19 @@ export class InputHandler {
     }
 
     onMouseMove(e) {
+        if (this._middleDrag) {
+            const dx = e.clientX - this._middleLast.x;
+            const dy = e.clientY - this._middleLast.y;
+            const tilesX = Math.round(dx / this.charWidth);
+            const tilesY = Math.round(dy / this.charHeight);
+            if (tilesX !== 0 || tilesY !== 0) {
+                this.game.camera.pan(-tilesX, -tilesY);
+                this._middleLast.x += tilesX * this.charWidth;
+                this._middleLast.y += tilesY * this.charHeight;
+            }
+            return;
+        }
+
         const pos = this.getMouseTile(e);
         if (pos.x >= 0 && pos.x < CONFIG.MAP_WIDTH && pos.y >= 0 && pos.y < CONFIG.MAP_HEIGHT) {
             this.game.cursor = pos;
@@ -224,6 +251,11 @@ export class InputHandler {
     }
 
     onMouseUp(e) {
+        if (e.button === 1) {
+            this._middleDrag = false;
+            return;
+        }
+
         if (this.dragging && this.dragStart) {
             const pos = this.getMouseTile(e);
             if (this._rightDrag && this.mode === 'build') {
@@ -356,6 +388,7 @@ export class InputHandler {
     }
 
     buildArea(start, end) {
+        if (!this.buildType) return;
         const minX = Math.min(start.x, end.x), maxX = Math.max(start.x, end.x);
         const minY = Math.min(start.y, end.y), maxY = Math.max(start.y, end.y);
 
@@ -385,7 +418,12 @@ export class InputHandler {
                 this.selectAt(pos);
                 break;
             case 'build':
+                if (!this.buildType) break;
                 designateBuild(this.game, pos.x, pos.y, this.buildType);
+                if (this.singlePlaceTypes.has(this.buildType)) {
+                    this.buildType = null;
+                    this.game.ui.updateModeDisplay(this);
+                }
                 break;
         }
     }
@@ -459,6 +497,7 @@ export class InputHandler {
         const colonistsHere = this.game.colonists.filter(c => c.x === pos.x && c.y === pos.y && c.hp > 0);
         const animalsHere = this.game.wildlife.filter(a => a.x === pos.x && a.y === pos.y && a.hp > 0);
         const raidersHere = this.game.raiders.filter(r => r.x === pos.x && r.y === pos.y && r.hp > 0);
+        const waveEnemiesHere = this.game.waves ? this.game.waves.enemies.filter(e => e.x === pos.x && e.y === pos.y && e.hp > 0) : [];
         const tile = this.game.map[pos.y][pos.x];
 
         if (colonistsHere.length > 0) {
@@ -468,6 +507,6 @@ export class InputHandler {
             this.game.selectedColonist = null;
             this.game.selectedColonists = [];
         }
-        this.game.ui.showTileEntities(tile, pos.x, pos.y, colonistsHere, animalsHere, raidersHere);
+        this.game.ui.showTileEntities(tile, pos.x, pos.y, colonistsHere, animalsHere, [...raidersHere, ...waveEnemiesHere]);
     }
 }

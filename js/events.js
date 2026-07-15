@@ -45,14 +45,21 @@ export class EventSystem {
     }
 
     eventWanderer(game) {
+        const aliveColonists = game.colonists.filter(c => c.hp > 0);
+        const cap = game.waves.getColonistCap();
+        if (aliveColonists.length >= cap) {
+            return;
+        }
+
         const edge = getRandomEdge();
         const skills = ['building', 'farming', 'crafting', 'cooking'];
         const bias = skills[Math.floor(Math.random() * skills.length)];
-        const wanderer = createColonist(edge.x, edge.y, bias);
+        const existingNames = game.colonists.map(c => c.name);
+        const wanderer = createColonist(edge.x, edge.y, bias, existingNames);
 
         this.pendingEvent = {
             type: 'wanderer',
-            text: `A wanderer named ${wanderer.name} (${bias}) wants to join your colony!`,
+            text: `A wanderer named ${wanderer.name} (${bias}) wants to join your colony! (${aliveColonists.length + 1}/${cap} cap)`,
             choices: ['Accept', 'Reject'],
             data: wanderer,
         };
@@ -65,6 +72,13 @@ export class EventSystem {
 
     resolveWanderer(game, accept) {
         if (accept && this.pendingEvent?.data) {
+            const aliveColonists = game.colonists.filter(c => c.hp > 0);
+            const cap = game.waves.getColonistCap();
+            if (aliveColonists.length >= cap) {
+                game.notifications.push({ text: `Colony is at capacity (${cap})! Complete more waves to expand.`, tick: game.tick, type: 'danger' });
+                this.pendingEvent = null;
+                return;
+            }
             game.colonists.push(this.pendingEvent.data);
             game.notifications.push({ text: `${this.pendingEvent.data.name} joined!`, tick: game.tick, type: 'success' });
             game.eventLog.add(game, `${this.pendingEvent.data.name} joined the colony`, 'success', { type: 'colonist', id: this.pendingEvent.data.id });

@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILD_COSTS, RESEARCH, TAMED_ANIMALS } from './config.js';
+import { CONFIG, TRAITS, BUILD_COSTS, TILE_CHARS, TILE_COLORS, POWER_BUILDINGS, RESEARCH, TAMED_ANIMALS, WAVE_CONFIG } from './config.js';
 import { getAvailableRecipes } from './crafting.js';
 import { CROP_RESEARCH_REQS } from './farming.js';
 
@@ -150,18 +150,25 @@ export class UI {
         const manaStr = power.totalGenerated > 0 ? `Mana:${power.getNetPower()}` : '';
         const pendingTasks = this.game.taskQueue.getPending().length;
 
+        const waves = this.game.waves;
+        const cap = waves.getColonistCap();
+        const voidEssence = r.void_essence || 0;
+        const waveStr = waves.active ? `Wave:${waves.currentWave}` : '';
+
         this.elements.statusBar.innerHTML =
             `<span class="res">Wood:${r.wood}</span>` +
             `<span class="res">Stone:${r.stone}</span>` +
             `<span class="res">Food:${r.food}</span>` +
+            (voidEssence > 0 ? `<span class="res" style="color:#9933ff">Void:${voidEssence}</span>` : '') +
             (manaStr ? `<span class="res" style="color:${power.hasPower() ? '#aa44ff' : '#ff6666'}">${manaStr}</span>` : '') +
             `<span class="sep">|</span>` +
             `<span class="info">${season}</span>` +
             `<span class="info status-extra">${weather} ${temp}°</span>` +
             `<span class="info">${timeStr}</span>` +
             `<span class="sep status-extra">|</span>` +
-            `<span class="info status-extra">Pop:${alive}</span>` +
+            `<span class="info status-extra">Pop:${alive}/${cap}</span>` +
             `<span class="info status-extra">Mood:${avgMood}%</span>` +
+            (waveStr ? `<span class="info" style="color:#cc00ff">${waveStr}</span>` : '') +
             (pendingTasks > 0 ? `<span class="info status-extra" style="color:#ccaa44">Tasks:${pendingTasks}</span>` : '') +
             `<span class="info">${speed}</span>` +
             (CONFIG.PEACEFUL_MODE ? `<span class="peaceful">PEACEFUL</span>` : '');
@@ -179,7 +186,9 @@ export class UI {
                 const keyLabel = i < 9 ? i + 1 : (i === 9 ? '0' : '');
                 const locked = this.isBuildingLocked(opt);
                 const lockStr = locked ? ' [LOCKED]' : '';
-                html += `<span class="mode-opt${active}" data-build-opt="${opt}"${locked ? ' style="opacity:0.4"' : ''}>${keyLabel ? `[${keyLabel}]` : ''}${opt.replace(/_/g,' ')}(${costStr})${lockStr}</span>`;
+                const tileChar = TILE_CHARS[opt] || '?';
+                const tileColor = TILE_COLORS[opt] || '#ccc';
+                html += `<span class="mode-opt${active}" data-build-opt="${opt}"${locked ? ' style="opacity:0.4"' : ''}>${keyLabel ? `[${keyLabel}]` : ''}<span style="color:${tileColor}">${tileChar}</span> ${opt.replace(/_/g,' ')}(${costStr})${lockStr}</span>`;
             });
             html += '</span>';
             html += '<span class="mode-hint">Click item to select | Left-click/drag to place | Right-click/drag to deconstruct</span>';
@@ -223,6 +232,52 @@ export class UI {
         this.elements.modeBar.innerHTML = html;
     }
 
+    getWavePreview(waveNum) {
+        const enemies = WAVE_CONFIG.baseEnemies + WAVE_CONFIG.enemiesPerWave * (waveNum - 1);
+        const hp = WAVE_CONFIG.baseHp + WAVE_CONFIG.hpPerWave * (waveNum - 1);
+        return `${enemies} enemies, ${hp} HP each`;
+    }
+
+    getStructureDescription(structure) {
+        const powered = this.game.power.hasPower();
+        const powerDef = POWER_BUILDINGS[structure];
+        let html = '';
+        const desc = {
+            wall: 'Blocks movement. Forms rooms when enclosing an area with doors.',
+            floor: 'Cosmetic flooring. Makes rooms nicer.',
+            door: 'Allows passage through walls. Acts as a room boundary.',
+            bed: 'Colonists sleep here. Assign for a mood bonus.',
+            workbench: 'Required for crafting recipes (planks, weapons, bricks).',
+            cauldron: 'Required for cooking meals from raw food and crops.',
+            storage_chest: 'Increases colony storage capacity.',
+            torch: 'Light source. Provides warmth in winter.',
+            fence: 'Blocks movement like a wall but lighter to build.',
+            arcanum: 'Colonists study here to generate research points.',
+            beast_circle: 'Required for binding creatures. Bound animals produce resources.',
+            mana_crystal: 'Generates 10 mana for powering magical buildings.',
+            glowstone: 'Mana-powered light, radius 5. Consumes 2 mana.',
+            enchanting_table: '2x crafting speed. Consumes 4 mana.',
+            ember_ward: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.',
+            arcane_sentinel: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.',
+            void_nexus: 'Start wave defense here. Defend it from enemies to earn void essence.',
+            void_wall: 'Reinforced wall. Blocks movement.',
+            void_turret: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.',
+        };
+        if (desc[structure]) {
+            html += `<div class="info-row" style="color:#999;font-size:11px;">${desc[structure]}</div>`;
+        }
+        if (powerDef) {
+            if (powerDef.generates) {
+                html += `<div class="info-row" style="color:#88ff88;">Generates ${powerDef.generates} mana</div>`;
+            }
+            if (powerDef.consumes) {
+                const status = powered ? '<span style="color:#88ff88;">Powered</span>' : '<span style="color:#ff4444;">No power!</span>';
+                html += `<div class="info-row">Consumes ${powerDef.consumes} mana — ${status}</div>`;
+            }
+        }
+        return html;
+    }
+
     _switchToInfoTab() {
         const container = document.getElementById('game-container');
         const isTabbed = container.classList.contains('tabbed-mode');
@@ -257,11 +312,13 @@ export class UI {
         html += `<div class="info-row">Hunger: ${bar(colonist.needs.hunger)} Rest: ${bar(colonist.needs.rest)}</div>`;
         html += `<div class="info-row">Skills: B:${colonist.skills.building} F:${colonist.skills.farming} C:${colonist.skills.crafting} K:${colonist.skills.cooking}</div>`;
         html += `<div class="info-row">Weapon: ${colonist.weapon?.name || 'Fists'}</div>`;
+        html += `<div class="info-row">Armor: ${colonist.armor?.name || 'None'}</div>`;
         html += `<div class="info-row">Bed: ${colonist.assignedBed ? `(${colonist.assignedBed.x},${colonist.assignedBed.y})` : 'None'}</div>`;
         if (thoughts) html += `<div class="info-thoughts"><b>Thoughts:</b><br>${thoughts}</div>`;
         html += `<div class="info-actions">`;
         html += `<button onclick="window.game.toggleDraft(${colonist.id})">Draft/Undraft</button>`;
         html += `<button onclick="window.game.equipWeapon(${colonist.id})">Equip Weapon</button>`;
+        html += `<button onclick="window.game.equipArmor(${colonist.id})">Equip Armor</button>`;
         html += `<button onclick="window.game.centerOnColonist(${colonist.id})">Center Camera</button>`;
         const isFollowing = this.game.followingColonist === colonist.id;
         html += `<button onclick="window.game.toggleFollow(${colonist.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
@@ -287,7 +344,10 @@ export class UI {
         this._switchToInfoTab();
         let html = `<div class="info-header">Tile (${x},${y})</div>`;
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
-        if (tile.structure) html += `<div class="info-row">Structure: ${tile.structure}</div>`;
+        if (tile.structure) {
+            html += `<div class="info-row" style="color:#ddd;font-weight:bold;">${tile.structure.replace(/_/g,' ')}</div>`;
+            html += this.getStructureDescription(tile.structure);
+        }
         if (tile.resource) html += `<div class="info-row">Resource: ${tile.resource.type} (${tile.resource.amount})</div>`;
         if (tile.zone) html += `<div class="info-row">Zone: ${tile.zone.crop} (${tile.zone.state})</div>`;
         if (tile.roomId !== null) html += `<div class="info-row">Room #${tile.roomId}</div>`;
@@ -316,6 +376,22 @@ export class UI {
             }
         }
 
+        if (tile.structure === 'void_nexus') {
+            const waves = this.game.waves;
+            html += `<div class="info-row" style="color:#9933ff;font-weight:bold;">Void Nexus</div>`;
+            html += `<div class="info-row">Highest Wave: ${waves.highestWaveCompleted}</div>`;
+            html += `<div class="info-row">Colony Cap: ${waves.getColonistCap()}</div>`;
+            if (waves.active) {
+                html += `<div class="info-row" style="color:#ff4444;">Wave ${waves.currentWave} in progress!</div>`;
+                html += `<div class="info-row">Nexus HP: ${waves.nexusHp}/${waves.nexusMaxHp}</div>`;
+                html += `<div class="info-row">Enemies: ${waves.enemies.length} alive, ${waves.enemiesToSpawn - waves.enemiesSpawned} spawning</div>`;
+            } else {
+                const nextWave = waves.highestWaveCompleted + 1;
+                html += `<div class="info-row">Next: Wave ${nextWave} (${this.getWavePreview(nextWave)})</div>`;
+                html += `<div class="info-actions"><button onclick="window.game.startWave()" style="background:#6622aa;color:white;">Start Wave ${nextWave}</button></div>`;
+            }
+        }
+
         this.elements.infoPanel.innerHTML = html;
     }
 
@@ -324,10 +400,13 @@ export class UI {
         let html = '';
 
         for (const r of raiders) {
+            const isWaveEnemy = r.char === 'E';
+            const label = isWaveEnemy ? 'Void Enemy' : 'Raider';
+            const color = isWaveEnemy ? '#cc00ff' : '#ff3333';
             html += `<div style="border-bottom:1px solid #444;margin-bottom:6px;padding-bottom:6px;">`;
-            html += `<div class="info-header" style="color:#ff3333;">Raider</div>`;
+            html += `<div class="info-header" style="color:${color};">${label}</div>`;
             html += `<div class="info-row">HP: ${r.hp}/${r.maxHp}</div>`;
-            html += `<div class="info-row">Weapon: ${r.weapon?.name || 'Fists'} (${r.damage} dmg)</div>`;
+            html += `<div class="info-row">${isWaveEnemy ? 'Damage' : 'Weapon'}: ${r.weapon?.name || ''} (${r.damage} dmg)</div>`;
             html += `<div class="info-row">State: ${r.fleeing ? 'Fleeing' : 'Attacking'}</div>`;
             html += `</div>`;
         }
@@ -341,10 +420,11 @@ export class UI {
             html += `<div class="info-row">State: ${c.state}</div>`;
             html += `<div class="info-row">Hunger: ${bar(c.needs.hunger)} Rest: ${bar(c.needs.rest)}</div>`;
             html += `<div class="info-row">Traits: ${traitNames}</div>`;
-            html += `<div class="info-row">Weapon: ${c.weapon?.name || 'Fists'}</div>`;
+            html += `<div class="info-row">Weapon: ${c.weapon?.name || 'Fists'} | Armor: ${c.armor?.name || 'None'}</div>`;
             html += `<div class="info-actions">`;
             html += `<button onclick="window.game.toggleDraft(${c.id})">${c.drafted ? 'Undraft' : 'Draft'}</button>`;
-            html += `<button onclick="window.game.equipWeapon(${c.id})">Equip</button>`;
+            html += `<button onclick="window.game.equipWeapon(${c.id})">Equip Wpn</button>`;
+            html += `<button onclick="window.game.equipArmor(${c.id})">Equip Armor</button>`;
             const isFollowing = this.game.followingColonist === c.id;
             html += `<button onclick="window.game.toggleFollow(${c.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
             html += `</div></div>`;
@@ -361,7 +441,10 @@ export class UI {
 
         html += `<div class="info-header" style="font-size:11px;color:#aaa;">Tile (${x},${y})</div>`;
         if (tile.onFire) html += `<div class="info-row fire">ON FIRE!</div>`;
-        if (tile.structure) html += `<div class="info-row">Structure: ${tile.structure}</div>`;
+        if (tile.structure) {
+            html += `<div class="info-row" style="color:#ddd;font-weight:bold;">${tile.structure.replace(/_/g,' ')}</div>`;
+            html += this.getStructureDescription(tile.structure);
+        }
         if (tile.zone) html += `<div class="info-row">Zone: ${tile.zone.crop} (${tile.zone.state})</div>`;
         if (tile.resource) html += `<div class="info-row">Resource: ${tile.resource.type} (${tile.resource.amount})</div>`;
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
@@ -386,6 +469,22 @@ export class UI {
                     html += `<option value="${c.id}">${c.name}${hasBed}</option>`;
                 }
                 html += `</select></div>`;
+            }
+        }
+
+        if (tile.structure === 'void_nexus') {
+            const waves = this.game.waves;
+            html += `<div class="info-row" style="color:#9933ff;font-weight:bold;">Void Nexus</div>`;
+            html += `<div class="info-row">Highest Wave: ${waves.highestWaveCompleted}</div>`;
+            html += `<div class="info-row">Colony Cap: ${waves.getColonistCap()}</div>`;
+            if (waves.active) {
+                html += `<div class="info-row" style="color:#ff4444;">Wave ${waves.currentWave} in progress!</div>`;
+                html += `<div class="info-row">Nexus HP: ${waves.nexusHp}/${waves.nexusMaxHp}</div>`;
+                html += `<div class="info-row">Enemies: ${waves.enemies.length} alive, ${waves.enemiesToSpawn - waves.enemiesSpawned} spawning</div>`;
+            } else {
+                const nextWave = waves.highestWaveCompleted + 1;
+                html += `<div class="info-row">Next: Wave ${nextWave} (${this.getWavePreview(nextWave)})</div>`;
+                html += `<div class="info-actions"><button onclick="window.game.startWave()" style="background:#6622aa;color:white;">Start Wave ${nextWave}</button></div>`;
             }
         }
 
@@ -874,6 +973,14 @@ export class UI {
             }
         }
 
+        const armors = this.game.resources.armors;
+        if (armors.length > 0) {
+            html += '<div class="info-row" style="color:#9966cc;margin-top:8px;margin-bottom:4px;"><b>Armor in Storage:</b></div>';
+            for (const a of armors) {
+                html += `<div class="inv-row"><span class="inv-name">${a.name}</span><span class="inv-amount">-${Math.round(a.damageReduction * 100)}% dmg</span></div>`;
+            }
+        }
+
         const tamed = this.game.tamedAnimals;
         if (tamed.length > 0) {
             html += '<div class="info-row" style="color:#aacc88;margin-top:8px;margin-bottom:4px;"><b>Tamed Animals:</b></div>';
@@ -975,6 +1082,10 @@ export class UI {
         html += `<button onclick="window.game.save()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a4a2a;border:1px solid #4a4;color:#8c8;cursor:pointer;border-radius:3px;">Save Game</button>`;
         html += `<button onclick="window.game.exportSave()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a2a4a;border:1px solid #55a;color:#aaf;cursor:pointer;border-radius:3px;">Export Save</button>`;
         html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:16px; border-top:1px solid #633; padding-top:10px; flex-direction:column; align-items:flex-start;">`;
+        html += `<div style="color:#ff6666; font-size:10px; font-weight:bold; margin-bottom:4px;">⚠ DEBUG / TESTING ONLY ⚠</div>`;
+        html += `<button onclick="window.game.cheatResources()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant 999 of All Resources + Research</button>`;
+        html += `</div>`;
         this.elements.settingsPanel.innerHTML = html;
     }
 
@@ -986,6 +1097,9 @@ export class UI {
             enchanting_table: 'arcane_infusion',
             ember_ward: 'ember_magic',
             arcane_sentinel: 'warding',
+            void_nexus: 'void_summoning',
+            void_wall: 'void_forging',
+            void_turret: 'void_forging',
         };
         const req = reqs[buildType];
         return req && !this.game.research.isResearched(req);

@@ -4,6 +4,7 @@ export class ResourceManager {
     constructor() {
         this.stockpile = { ...CONFIG.START_RESOURCES };
         this.weapons = [];
+        this.armors = [];
     }
 
     has(costs) {
@@ -33,6 +34,16 @@ export class ResourceManager {
         if (this.weapons.length === 0) return null;
         this.weapons.sort((a, b) => b.damage - a.damage);
         return this.weapons.shift();
+    }
+
+    addArmor(armor) {
+        this.armors.push(armor);
+    }
+
+    takeArmor() {
+        if (this.armors.length === 0) return null;
+        this.armors.sort((a, b) => b.damageReduction - a.damageReduction);
+        return this.armors.shift();
     }
 
     getWealth() {

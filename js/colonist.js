@@ -4,9 +4,13 @@ import { isPassable, getMoveCost } from './map.js';
 
 let nextColonistId = 1;
 
-export function createColonist(x, y, skillBias) {
+export function createColonist(x, y, skillBias, existingNames = []) {
     const id = nextColonistId++;
-    const name = COLONIST_NAMES[(id - 1) % COLONIST_NAMES.length];
+    const usedNames = new Set(existingNames);
+    let name = COLONIST_NAMES[(id - 1) % COLONIST_NAMES.length];
+    if (usedNames.has(name)) {
+        name = COLONIST_NAMES.find(n => !usedNames.has(n)) || `Colonist ${id}`;
+    }
     const traitKeys = Object.keys(TRAITS);
     const numTraits = 1 + Math.floor(Math.random() * 2);
     const traits = [];
@@ -183,6 +187,12 @@ function updateIdle(colonist, game) {
         return;
     }
 
+    const threat = findNearestHostile(colonist, game);
+    if (threat && manhattanDist(colonist.x, colonist.y, threat.x, threat.y) <= 8) {
+        colonist.state = 'fighting';
+        return;
+    }
+
     if (colonist.needs.hunger < 20 &&
         (game.resources.stockpile.food > 0 || game.resources.stockpile.berries > 0 || game.resources.stockpile.meat > 0)) {
         colonist.state = 'eating';
@@ -315,7 +325,7 @@ function completeTask(colonist, task, game) {
             const tile = game.map[task.y][task.x];
             tile.structure = task.buildType;
             tile.designation = null;
-            const impassableTypes = ['wall', 'fence', 'mana_crystal', 'arcane_sentinel'];
+            const impassableTypes = ['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret'];
             tile.passable = !impassableTypes.includes(task.buildType);
             game.roomsDirty = true;
             addThought(colonist, 'Built something', 3, 100, game.tick);
@@ -378,6 +388,10 @@ function completeTask(colonist, task, game) {
                     game.resources.addWeapon({ ...WEAPONS.runic_blade });
                 } else if (output.runic_pick) {
                     game.resources.addWeapon({ ...WEAPONS.runic_pick });
+                } else if (output.void_blade) {
+                    game.resources.addWeapon({ ...WEAPONS.void_blade });
+                } else if (output.void_armor) {
+                    game.resources.addArmor({ name: 'Void Armor', damageReduction: 0.3 });
                 } else {
                     game.resources.add(output);
                 }
@@ -511,7 +525,13 @@ function updateSleeping(colonist, game) {
 
 function updateFighting(colonist, game) {
     const target = findNearestHostile(colonist, game);
-    if (!target || manhattanDist(colonist.x, colonist.y, target.x, target.y) > 1) {
+    if (!target) {
+        colonist.state = 'idle';
+        return;
+    }
+
+    const dist = manhattanDist(colonist.x, colonist.y, target.x, target.y);
+    if (dist > 8) {
         colonist.state = 'idle';
         return;
     }
@@ -521,9 +541,21 @@ function updateFighting(colonist, game) {
         return;
     }
 
+    if (dist > 1) {
+        const dx = Math.sign(target.x - colonist.x);
+        const dy = Math.sign(target.y - colonist.y);
+        if (dx !== 0 && isPassable(game.map, colonist.x + dx, colonist.y)) {
+            colonist.x += dx;
+        } else if (dy !== 0 && isPassable(game.map, colonist.x, colonist.y + dy)) {
+            colonist.y += dy;
+        }
+        return;
+    }
+
     const weaponDmg = colonist.weapon ? colonist.weapon.damage : WEAPONS.fists.damage;
     const dmg = weaponDmg + Math.floor(Math.random() * 3);
     target.hp -= dmg;
+    game.combatEffects.push({ x: target.x, y: target.y, char: '!', color: '#ffff00', ttl: 2 });
 
     if (target.hp <= 0) {
         addThought(colonist, 'Won a fight', 5, 200, game.tick);
@@ -591,9 +623,10 @@ function updateWandering(colonist, game) {
 function findNearestHostile(colonist, game) {
     let nearest = null;
     let minDist = Infinity;
-    for (const entity of [...game.wildlife, ...game.raiders]) {
+    const waveEnemies = game.waves ? game.waves.enemies : [];
+    for (const entity of [...game.wildlife, ...game.raiders, ...waveEnemies]) {
         if (entity.hp <= 0) continue;
-        if (!entity.hostile) continue;
+        if (!entity.hostile && !waveEnemies.includes(entity)) continue;
         const dist = manhattanDist(colonist.x, colonist.y, entity.x, entity.y);
         if (dist < minDist) {
             minDist = dist;
@@ -611,8 +644,10 @@ function isIndoors(colonist, map) {
 export function colonistTakeDamage(colonist, damage, game) {
     let mult = 1;
     if (colonist.traits.includes('tough')) mult = TRAITS.tough.damageTakenMult;
+    if (colonist.armor) mult *= (1 - colonist.armor.damageReduction);
     const actualDmg = Math.floor(damage * mult);
     colonist.hp -= actualDmg;
+    game.combatEffects.push({ x: colonist.x, y: colonist.y, char: '!', color: '#ff3333', ttl: 2 });
 
     if (colonist.state !== 'fighting' && colonist.state !== 'fleeing' && colonist.hp > 0) {
         game.eventLog.add(game, `${colonist.name} is under attack!`, 'danger', { type: 'colonist', id: colonist.id });

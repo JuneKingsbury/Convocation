@@ -12,7 +12,7 @@ export const CONFIG = {
     TICK_RATE: 200,
     TICKS_PER_SEASON: 600,
     TICKS_PER_DAY: 100,
-    START_RESOURCES: { wood: 25, stone: 15, planks: 5, food: 20, meat: 0, wheat: 0, berries: 0, corn: 0, potatoes: 0, bricks: 0, runite: 0, eggs: 0, milk: 0, wool: 0 },
+    START_RESOURCES: { wood: 25, stone: 15, planks: 5, food: 20, meat: 0, wheat: 0, berries: 0, corn: 0, potatoes: 0, bricks: 0, runite: 0, eggs: 0, milk: 0, wool: 0, void_essence: 0 },
     PEACEFUL_MODE: false,
     GAME_SPEED: 1,
 };
@@ -25,7 +25,7 @@ export const TILE_CHARS = {
     storage_chest: 'S', torch: 'i', fence: '|',
     arcanum: 'R', beast_circle: 'A',
     mana_crystal: 'W', glowstone: 'L', enchanting_table: 'P',
-    ember_ward: 'H', arcane_sentinel: 'X',
+    ember_ward: 'H', arcane_sentinel: 'X', void_nexus: 'V', void_wall: '▓', void_turret: 'Y',
     farm_empty: '=', farm_growing: '%', farm_ready: '*',
     snow: '*',
 };
@@ -38,7 +38,7 @@ export const TILE_COLORS = {
     storage_chest: '#997744', torch: '#ffcc00', fence: '#886644',
     arcanum: '#44aaff', beast_circle: '#77aa44',
     mana_crystal: '#aa44ff', glowstone: '#ffff88', enchanting_table: '#bb88ff',
-    ember_ward: '#ff8844', arcane_sentinel: '#ff4444',
+    ember_ward: '#ff8844', arcane_sentinel: '#ff4444', void_nexus: '#9933ff', void_wall: '#6622aa', void_turret: '#aa33ff',
     farm_empty: '#664400', farm_growing: '#55aa22', farm_ready: '#ffdd00',
     colonist: '#ffff00', raider: '#ff3333', deer: '#bb8855', rabbit: '#ccaa88', wolf: '#666666',
     snow: '#ffffff', cursor: '#ffffff',
@@ -79,6 +79,9 @@ export const BUILD_COSTS = {
     enchanting_table: { planks: 4, stone: 3 },
     ember_ward: { stone: 4, planks: 2 },
     arcane_sentinel: { stone: 5, planks: 3 },
+    void_nexus: { runite: 5, stone: 6, planks: 4 },
+    void_wall: { stone: 3, void_essence: 2 },
+    void_turret: { stone: 5, planks: 3, void_essence: 4 },
 };
 
 export const BUILD_WORK = {
@@ -87,6 +90,7 @@ export const BUILD_WORK = {
     torch: 4, fence: 5, arcanum: 40,
     beast_circle: 28, mana_crystal: 45, glowstone: 14,
     enchanting_table: 35, ember_ward: 28, arcane_sentinel: 50,
+    void_nexus: 60, void_wall: 15, void_turret: 55,
 };
 
 // To add a recipe: add entry here. Set 'research' field to gate behind tech.
@@ -103,6 +107,8 @@ export const RECIPES = {
     cook_meat: { input: { meat: 1 }, output: { food: 2 }, skill: 'cooking', ticks: 6, station: 'cauldron' },
     cook_stew: { input: { meat: 1, potatoes: 1 }, output: { food: 4 }, skill: 'cooking', ticks: 10, station: 'cauldron' },
     cook_feast: { input: { meat: 2, wheat: 2, eggs: 1 }, output: { food: 8 }, skill: 'cooking', ticks: 15, station: 'cauldron', research: 'alchemy' },
+    craft_void_blade: { input: { void_essence: 5, runite: 2 }, output: { void_blade: 1 }, skill: 'crafting', ticks: 30, station: 'workbench', research: 'void_forging' },
+    craft_void_armor: { input: { void_essence: 4, planks: 2 }, output: { void_armor: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'void_forging' },
 };
 
 // To add a trait: add entry here. Trait effects are checked in colonist.js updateNeeds/getWorkSpeed.
@@ -134,6 +140,7 @@ export const WEAPONS = {
     etched_axe: { name: 'Etched Axe', damage: 15 },
     runic_blade: { name: 'Runic Blade', damage: 22 },
     runic_pick: { name: 'Runic Pick', damage: 12 },
+    void_blade: { name: 'Void Blade', damage: 30 },
 };
 
 export const NEED_DECAY = {
@@ -159,6 +166,7 @@ export const COLONIST_NAMES = [
     'Ada', 'Bob', 'Cal', 'Dee', 'Eve', 'Finn', 'Gail', 'Hank',
     'Iris', 'Jake', 'Kit', 'Lena', 'Max', 'Nora', 'Otto', 'Pia',
     'Davis', 'Morgan', 'Hugh', 'Matt', 'Sam', 'Paul', 'Jim', 'Mia',
+    'Quinn', 'Rex', 'Sage', 'Tara', 'Uma', 'Vex', 'Wren', 'Xia',
 ];
 
 export const EVENTS = {
@@ -203,6 +211,8 @@ export const RESEARCH = {
     pyroclasm: { name: 'Pyroclasm', cost: 200, requires: ['ember_magic', 'warding'], unlocks: { buildings: ['fire_ward'] }, description: 'Fire ward incinerates nearby foes' },
     verdant_growth: { name: 'Verdant Growth', cost: 140, requires: ['beast_binding', 'alchemy'], unlocks: { crops: ['herbs'] }, description: 'Grow rare herbs for potent brews' },
     masterwork: { name: 'Masterwork', cost: 220, requires: ['runeforging', 'arcane_infusion'], unlocks: { recipes: ['craft_masterwork_blade'] }, description: 'Forge legendary enchanted weapons' },
+    void_summoning: { name: 'Void Summoning', cost: 150, requires: ['ley_channeling', 'warding'], unlocks: { buildings: ['void_nexus'] }, description: 'Open portals to summon waves of enemies' },
+    void_forging: { name: 'Void Forging', cost: 180, requires: ['void_summoning', 'runeforging'], unlocks: { recipes: ['craft_void_blade', 'craft_void_armor'], buildings: ['void_wall', 'void_turret'] }, description: 'Forge void essence into powerful gear' },
 };
 
 // To add a tameable animal: add entry here. Needs beast_binding research.
@@ -219,4 +229,21 @@ export const POWER_BUILDINGS = {
     enchanting_table: { consumes: 4, speedMult: 2.0 },
     ember_ward: { consumes: 3, warmRadius: 4 },
     arcane_sentinel: { consumes: 3, damage: 12, range: 4 },
+    void_turret: { consumes: 5, damage: 20, range: 5 },
+};
+
+export const WAVE_CONFIG = {
+    baseEnemies: 4,
+    enemiesPerWave: 2,
+    baseHp: 60,
+    hpPerWave: 15,
+    baseDamage: 6,
+    damagePerWave: 2,
+    spawnInterval: 15,
+    essencePerKill: 1,
+    nexusHp: 200,
+    nexusHpPerWave: 0,
+    colonistCapBase: 3,
+    colonistCapScale: 2.5,
+    colonistCapMax: 12,
 };
