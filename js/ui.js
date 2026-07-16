@@ -1068,11 +1068,6 @@ export class UI {
         html += `<input type="checkbox" id="set-peaceful" ${CONFIG.PEACEFUL_MODE ? 'checked' : ''} onchange="window.game.togglePeaceful()">`;
         html += `<label for="set-peaceful">Peaceful mode (no raids/hostile animals)</label>`;
         html += `</div>`;
-        const isTabbed = document.getElementById('game-footer').classList.contains('tabbed');
-        html += `<div class="settings-row">`;
-        html += `<input type="checkbox" id="set-tabbed-footer" ${isTabbed ? 'checked' : ''} onchange="window.setFooterMode(this.checked)">`;
-        html += `<label for="set-tabbed-footer">Tabbed footer (show one panel at a time)</label>`;
-        html += `</div>`;
         const uiSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ui-font-size')) || 12;
         html += `<div class="settings-row">`;
         html += `<label for="set-ui-font-size">UI Font Size: <span id="ui-font-size-val">${uiSize}px</span></label>`;

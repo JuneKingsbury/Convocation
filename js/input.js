@@ -14,6 +14,7 @@ export class InputHandler {
         this.dragEnd = null;
         this.dragging = false;
         this.keysDown = new Set();
+        this.touchPanMode = false;
 
         this.buildOptions = ['wall', 'floor', 'door', 'bed', 'workbench', 'cauldron', 'storage_chest', 'torch', 'fence', 'arcanum', 'beast_circle', 'mana_crystal', 'glowstone', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret'];
         this.dragBuildTypes = new Set(['wall', 'floor', 'door', 'fence', 'torch']);
@@ -298,18 +299,34 @@ export class InputHandler {
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             this._lastPinchDist = Math.hypot(dx, dy);
             this._isPinching = true;
+            this._touchPanning = false;
+            this.dragging = false;
+            this.dragStart = null;
+            this.dragEnd = null;
             return;
         }
         if (e.touches.length !== 1) return;
         this._isPinching = false;
+        this._touchStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        this._touchMoved = false;
+
+        if (this.touchPanMode) {
+            this._touchPanning = true;
+            this._touchPanLast = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            return;
+        }
+
         const pos = this.getTouchTile(e.touches[0]);
         if (pos.x < 0 || pos.x >= CONFIG.MAP_WIDTH || pos.y < 0 || pos.y >= CONFIG.MAP_HEIGHT) return;
 
         this.game.cursor = pos;
-        if (this.mode === 'zone' || this.mode === 'designate' || (this.mode === 'build' && this.dragBuildTypes.has(this.buildType))) {
+        if (this.mode === 'zone' || this.mode === 'designate' ||
+            (this.mode === 'build' && this.dragBuildTypes.has(this.buildType)) ||
+            this.mode === 'normal') {
             this.dragStart = pos;
             this.dragEnd = pos;
             this.dragging = true;
+            this._clickPos = pos;
         }
     }
 
@@ -334,6 +351,22 @@ export class InputHandler {
             return;
         }
         if (e.touches.length !== 1 || this._isPinching) return;
+
+        this._touchMoved = true;
+
+        if (this._touchPanning) {
+            const dx = e.touches[0].clientX - this._touchPanLast.x;
+            const dy = e.touches[0].clientY - this._touchPanLast.y;
+            const tilesX = Math.round(dx / this.charWidth);
+            const tilesY = Math.round(dy / this.charHeight);
+            if (tilesX !== 0 || tilesY !== 0) {
+                this.game.camera.pan(-tilesX, -tilesY);
+                this._touchPanLast.x += tilesX * this.charWidth;
+                this._touchPanLast.y += tilesY * this.charHeight;
+            }
+            return;
+        }
+
         const pos = this.getTouchTile(e.touches[0]);
         if (pos.x >= 0 && pos.x < CONFIG.MAP_WIDTH && pos.y >= 0 && pos.y < CONFIG.MAP_HEIGHT) {
             this.game.cursor = pos;
@@ -352,23 +385,43 @@ export class InputHandler {
             }
             return;
         }
+
+        if (this._touchPanning) {
+            this._touchPanning = false;
+            return;
+        }
+
         const pos = this.game.cursor;
         if (!pos) return;
 
         if (this.dragging && this.dragStart) {
-            if (this.mode === 'build' && this.dragBuildTypes.has(this.buildType)) {
-                this.buildArea(this.dragStart, pos);
-            } else if (this.mode === 'zone') {
-                designateFarmZone(this.game, this.dragStart.x, this.dragStart.y, pos.x, pos.y, this.cropType);
-            } else if (this.mode === 'designate') {
-                this.designateArea(this.dragStart, pos);
+            const wasDrag = this._touchMoved && (this.dragStart.x !== pos.x || this.dragStart.y !== pos.y);
+            if (wasDrag) {
+                if (this.mode === 'build' && this.dragBuildTypes.has(this.buildType)) {
+                    this.buildArea(this.dragStart, pos);
+                } else if (this.mode === 'zone') {
+                    designateFarmZone(this.game, this.dragStart.x, this.dragStart.y, pos.x, pos.y, this.cropType);
+                } else if (this.mode === 'designate') {
+                    this.designateArea(this.dragStart, pos);
+                } else if (this.mode === 'normal') {
+                    this.selectColonistsInRect(this.dragStart, pos);
+                }
+            } else {
+                this.handleLeftClick(this._clickPos || pos);
             }
             this.dragStart = null;
             this.dragEnd = null;
             this.dragging = false;
+            this._clickPos = null;
         } else {
             this.handleLeftClick(pos);
         }
+    }
+
+    toggleTouchPanMode() {
+        this.touchPanMode = !this.touchPanMode;
+        const btn = document.getElementById('touch-pan-btn');
+        if (btn) btn.classList.toggle('active', this.touchPanMode);
     }
 
     designateArea(start, end) {

@@ -34,7 +34,6 @@ class Game {
         this.settings = {
             autoPauseHostile: true,
             autoPauseEvent: true,
-            tabbedFooter: false,
             uiFontSize: 12,
         };
 
@@ -431,7 +430,7 @@ class Game {
 
 const CHAR_RATIO = 0.6;
 const LINE_HEIGHT = 1.15;
-const MIN_FONT = 6;
+const MIN_FONT = 5;
 const MAX_FONT = 24;
 const ZOOM_STEP = 2;
 
@@ -446,7 +445,7 @@ function fitGameFont() {
 
     if (currentZoomFont === null) {
         const isSmall = window.innerWidth <= 768;
-        currentZoomFont = isSmall ? 10 : 14;
+        currentZoomFont = isSmall ? 8 : 14;
     }
 
     const fontSize = Math.max(MIN_FONT, Math.min(MAX_FONT, currentZoomFont));
@@ -650,7 +649,6 @@ document.addEventListener('DOMContentLoaded', () => {
         CONFIG.PEACEFUL_MODE = document.getElementById('start-peaceful-check').checked;
         const autoPauseHostile = document.getElementById('start-autopause-hostile').checked;
         const autoPauseEvent = document.getElementById('start-autopause-event').checked;
-        const tabbedFooter = document.getElementById('start-tabbed-footer').checked;
         const uiFontSize = parseInt(document.getElementById('start-ui-font-size').value) || 12;
 
         startScreen.style.display = 'none';
@@ -658,14 +656,13 @@ document.addEventListener('DOMContentLoaded', () => {
         initFooterTabs();
         initPanelOverlay();
         initResizeHandles(fitGameFont);
-        if (tabbedFooter) setFooterMode(true);
+        if (window.innerWidth <= 768) setFooterMode(true);
         setUIFontSize(uiFontSize);
         requestAnimationFrame(() => {
             fitGameFont();
             const game = new Game();
             game.settings.autoPauseHostile = autoPauseHostile;
             game.settings.autoPauseEvent = autoPauseEvent;
-            game.settings.tabbedFooter = tabbedFooter;
             game.settings.uiFontSize = uiFontSize;
             game.start();
         });
@@ -677,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initFooterTabs();
         initPanelOverlay();
         initResizeHandles(fitGameFont);
+        if (window.innerWidth <= 768) setFooterMode(true);
         requestAnimationFrame(() => {
             fitGameFont();
             const game = new Game();
@@ -700,6 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initFooterTabs();
             initPanelOverlay();
             initResizeHandles(fitGameFont);
+            if (window.innerWidth <= 768) setFooterMode(true);
             requestAnimationFrame(() => {
                 fitGameFont();
                 const game = new Game();
@@ -712,5 +711,13 @@ document.addEventListener('DOMContentLoaded', () => {
         importFileInput.value = '';
     });
 
-    window.addEventListener('resize', fitGameFont);
+    window.addEventListener('resize', () => {
+        fitGameFont();
+        const footer = document.getElementById('game-footer');
+        if (!footer) return;
+        const isTabbed = footer.classList.contains('tabbed');
+        const shouldTab = window.innerWidth <= 768;
+        if (shouldTab && !isTabbed) setFooterMode(true);
+        else if (!shouldTab && isTabbed) setFooterMode(false);
+    });
 });

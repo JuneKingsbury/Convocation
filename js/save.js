@@ -229,7 +229,6 @@ function captureLayout() {
     const colonistHud = document.getElementById('colonist-hud');
     const eventLog = document.getElementById('event-log');
     const uiFontSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ui-font-size')) || 12;
-    const tabbedFooter = footer?.classList.contains('tabbed') || false;
 
     return {
         gridColumns: container?.style.gridTemplateColumns || null,
@@ -237,7 +236,6 @@ function captureLayout() {
         colonistHudFlex: colonistHud?.style.flex || null,
         eventLogFlex: eventLog?.style.flex || null,
         uiFontSize,
-        tabbedFooter,
     };
 }
 
@@ -253,5 +251,4 @@ export function restoreLayout(layout) {
     if (layout.colonistHudFlex) colonistHud.style.flex = layout.colonistHudFlex;
     if (layout.eventLogFlex) eventLog.style.flex = layout.eventLogFlex;
     if (layout.uiFontSize) window.setUIFontSize(layout.uiFontSize);
-    if (layout.tabbedFooter) window.setFooterMode(true);
 }

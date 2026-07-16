@@ -41,9 +41,6 @@
                 <input type="checkbox" id="start-autopause-event" checked> Auto-pause on trade/wanderer events
             </label>
             <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
-                <input type="checkbox" id="start-tabbed-footer"> Tabbed footer (show one panel at a time)
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
                 UI Font Size: <span id="start-ui-font-val">12px</span>
                 <input type="range" id="start-ui-font-size" min="8" max="20" value="12" style="flex:1" oninput="document.getElementById('start-ui-font-val').textContent=this.value+'px'">
             </label>
@@ -227,24 +224,12 @@
             <div id="mode-bar"></div>
         </div>
         <div id="touch-toolbar">
-            <button onclick="window.game?.camera.pan(0,-3)">^</button>
-            <button onclick="window.game?.camera.pan(-3,0)">&lt;</button>
-            <button onclick="window.game?.camera.pan(3,0)">&gt;</button>
-            <button onclick="window.game?.camera.pan(0,3)">v</button>
+            <button id="touch-pan-btn" onclick="window.game?.input.toggleTouchPanMode()">Pan</button>
             <button onclick="window.zoomIn()">Z+</button>
             <button onclick="window.zoomOut()">Z-</button>
             <button onclick="window.game?.speedDown()">Spd-</button>
             <button onclick="window.game?.speedUp()">Spd+</button>
-            <button onclick="window.game?.setMobileMode('build')">Build</button>
-            <button onclick="window.game?.setMobileMode('zone')">Zone</button>
-            <button onclick="window.game?.setMobileMode('designate')">Gather</button>
-            <button onclick="window.game?.setMobileMode('normal')">Select</button>
             <button onclick="window.game?.togglePause()">Pause</button>
-            <button onclick="window.game?.ui.togglePriorityPanel()">Prio</button>
-            <button onclick="window.game?.ui.toggleCraftPanel()">Craft</button>
-            <button onclick="window.game?.ui.toggleResearchPanel()">Research</button>
-            <button onclick="window.game?.ui.toggleTamingPanel()">Bind</button>
-            <button onclick="window.game?.ui.toggleInventoryPanel()">Items</button>
         </div>
         <div id="panel-overlay" class="panel-overlay"></div>
         <div id="priority-panel"></div>
