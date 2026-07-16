@@ -92,6 +92,7 @@ export function loadGame(game) {
 
     game.colonists = data.colonists;
     for (const c of game.colonists) {
+        if (!c.nameColor) c.nameColor = '#ffff00';
         for (const [key, def] of Object.entries(SKILLS)) {
             if (c.skills && c.skills[key] === undefined) {
                 const [min, max] = def.baseLevel;

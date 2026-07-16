@@ -1,5 +1,5 @@
 import { CONFIG, TILE_COLORS } from './config.js';
-import { getTileChar, getTileColor } from './map.js';
+import { getTileChar, getTileColor, getTileBg } from './map.js';
 
 export class Renderer {
     constructor(container) {
@@ -7,8 +7,6 @@ export class Renderer {
         this.canvas = document.createElement('canvas');
         this.canvas.id = 'game-canvas';
         this.canvas.style.display = 'block';
-        this.canvas.style.width = '100%';
-        this.canvas.style.height = '100%';
         container.innerHTML = '';
         container.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d', { alpha: false });
@@ -25,8 +23,10 @@ export class Renderer {
         this.fontSize = fontSize;
         this.ctx.font = `${fontSize}px 'Courier New', monospace`;
         const metrics = this.ctx.measureText('M');
-        this.charWidth = Math.ceil(metrics.width);
+        this._textWidth = Math.ceil(metrics.width);
         this.charHeight = Math.ceil(fontSize * 1.15);
+        this.charWidth = this.charHeight;
+        this._textOffsetX = Math.floor((this.charWidth - this._textWidth) / 2);
         this._resizeCanvas();
     }
 
@@ -75,7 +75,7 @@ export class Renderer {
             if (r.hp > 0) entityMap.set(r.y * CONFIG.MAP_WIDTH + r.x, { char: 'R', color: TILE_COLORS.raider });
         }
         for (const c of colonists) {
-            if (c.hp > 0) entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: TILE_COLORS.colonist });
+            if (c.hp > 0) entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: c.nameColor || TILE_COLORS.colonist });
         }
 
         const portalMap = new Map();
@@ -123,7 +123,7 @@ export class Renderer {
                 const tile = map[wy][wx];
                 let char = getTileChar(tile, game.weather.season);
                 let color = getTileColor(tile, game.weather.season);
-                let bg = null;
+                let bg = getTileBg(tile);
 
                 if (tile.designation) {
                     color = TILE_COLORS[`designation_${tile.designation.type}`] || '#ffff00';
@@ -174,11 +174,19 @@ export class Renderer {
                     lastColor = '';
                 }
 
-                if (color !== lastColor) {
-                    ctx.fillStyle = color;
-                    lastColor = color;
+                if (char === '█' || char === '▓' || char === '▒') {
+                    if (color !== lastColor) {
+                        ctx.fillStyle = color;
+                        lastColor = color;
+                    }
+                    ctx.fillRect(px, py, cw, ch);
+                } else {
+                    if (color !== lastColor) {
+                        ctx.fillStyle = color;
+                        lastColor = color;
+                    }
+                    ctx.fillText(char, px + this._textOffsetX, py);
                 }
-                ctx.fillText(char, px, py);
             }
         }
     }

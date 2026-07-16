@@ -297,7 +297,8 @@ export class UI {
         const weaponTip = colonist.weapon ? `${colonist.weapon.damage} damage` : 'No weapon equipped';
         const armorTip = colonist.armor ? `${Math.round(colonist.armor.damageReduction * 100)}% damage reduction` : 'No armor equipped';
 
-        let html = `<div class="info-header" style="cursor:pointer" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}</div>`;
+        const nc = colonist.nameColor || '#ffff00';
+        let html = `<div class="info-header" style="cursor:pointer;color:${nc}" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}</div>`;
         html += `<div class="info-row">HP: ${colonist.hp}/${colonist.maxHp}</div>`;
         html += `<div class="info-row">Mood: <span class="mood-${moodLevel}">${colonist.mood.toFixed(0)} (${moodLevel})</span></div>`;
         html += `<div class="info-row">State: ${colonist.state}</div>`;
@@ -316,6 +317,7 @@ export class UI {
         const isFollowing = this.game.followingColonist === colonist.id;
         html += `<button onclick="window.game.toggleFollow(${colonist.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
         html += `</div>`;
+        html += `<div class="info-row">Color: <input type="color" value="${nc}" onchange="window.game.setColonistColor(${colonist.id}, this.value)"></div>`;
         return html;
     }
 
@@ -567,7 +569,7 @@ export class UI {
         for (const c of colonists) {
             const moodLevel = getMoodLabel(c.mood);
             html += `<div style="border-top:1px solid #333;margin-top:4px;padding-top:4px;">`;
-            html += `<span class="info-header" style="font-size:12px;cursor:pointer" onclick="window.game.selectColonistById(${c.id})">${c.name}</span>`;
+            html += `<span class="info-header" style="font-size:12px;cursor:pointer;color:${c.nameColor || '#ffff00'}" onclick="window.game.selectColonistById(${c.id})">${c.name}</span>`;
             html += ` <span class="mood-${moodLevel}">${c.mood.toFixed(0)}</span>`;
             html += ` <span style="color:#888">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
             html += `<div class="info-row">HP:${c.hp} H:${c.needs.hunger.toFixed(0)} R:${c.needs.rest.toFixed(0)}</div>`;
@@ -646,7 +648,7 @@ export class UI {
 
         for (const c of this.game.colonists) {
             if (c.hp <= 0) continue;
-            html += `<tr><td>${c.name}</td>`;
+            html += `<tr><td style="color:${c.nameColor || '#ffff00'}">${c.name}</td>`;
             for (const s of skills) {
                 const val = c.priorities[s];
                 const display = val === 0 ? '-' : val;
@@ -722,7 +724,7 @@ export class UI {
         let html = '<div class="footer-panel-header">Colonists</div>';
         for (const c of this.game.colonists) {
             if (c.hp <= 0) {
-                html += `<div class="hud-colonist dead"><span class="hud-name">${c.name}</span> <span style="color:#cc4444">DEAD</span></div>`;
+                html += `<div class="hud-colonist dead"><span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> <span style="color:#cc4444">DEAD</span></div>`;
                 continue;
             }
             const moodLevel = getMoodLabel(c.mood);
@@ -732,7 +734,7 @@ export class UI {
             const hpColor = statColor(c.maxHp > 0 ? (c.hp / c.maxHp) * 100 : 100);
             const weapon = c.weapon?.name || 'Fists';
             html += `<div class="hud-colonist" data-colonist-id="${c.id}">`;
-            html += `<span class="hud-name">${c.name}</span> <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
+            html += `<span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
             html += `<div class="hud-bars">Mood: <span style="color:${moodColor}">${c.mood.toFixed(0)} (${moodLevel})</span> | Hunger: <span style="color:${hungerColor}">${c.needs.hunger.toFixed(0)}</span> | Rest: <span style="color:${restColor}">${c.needs.rest.toFixed(0)}</span> | HP: <span style="color:${hpColor}">${c.hp}/${c.maxHp}</span></div>`;
             html += `</div>`;
         }

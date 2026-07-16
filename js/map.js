@@ -201,6 +201,11 @@ export function getTileColor(tile, season) {
     return tDef ? tDef.color : '#fff';
 }
 
+export function getTileBg(tile) {
+    const tDef = TERRAIN[tile.terrain];
+    return tDef ? tDef.bg || null : null;
+}
+
 export const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret']);
 const ENEMY_BLOCKED_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret', 'door', 'void_door']);
 

@@ -41,12 +41,12 @@ export const SEASON_EFFECTS = {
 // To add terrain: add entry here. Used by map generation, rendering, and pathfinding.
 // passable: { colonist, animal, enemy }. moveCost applies to colonists only.
 export const TERRAIN = {
-    grass:  { char: '.', color: '#5a8c3a', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
-    dirt:   { char: ',', color: '#a07040', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
-    sand:   { char: '∙', color: '#d4b86a', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
-    gravel: { char: ':', color: '#8a8070', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
-    rock:   { char: '#', color: '#777', moveCost: 4, passable: { colonist: true, animal: false, enemy: false } },
-    water:  { char: '~', color: '#4488ff', moveCost: 3, passable: { colonist: true, animal: false, enemy: false } },
+    grass:  { char: '.', color: '#6aad44', bg: '#1a2a12', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    dirt:   { char: ',', color: '#bb8850', bg: '#2a1e14', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    sand:   { char: '∙', color: '#e0c878', bg: '#2a2618', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    gravel: { char: ':', color: '#a09888', bg: '#1e1c1a', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    rock:   { char: '#', color: '#999', bg: '#222', moveCost: 4, passable: { colonist: true, animal: false, enemy: false } },
+    water:  { char: '~', color: '#55aaff', bg: '#0a1a2e', moveCost: 3, passable: { colonist: true, animal: false, enemy: false } },
 };
 
 // To add a harvestable resource: add entry here. Rendering, gathering, and yields handled automatically.

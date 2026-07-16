@@ -40,6 +40,7 @@ export function createColonist(x, y, skillBias, existingNames = []) {
 
     return {
         id, name, x, y, skills, traits,
+        nameColor: ['#ffff00', '#00ffff', '#00ff00'][(id - 1) % 3],
         priorities: { ...Object.fromEntries(Object.keys(SKILLS).map(k => [k, 3])), hauling: 4 },
         needs: { hunger: 80 + Math.random() * 20, rest: 80 + Math.random() * 20 },
         mood: 60,

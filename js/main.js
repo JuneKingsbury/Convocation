@@ -313,6 +313,13 @@ class Game {
         this.camera.centerOn(c.x, c.y);
     }
 
+    setColonistColor(colonistId, color) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c) return;
+        c.nameColor = color;
+        this.ui.showColonistInfo(c);
+    }
+
     toggleFollow(colonistId) {
         if (this.followingColonist === colonistId) {
             this.followingColonist = null;
@@ -528,8 +535,9 @@ function fitGameFont() {
     const fontSize = Math.max(MIN_FONT, Math.min(MAX_FONT, currentZoomFont));
     currentZoomFont = fontSize;
 
-    CONFIG.VIEWPORT_WIDTH = Math.max(20, Math.floor(availWidth / (fontSize * CHAR_RATIO)));
-    CONFIG.VIEWPORT_HEIGHT = Math.max(10, Math.floor(availHeight / (fontSize * LINE_HEIGHT)));
+    const cellSize = fontSize * LINE_HEIGHT;
+    CONFIG.VIEWPORT_WIDTH = Math.max(20, Math.floor(availWidth / cellSize));
+    CONFIG.VIEWPORT_HEIGHT = Math.max(10, Math.floor(availHeight / cellSize));
 
     document.documentElement.style.setProperty('--game-font-size', fontSize + 'px');
 
