@@ -280,7 +280,8 @@ export class UI {
         panels.forEach(p => p.classList.remove('active'));
         const infoTab = footer.querySelector('.footer-tab[data-tab="info"]');
         if (infoTab) infoTab.classList.add('active');
-        this.elements.infoPanel.classList.add('active');
+        const infoPanel = document.getElementById('info-panel');
+        if (infoPanel) infoPanel.classList.add('active');
     }
 
     buildColonistInfoHtml(colonist) {
