@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILDINGS, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS } from './config.js';
+import { CONFIG, TRAITS, BUILDINGS, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, SKILLS } from './config.js';
 import { getAvailableRecipes } from './crafting.js';
 import { CROP_RESEARCH_REQS } from './farming.js';
 
@@ -304,7 +304,7 @@ export class UI {
         html += `<div class="info-row">State: ${colonist.state}</div>`;
         html += `<div class="info-row">Traits: ${traitSpans}</div>`;
         html += `<div class="info-row">Hunger: ${bar(colonist.needs.hunger)} Rest: ${bar(colonist.needs.rest)}</div>`;
-        html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${colonist.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${colonist.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${colonist.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${colonist.skills.cooking}</span> <span class="skill-tip" data-tip="Taming and handling animals">Animals:${colonist.skills.animals || 1}</span></div>`;
+        html += `<div class="info-row">Skills: ${Object.entries(SKILLS).map(([k, def]) => `<span class="skill-tip" data-tip="${def.description}">${def.name}:${colonist.skills[k] || 1}</span>`).join(' ')}</div>`;
         html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${colonist.weapon?.name || 'Fists'}</span></div>`;
         html += `<div class="info-row">Armor: <span class="skill-tip" data-tip="${armorTip}">${colonist.armor?.name || 'None'}</span></div>`;
         html += `<div class="info-row">Bed: ${colonist.assignedBed ? `(${colonist.assignedBed.x},${colonist.assignedBed.y})` : 'None'}</div>`;
@@ -656,7 +656,7 @@ export class UI {
     }
 
     updatePriorityPanel() {
-        const skills = ['building', 'farming', 'crafting', 'cooking', 'animals', 'hauling'];
+        const skills = [...Object.keys(SKILLS), 'hauling'];
         let html = '<table><tr><th>Colonist</th>';
         skills.forEach(s => { html += `<th>${s.substring(0, 5)}</th>`; });
         html += '</tr>';

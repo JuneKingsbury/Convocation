@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG, SKILLS } from './config.js';
 import { syncColonistIdCounter } from './colonist.js';
 import { syncAnimalIdCounter } from './wildlife.js';
 import { syncTamedIdCounter } from './taming.js';
@@ -92,8 +92,13 @@ export function loadGame(game) {
 
     game.colonists = data.colonists;
     for (const c of game.colonists) {
-        if (c.skills && c.skills.animals === undefined) c.skills.animals = 1 + Math.floor(Math.random() * 3);
-        if (c.priorities && c.priorities.animals === undefined) c.priorities.animals = 3;
+        for (const [key, def] of Object.entries(SKILLS)) {
+            if (c.skills && c.skills[key] === undefined) {
+                const [min, max] = def.baseLevel;
+                c.skills[key] = min + Math.floor(Math.random() * (max - min + 1));
+            }
+            if (c.priorities && c.priorities[key] === undefined) c.priorities[key] = 3;
+        }
     }
     game.wildlife = data.wildlife;
     game.raiders = data.raiders;

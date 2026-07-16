@@ -18,15 +18,11 @@ export const CONFIG = {
 };
 
 const BASE_TILE_CHARS = {
-    grass: '.', dirt: ',', rock: '#', water: '~',
-    tree: 'T', stone_resource: 'o',
     farm_empty: '=', farm_growing: '%', farm_ready: '*',
     snow: '*',
 };
 
 const BASE_TILE_COLORS = {
-    grass: '#5a8c3a', dirt: '#a07040', rock: '#777', water: '#4488ff',
-    tree: '#2d7a2d', tree_autumn: '#cc8822', stone_resource: '#999', runite_ore: '#44cccc',
     farm_empty: '#664400', farm_growing: '#55aa22', farm_ready: '#ffdd00',
     colonist: '#ffff00', raider: '#ff3333', deer: '#bb8855', rabbit: '#ccaa88', wolf: '#666666',
     snow: '#ffffff', cursor: '#ffffff',
@@ -40,6 +36,88 @@ export const SEASON_EFFECTS = {
     summer: { cropGrowthMult: 1.5, animalSpawnRate: 0.01, tempRange: [20, 35] },
     autumn: { cropGrowthMult: 0.8, animalSpawnRate: 0.03, tempRange: [5, 15] },
     winter: { cropGrowthMult: 0, animalSpawnRate: 0.005, tempRange: [-10, 5] },
+};
+
+// To add terrain: add entry here. Used by map generation, rendering, and pathfinding.
+// passable: { colonist, animal, enemy }. moveCost applies to colonists only.
+export const TERRAIN = {
+    grass:  { char: '.', color: '#5a8c3a', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    dirt:   { char: ',', color: '#a07040', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    sand:   { char: '∙', color: '#d4b86a', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    gravel: { char: ':', color: '#8a8070', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
+    rock:   { char: '#', color: '#777', moveCost: 4, passable: { colonist: true, animal: false, enemy: false } },
+    water:  { char: '~', color: '#4488ff', moveCost: 3, passable: { colonist: true, animal: false, enemy: false } },
+};
+
+// To add a harvestable resource: add entry here. Rendering, gathering, and yields handled automatically.
+// designation: 'chop' or 'mine'. yield: { resource: amount }. work: ticks to gather.
+export const RESOURCES = {
+    tree:       { char: 'T', color: '#2d7a2d', autumnColor: '#cc8822', designation: 'chop', work: 12, yield: { wood: 1 }, perAmount: true },
+    stone:      { char: 'o', color: '#999', designation: 'mine', work: 18, yield: { stone: 1 }, perAmount: true },
+    runite_ore: { char: 'o', color: '#44cccc', designation: 'mine', work: 22, yield: { runite: 1 }, perAmount: true },
+};
+
+// To add a skill: add entry here. Colonists auto-get it, priority panel shows it, tasks use skillRequired.
+// baseLevel: starting range [min, max]. biasBonus: added when this is the colonist's skill bias.
+export const SKILLS = {
+    building: { name: 'Building', baseLevel: [2, 5], biasBonus: 3, description: 'Construction, mining, chopping, and repairs' },
+    farming:  { name: 'Farming', baseLevel: [2, 5], biasBonus: 3, description: 'Planting and harvesting crops' },
+    crafting: { name: 'Crafting', baseLevel: [2, 5], biasBonus: 3, description: 'Crafting items at workbenches' },
+    cooking:  { name: 'Cooking', baseLevel: [2, 5], biasBonus: 3, description: 'Cooking meals at cauldrons' },
+    animals:  { name: 'Animals', baseLevel: [1, 4], biasBonus: 3, description: 'Taming and handling animals' },
+};
+
+// To add weather: add entry here. Seasons reference weather types by key.
+// growthMult: crop growth multiplier. display: shown in UI.
+export const WEATHER_TYPES = {
+    clear:        { display: 'Clear', growthMult: 1.0 },
+    rain:         { display: 'Rain', growthMult: 1.3, extinguishesFire: true },
+    thunderstorm: { display: 'Storm', growthMult: 1.0, extinguishesFire: true, fireChance: true },
+    snow:         { display: 'Snow', growthMult: 0.5 },
+    blizzard:     { display: 'Blizzard', growthMult: 0 },
+    heatwave:     { display: 'Heat Wave', growthMult: 0.7 },
+};
+
+// Season-specific weather tables. Each entry: [weatherType, probability, durationRange].
+// Evaluated in order; first match wins. Remainder = clear.
+export const SEASON_WEATHER = {
+    spring: [
+        ['thunderstorm', 0.10, [10, 24]],
+        ['rain', 0.25, [25, 64]],
+    ],
+    summer: [
+        ['thunderstorm', 0.05, [15, 34]],
+        ['rain', 0.15, [20, 49]],
+        ['heatwave', 0.25, [40, 99]],
+    ],
+    autumn: [
+        ['thunderstorm', 0.10, [10, 24]],
+        ['rain', 0.25, [25, 64]],
+    ],
+    winter: [
+        ['blizzard', 0.10, [30, 69]],
+        ['snow', 0.30, [40, 99]],
+    ],
+};
+
+// To add a thought: add entry here. Used by game systems to apply mood effects.
+// moodEffect: positive = good, negative = bad. duration: ticks (-1 = permanent).
+export const THOUGHTS = {
+    built_something:   { text: 'Built something', moodEffect: 3, duration: 100 },
+    good_work:         { text: 'Good honest work', moodEffect: 2, duration: 80 },
+    harvested:         { text: 'Harvested crops', moodEffect: 3, duration: 100 },
+    crafted:           { text: 'Crafted something', moodEffect: 4, duration: 120 },
+    cooked:            { text: 'Cooked a meal', moodEffect: 3, duration: 100 },
+    tamed_animal:      { text: 'Tamed an animal', moodEffect: 6, duration: 150 },
+    put_out_fire:      { text: 'Put out a fire', moodEffect: 5, duration: 150 },
+    repaired:          { text: 'Repaired a structure', moodEffect: 3, duration: 100 },
+    deconstructed:     { text: 'Tore something down', moodEffect: 2, duration: 80 },
+    new_colonist:      { text: 'New colonist arrived', moodEffect: 5, duration: 200 },
+    freezing:          { text: 'Freezing outside', moodEffect: -8, duration: 50 },
+    fire_panic:        { text: 'Colony on fire!', moodEffect: -20, duration: 200 },
+    crops_died:        { text: 'Crops died', moodEffect: -15, duration: 300 },
+    cold_snap:         { text: 'Freezing cold snap', moodEffect: -12, duration: 300 },
+    inspired:          { text: 'Feeling inspired!', moodEffect: 25, duration: 300 },
 };
 
 // To add a crop: add entry here, it auto-appears in zone mode

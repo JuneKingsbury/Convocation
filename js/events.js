@@ -1,4 +1,4 @@
-import { CONFIG, EVENTS, CARAVAN_TRADES } from './config.js';
+import { CONFIG, EVENTS, CARAVAN_TRADES, WEATHER_TYPES, THOUGHTS, SKILLS } from './config.js';
 import { createColonist, addThought } from './colonist.js';
 import { createAnimal } from './wildlife.js';
 
@@ -15,7 +15,10 @@ export class EventSystem {
             if (game.tick < eventDef.minTick) continue;
             if (this.cooldowns[eventKey] && game.tick < this.cooldowns[eventKey]) continue;
             if (eventDef.seasons && !eventDef.seasons.includes(game.weather.season)) continue;
-            if (eventKey === 'fire' && game.weather.currentWeather !== 'thunderstorm' && Math.random() > 0.01) continue;
+            if (eventKey === 'fire') {
+                const wDef = WEATHER_TYPES[game.weather.currentWeather];
+                if (!(wDef && wDef.fireChance) && Math.random() > 0.01) continue;
+            }
 
             let chance = eventDef.weight / 5000;
             if (eventKey === 'wanderer') {
@@ -140,8 +143,8 @@ export class EventSystem {
         }
 
         const edge = getRandomEdge();
-        const skills = ['building', 'farming', 'crafting', 'cooking'];
-        const bias = skills[Math.floor(Math.random() * skills.length)];
+        const skillKeys = Object.keys(SKILLS);
+        const bias = skillKeys[Math.floor(Math.random() * skillKeys.length)];
         const existingNames = game.colonists.map(c => c.name);
         const wanderer = createColonist(edge.x, edge.y, bias, existingNames);
 
@@ -170,9 +173,10 @@ export class EventSystem {
             game.colonists.push(this.pendingEvent.data);
             game.notifications.push({ text: `${this.pendingEvent.data.name} joined!`, tick: game.tick, type: 'success' });
             game.eventLog.add(game, `${this.pendingEvent.data.name} joined the colony`, 'success', { type: 'colonist', id: this.pendingEvent.data.id });
+            const t = THOUGHTS.new_colonist;
             for (const c of game.colonists) {
                 if (c.id !== this.pendingEvent.data.id) {
-                    addThought(c, 'New colonist arrived', 5, 200, game.tick);
+                    addThought(c, t.text, t.moodEffect, t.duration, game.tick);
                 }
             }
         }
@@ -228,8 +232,9 @@ export class EventSystem {
             game.map[fireY][fireX].fireTimer = 20;
             game.notifications.push({ text: 'Fire has broken out!', tick: game.tick, type: 'danger' });
             game.eventLog.add(game, 'Fire has broken out!', 'danger', { type: 'position', x: fireX, y: fireY });
+            const t = THOUGHTS.fire_panic;
             for (const c of game.colonists) {
-                addThought(c, 'Colony on fire!', -20, 200, game.tick);
+                addThought(c, t.text, t.moodEffect, t.duration, game.tick);
             }
         }
     }
@@ -290,7 +295,8 @@ export function updateFires(game) {
 
             tile.fireTimer--;
 
-            if (game.weather.currentWeather === 'rain') {
+            const wDef = WEATHER_TYPES[game.weather.currentWeather];
+            if (wDef && wDef.extinguishesFire) {
                 tile.onFire = false;
                 tile.fireTimer = 0;
                 continue;

@@ -1,4 +1,4 @@
-import { CONFIG, SEASONS, SEASON_EFFECTS } from './config.js';
+import { CONFIG, SEASONS, SEASON_EFFECTS, WEATHER_TYPES, SEASON_WEATHER } from './config.js';
 
 export class Weather {
     constructor() {
@@ -33,28 +33,27 @@ export class Weather {
     }
 
     rollWeather() {
+        const table = SEASON_WEATHER[this.season] || [];
         const roll = Math.random();
-        if (this.season === 'winter') {
-            if (roll < 0.1) { this.currentWeather = 'blizzard'; this.weatherTimer = 30 + Math.floor(Math.random() * 40); }
-            else if (roll < 0.3) { this.currentWeather = 'snow'; this.weatherTimer = 40 + Math.floor(Math.random() * 60); }
-            else { this.currentWeather = 'clear'; this.weatherTimer = 50 + Math.floor(Math.random() * 100); }
-        } else if (this.season === 'summer') {
-            if (roll < 0.05) { this.currentWeather = 'thunderstorm'; this.weatherTimer = 15 + Math.floor(Math.random() * 20); }
-            else if (roll < 0.15) { this.currentWeather = 'rain'; this.weatherTimer = 20 + Math.floor(Math.random() * 30); }
-            else if (roll < 0.25) { this.currentWeather = 'heatwave'; this.weatherTimer = 40 + Math.floor(Math.random() * 60); }
-            else { this.currentWeather = 'clear'; this.weatherTimer = 60 + Math.floor(Math.random() * 100); }
-        } else {
-            if (roll < 0.1) { this.currentWeather = 'thunderstorm'; this.weatherTimer = 10 + Math.floor(Math.random() * 15); }
-            else if (roll < 0.25) { this.currentWeather = 'rain'; this.weatherTimer = 25 + Math.floor(Math.random() * 40); }
-            else { this.currentWeather = 'clear'; this.weatherTimer = 60 + Math.floor(Math.random() * 80); }
+        let cumulative = 0;
+        for (const [type, prob, durRange] of table) {
+            cumulative += prob;
+            if (roll < cumulative) {
+                this.currentWeather = type;
+                this.weatherTimer = durRange[0] + Math.floor(Math.random() * (durRange[1] - durRange[0] + 1));
+                return;
+            }
         }
+        this.currentWeather = 'clear';
+        this.weatherTimer = 50 + Math.floor(Math.random() * 100);
     }
 
     getGrowthMultiplier() {
         let mult = SEASON_EFFECTS[this.season].cropGrowthMult;
-        if (this.currentWeather === 'rain') mult *= 1.3;
-        if (this.currentWeather === 'heatwave') mult *= 0.7;
-        if (this.currentWeather === 'blizzard') mult = 0;
+        const wDef = WEATHER_TYPES[this.currentWeather];
+        if (wDef && wDef.growthMult !== undefined) {
+            mult *= wDef.growthMult;
+        }
         return mult;
     }
 
@@ -78,12 +77,11 @@ export class Weather {
     }
 
     getSeasonDisplay() {
-        const icons = { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' };
-        return `${icons[this.season]} Y${this.year}`;
+        return `${this.season.charAt(0).toUpperCase() + this.season.slice(1)} Y${this.year}`;
     }
 
     getWeatherDisplay() {
-        const icons = { clear: 'Clear', rain: 'Rain', thunderstorm: 'Storm', snow: 'Snow', blizzard: 'Blizzard', heatwave: 'Heat Wave' };
-        return icons[this.currentWeather] || this.currentWeather;
+        const wDef = WEATHER_TYPES[this.currentWeather];
+        return wDef ? wDef.display : this.currentWeather;
     }
 }

@@ -1,4 +1,4 @@
-import { BUILDINGS } from './config.js';
+import { BUILDINGS, RESOURCES } from './config.js';
 
 export function designateBuild(game, x, y, buildType) {
     const tile = game.map[y][x];
@@ -25,34 +25,37 @@ export function designateBuild(game, x, y, buildType) {
     return true;
 }
 
-export function designateChop(game, x, y) {
+export function designateGather(game, x, y) {
     const tile = game.map[y][x];
-    if (!tile.resource || tile.resource.type !== 'tree') return false;
-    if (tile.designation) return false;
+    if (!tile.resource || tile.designation) return false;
 
-    tile.designation = { type: 'chop' };
+    const rDef = RESOURCES[tile.resource.type];
+    if (!rDef) return false;
+
+    tile.designation = { type: rDef.designation };
     game.taskQueue.add({
-        type: 'chop',
+        type: rDef.designation,
         skillRequired: 'building',
         x, y,
-        workAmount: 12,
+        workAmount: rDef.work,
     });
     return true;
 }
 
+export function designateChop(game, x, y) {
+    const tile = game.map[y][x];
+    if (!tile.resource) return false;
+    const rDef = RESOURCES[tile.resource.type];
+    if (!rDef || rDef.designation !== 'chop') return false;
+    return designateGather(game, x, y);
+}
+
 export function designateMine(game, x, y) {
     const tile = game.map[y][x];
-    if (!tile.resource || (tile.resource.type !== 'stone' && tile.resource.type !== 'runite_ore')) return false;
-    if (tile.designation) return false;
-
-    tile.designation = { type: 'mine' };
-    game.taskQueue.add({
-        type: 'mine',
-        skillRequired: 'building',
-        x, y,
-        workAmount: tile.resource.type === 'runite_ore' ? 22 : 18,
-    });
-    return true;
+    if (!tile.resource) return false;
+    const rDef = RESOURCES[tile.resource.type];
+    if (!rDef || rDef.designation !== 'mine') return false;
+    return designateGather(game, x, y);
 }
 
 export function cancelDesignation(game, x, y) {

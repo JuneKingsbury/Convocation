@@ -1,4 +1,4 @@
-import { CONFIG, TILE_CHARS, TILE_COLORS } from './config.js';
+import { CONFIG, TILE_CHARS, TILE_COLORS, TERRAIN, RESOURCES } from './config.js';
 
 export function createTile(terrain) {
     return {
@@ -29,6 +29,7 @@ export function generateMap() {
     placeRockFormations(map);
     placeTrees(map);
     placeWater(map);
+    placeRiverBanks(map);
     clearStartingArea(map);
 
     return map;
@@ -107,6 +108,43 @@ function placeWater(map) {
     }
 }
 
+function placeRiverBanks(map) {
+    const waterTiles = new Set();
+    for (let y = 0; y < CONFIG.MAP_HEIGHT; y++) {
+        for (let x = 0; x < CONFIG.MAP_WIDTH; x++) {
+            if (map[y][x].terrain === 'water') {
+                waterTiles.add(`${x},${y}`);
+            }
+        }
+    }
+
+    for (let y = 0; y < CONFIG.MAP_HEIGHT; y++) {
+        for (let x = 0; x < CONFIG.MAP_WIDTH; x++) {
+            const tile = map[y][x];
+            if (tile.terrain === 'water' || tile.terrain === 'rock') continue;
+
+            let minDist = Infinity;
+            for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    if (waterTiles.has(`${x + dx},${y + dy}`)) {
+                        const dist = Math.abs(dx) + Math.abs(dy);
+                        if (dist < minDist) minDist = dist;
+                    }
+                }
+            }
+
+            if (minDist === 1 && Math.random() < 0.85) {
+                tile.terrain = 'sand';
+                tile.resource = null;
+            } else if (minDist === 2 && Math.random() < 0.5) {
+                tile.terrain = 'gravel';
+                tile.resource = null;
+            }
+        }
+    }
+}
+
 function clearStartingArea(map) {
     const cx = Math.floor(CONFIG.MAP_WIDTH / 2);
     const cy = Math.floor(CONFIG.MAP_HEIGHT / 2);
@@ -135,12 +173,12 @@ export function getTileChar(tile, season) {
         return TILE_CHARS.farm_empty;
     }
     if (tile.resource) {
-        if (tile.resource.type === 'tree') return TILE_CHARS.tree;
-        if (tile.resource.type === 'stone') return TILE_CHARS.stone_resource;
-        if (tile.resource.type === 'runite_ore') return TILE_CHARS.stone_resource;
+        const rDef = RESOURCES[tile.resource.type];
+        if (rDef) return rDef.char;
     }
     if (tile.snowCovered && tile.terrain === 'grass') return TILE_CHARS.snow;
-    return TILE_CHARS[tile.terrain] || '?';
+    const tDef = TERRAIN[tile.terrain];
+    return tDef ? tDef.char : '?';
 }
 
 export function getTileColor(tile, season) {
@@ -152,14 +190,15 @@ export function getTileColor(tile, season) {
         return TILE_COLORS.farm_empty;
     }
     if (tile.resource) {
-        if (tile.resource.type === 'tree') {
-            return season === 'autumn' ? TILE_COLORS.tree_autumn : TILE_COLORS.tree;
+        const rDef = RESOURCES[tile.resource.type];
+        if (rDef) {
+            if (rDef.autumnColor && season === 'autumn') return rDef.autumnColor;
+            return rDef.color;
         }
-        if (tile.resource.type === 'runite_ore') return TILE_COLORS.runite_ore;
-        return TILE_COLORS.stone_resource;
     }
     if (tile.snowCovered) return TILE_COLORS.snow;
-    return TILE_COLORS[tile.terrain] || '#fff';
+    const tDef = TERRAIN[tile.terrain];
+    return tDef ? tDef.color : '#fff';
 }
 
 export const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret']);
@@ -175,16 +214,15 @@ export function isPassable(map, x, y) {
 
 export function getMoveCost(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return Infinity;
-    const terrain = map[y][x].terrain;
-    if (terrain === 'rock') return 4;
-    if (terrain === 'water') return 3;
-    return 1;
+    const tDef = TERRAIN[map[y][x].terrain];
+    return tDef ? tDef.moveCost : 1;
 }
 
 export function isPassableForAnimals(map, x, y) {
     if (!isPassable(map, x, y)) return false;
     const tile = map[y][x];
-    if (tile.terrain === 'rock' || tile.terrain === 'water') return false;
+    const tDef = TERRAIN[tile.terrain];
+    if (tDef && !tDef.passable.animal) return false;
     if (tile.structure === 'door' || tile.structure === 'void_door') return false;
     return true;
 }
@@ -193,7 +231,8 @@ export function isPassableForEnemies(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
     const tile = map[y][x];
     if (!tile.passable) return false;
-    if (tile.terrain === 'rock' || tile.terrain === 'water') return false;
+    const tDef = TERRAIN[tile.terrain];
+    if (tDef && !tDef.passable.enemy) return false;
     if (ENEMY_BLOCKED_STRUCTURES.has(tile.structure)) return false;
     return true;
 }

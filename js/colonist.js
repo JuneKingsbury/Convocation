@@ -1,4 +1,4 @@
-import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS } from './config.js';
+import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS } from './config.js';
 import { findPath, findPathAdjacent, manhattanDist } from './pathfinding.js';
 import { isPassable, getMoveCost, IMPASSABLE_STRUCTURES } from './map.js';
 import { FOODSTUFFS } from './resources.js';
@@ -29,20 +29,18 @@ export function createColonist(x, y, skillBias, existingNames = []) {
         traits.push(traitKeys[idx]);
     }
 
-    const skills = {
-        building: 2 + Math.floor(Math.random() * 4),
-        farming: 2 + Math.floor(Math.random() * 4),
-        crafting: 2 + Math.floor(Math.random() * 4),
-        cooking: 2 + Math.floor(Math.random() * 4),
-        animals: 1 + Math.floor(Math.random() * 4),
-    };
+    const skills = {};
+    for (const [key, def] of Object.entries(SKILLS)) {
+        const [min, max] = def.baseLevel;
+        skills[key] = min + Math.floor(Math.random() * (max - min + 1));
+    }
     if (skillBias && skills[skillBias] !== undefined) {
-        skills[skillBias] = Math.min(10, skills[skillBias] + 3);
+        skills[skillBias] = Math.min(10, skills[skillBias] + (SKILLS[skillBias].biasBonus || 3));
     }
 
     return {
         id, name, x, y, skills, traits,
-        priorities: { building: 3, farming: 3, crafting: 3, cooking: 3, animals: 3, hauling: 4 },
+        priorities: { ...Object.fromEntries(Object.keys(SKILLS).map(k => [k, 3])), hauling: 4 },
         needs: { hunger: 80 + Math.random() * 20, rest: 80 + Math.random() * 20 },
         mood: 60,
         thoughts: [],
@@ -98,7 +96,7 @@ function updateNeeds(colonist, game) {
     if (game.weather.season === 'winter' && !isIndoors(colonist, game.map)) {
         const warmed = game.power.isTileWarmed(game, colonist.x, colonist.y);
         if (!warmed) {
-            addThought(colonist, 'Freezing outside', -8, 50, game.tick);
+            applyThought(colonist, 'freezing', game.tick);
         }
     }
 }
@@ -144,6 +142,11 @@ export function addThought(colonist, text, moodEffect, duration, tick) {
     if (effect < 0 && colonist.traits.includes('pessimist')) effect *= TRAITS.pessimist.negativeThoughtMult;
 
     colonist.thoughts.push({ text, moodEffect: effect, duration, tickAdded: tick });
+}
+
+function applyThought(colonist, thoughtKey, tick) {
+    const t = THOUGHTS[thoughtKey];
+    if (t) addThought(colonist, t.text, t.moodEffect, t.duration, tick);
 }
 
 function computeMood(colonist) {
@@ -361,32 +364,29 @@ function completeTask(colonist, task, game) {
             tile.passable = !IMPASSABLE_STRUCTURES.has(task.buildType);
             game.roomsDirty = true;
             if (game.waves && game.waves.active) game.waves.invalidatePathPreview();
-            addThought(colonist, 'Built something', 3, 100, game.tick);
+            applyThought(colonist, 'built_something', game.tick);
             break;
         }
-        case 'chop': {
-            const tile = game.map[task.y][task.x];
-            if (tile.resource && tile.resource.type === 'tree') {
-                game.resources.add({ wood: tile.resource.amount });
-                tile.resource = null;
-            }
-            tile.designation = null;
-            addThought(colonist, 'Good honest work', 2, 80, game.tick);
-            break;
-        }
+        case 'chop':
         case 'mine': {
             const tile = game.map[task.y][task.x];
             if (tile.resource) {
-                if (tile.resource.type === 'stone') {
-                    game.resources.add({ stone: tile.resource.amount });
-                } else if (tile.resource.type === 'runite_ore') {
-                    game.resources.add({ runite: tile.resource.amount });
+                const rDef = RESOURCES[tile.resource.type];
+                if (rDef) {
+                    const output = {};
+                    for (const [res, amt] of Object.entries(rDef.yield)) {
+                        output[res] = rDef.perAmount ? tile.resource.amount * amt : amt;
+                    }
+                    game.resources.add(output);
                 }
                 tile.resource = null;
-                tile.terrain = 'dirt';
-                tile.passable = true;
+                if (task.type === 'mine') {
+                    tile.terrain = 'dirt';
+                    tile.passable = true;
+                }
             }
             tile.designation = null;
+            applyThought(colonist, 'good_work', game.tick);
             break;
         }
         case 'plant': {
@@ -406,7 +406,7 @@ function completeTask(colonist, task, game) {
                 game.resources.add(yields);
                 tile.zone.state = 'empty';
                 tile.zone.growth = 0;
-                addThought(colonist, 'Harvested crops', 3, 100, game.tick);
+                applyThought(colonist, 'harvested', game.tick);
             }
             break;
         }
@@ -426,7 +426,7 @@ function completeTask(colonist, task, game) {
                 if (!handled) {
                     game.resources.add(output);
                 }
-                addThought(colonist, 'Crafted something', 4, 120, game.tick);
+                applyThought(colonist, 'crafted', game.tick);
             }
             break;
         }
@@ -437,7 +437,7 @@ function completeTask(colonist, task, game) {
                     output.food += 2;
                 }
                 game.resources.add(output);
-                addThought(colonist, 'Cooked a meal', 3, 100, game.tick);
+                applyThought(colonist, 'cooked', game.tick);
             }
             break;
         }
@@ -455,7 +455,7 @@ function completeTask(colonist, task, game) {
             const tile = game.map[task.y][task.x];
             tile.onFire = false;
             tile.fireTimer = 0;
-            addThought(colonist, 'Put out a fire', 5, 150, game.tick);
+            applyThought(colonist, 'put_out_fire', game.tick);
             break;
         }
         case 'research': {
@@ -465,7 +465,7 @@ function completeTask(colonist, task, game) {
         case 'tame': {
             if (task.targetAnimalId) {
                 if (completeTame(game, task.targetAnimalId)) {
-                    addThought(colonist, 'Tamed an animal', 6, 150, game.tick);
+                    applyThought(colonist, 'tamed_animal', game.tick);
                 }
             }
             break;
@@ -474,7 +474,7 @@ function completeTask(colonist, task, game) {
             const tile = game.map[task.y][task.x];
             if (tile.structure && tile.structureHp !== undefined) {
                 tile.structureHp = undefined;
-                addThought(colonist, 'Repaired a structure', 3, 100, game.tick);
+                applyThought(colonist, 'repaired', game.tick);
             }
             break;
         }
@@ -493,7 +493,7 @@ function completeTask(colonist, task, game) {
                 tile.passable = true;
                 tile.designation = null;
                 game.roomsDirty = true;
-                addThought(colonist, 'Tore something down', 2, 80, game.tick);
+                applyThought(colonist, 'deconstructed', game.tick);
             }
             break;
         }
