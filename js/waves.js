@@ -1,5 +1,5 @@
-import { CONFIG, WAVE_CONFIG } from './config.js';
-import { isPassable } from './map.js';
+import { CONFIG, WAVE_CONFIG, STRUCTURE_HP } from './config.js';
+import { isPassableForEnemies, isBreakableByEnemies } from './map.js';
 import { manhattanDist } from './pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
 
@@ -136,7 +136,6 @@ export class WaveSystem {
             }
         }
 
-        // Pinned: a colonist in fighting state is adjacent — stay and fight
         for (const c of game.colonists) {
             if (c.hp <= 0 || c.state !== 'fighting') continue;
             if (manhattanDist(enemy.x, enemy.y, c.x, c.y) <= 1) return;
@@ -149,7 +148,51 @@ export class WaveSystem {
             return;
         }
 
-        moveToward(enemy, this.nexusPosition, game.map);
+        if (!enemy.path || enemy.path.length === 0 || enemy.pathAge > 20) {
+            enemy.path = findEnemyPath(game.map, enemy.x, enemy.y, this.nexusPosition.x, this.nexusPosition.y);
+            enemy.pathAge = 0;
+        }
+
+        if (enemy.path && enemy.path.length > 0) {
+            const next = enemy.path[0];
+            if (isBreakableByEnemies(game.map, next.x, next.y)) {
+                attackStructure(game, next.x, next.y, enemy.damage);
+                enemy.pathAge++;
+                return;
+            }
+            if (isPassableForEnemies(game.map, next.x, next.y)) {
+                enemy.x = next.x;
+                enemy.y = next.y;
+                enemy.path.shift();
+                enemy.pathAge++;
+            } else {
+                enemy.path = null;
+            }
+        } else {
+            moveTowardDirect(enemy, this.nexusPosition, game.map);
+        }
+    }
+
+    getPathPreview(game) {
+        if (!this.active || !this.nexusPosition) return [];
+        if (this._pathPreviewCache && this._pathPreviewAge < 30) {
+            this._pathPreviewAge++;
+            return this._pathPreviewCache;
+        }
+        const allPoints = [];
+        for (const p of this.portals) {
+            const path = findEnemyPath(game.map, p.x, p.y, this.nexusPosition.x, this.nexusPosition.y);
+            if (path) {
+                for (const pt of path) allPoints.push(pt);
+            }
+        }
+        this._pathPreviewCache = allPoints;
+        this._pathPreviewAge = 0;
+        return allPoints;
+    }
+
+    invalidatePathPreview() {
+        this._pathPreviewCache = null;
     }
 
     endWave(game, victory) {
@@ -174,20 +217,120 @@ export class WaveSystem {
     }
 }
 
-function moveToward(entity, target, map) {
+function moveTowardDirect(entity, target, map) {
     const dx = Math.sign(target.x - entity.x);
     const dy = Math.sign(target.y - entity.y);
     if (Math.random() < 0.5 && dx !== 0) {
         const nx = entity.x + dx;
-        if (isPassable(map, nx, entity.y)) { entity.x = nx; return; }
+        if (isPassableForEnemies(map, nx, entity.y)) { entity.x = nx; return; }
     }
     if (dy !== 0) {
         const ny = entity.y + dy;
-        if (isPassable(map, entity.x, ny)) { entity.y = ny; return; }
+        if (isPassableForEnemies(map, entity.x, ny)) { entity.y = ny; return; }
     }
     if (dx !== 0) {
         const nx = entity.x + dx;
-        if (isPassable(map, nx, entity.y)) { entity.x = nx; }
+        if (isPassableForEnemies(map, nx, entity.y)) { entity.x = nx; }
+    }
+}
+
+const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+const ENEMY_MAX_NODES = 2000;
+
+function getBreakCost(map, x, y) {
+    const tile = map[y][x];
+    const hp = tile.structureHp !== undefined ? tile.structureHp : (STRUCTURE_HP[tile.structure] || 50);
+    return Math.max(2, Math.ceil(hp / 5));
+}
+
+function findEnemyPath(map, startX, startY, endX, endY) {
+    const open = [];
+    const closed = new Set();
+    const cameFrom = new Map();
+    const gScore = new Map();
+
+    const key = (x, y) => `${x},${y}`;
+    const start = key(startX, startY);
+
+    gScore.set(start, 0);
+    open.push({ x: startX, y: startY, f: manhattanDist(startX, startY, endX, endY) });
+
+    let iterations = 0;
+    while (open.length > 0 && iterations < ENEMY_MAX_NODES) {
+        iterations++;
+        open.sort((a, b) => a.f - b.f);
+        const current = open.shift();
+        const currentKey = key(current.x, current.y);
+
+        if (manhattanDist(current.x, current.y, endX, endY) <= 1) {
+            const path = [];
+            let c = { x: current.x, y: current.y };
+            while (`${c.x},${c.y}` !== start) {
+                path.unshift(c);
+                const prev = cameFrom.get(`${c.x},${c.y}`);
+                if (!prev) break;
+                c = prev;
+            }
+            return path;
+        }
+
+        closed.add(currentKey);
+
+        for (const [dx, dy] of DIRS) {
+            const nx = current.x + dx;
+            const ny = current.y + dy;
+            if (nx < 0 || nx >= CONFIG.MAP_WIDTH || ny < 0 || ny >= CONFIG.MAP_HEIGHT) continue;
+            const nKey = key(nx, ny);
+            if (closed.has(nKey)) continue;
+
+            const tile = map[ny][nx];
+            if (!tile.passable) continue;
+
+            let cost = 1;
+            if (isBreakableByEnemies(map, nx, ny)) {
+                cost = getBreakCost(map, nx, ny);
+            } else if (!isPassableForEnemies(map, nx, ny)) {
+                continue;
+            }
+
+            const tentativeG = gScore.get(currentKey) + cost;
+            if (tentativeG < (gScore.get(nKey) ?? Infinity)) {
+                cameFrom.set(nKey, { x: current.x, y: current.y });
+                gScore.set(nKey, tentativeG);
+                const f = tentativeG + manhattanDist(nx, ny, endX, endY);
+                if (!open.some(n => n.x === nx && n.y === ny)) {
+                    open.push({ x: nx, y: ny, f });
+                } else {
+                    const existing = open.find(n => n.x === nx && n.y === ny);
+                    if (existing) existing.f = f;
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function attackStructure(game, x, y, damage) {
+    const tile = game.map[y][x];
+    if (!tile.structure) return;
+
+    if (tile.structureHp === undefined) {
+        tile.structureHp = STRUCTURE_HP[tile.structure] || 50;
+    }
+
+    tile.structureHp -= damage;
+    game.combatEffects.push({ x, y, char: '!', color: '#ff8800', ttl: 2 });
+
+    if (tile.structureHp <= 0) {
+        tile.structure = null;
+        tile.structureHp = undefined;
+        tile.passable = true;
+        game.roomsDirty = true;
+        for (const enemy of game.waves.enemies) {
+            enemy.path = null;
+        }
+        game.waves.invalidatePathPreview();
     }
 }
 

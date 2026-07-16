@@ -164,6 +164,7 @@ export function getTileColor(tile, season) {
 }
 
 const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret']);
+const ENEMY_BLOCKED_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret', 'door', 'void_door']);
 
 export function isPassable(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
@@ -181,6 +182,21 @@ export function getMoveCost(map, x, y) {
 export function isPassableForAnimals(map, x, y) {
     if (!isPassable(map, x, y)) return false;
     const tile = map[y][x];
-    if (tile.structure === 'door') return false;
+    if (tile.structure === 'door' || tile.structure === 'void_door') return false;
     return true;
+}
+
+export function isPassableForEnemies(map, x, y) {
+    if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
+    const tile = map[y][x];
+    if (!tile.passable) return false;
+    if (ENEMY_BLOCKED_STRUCTURES.has(tile.structure)) return false;
+    return true;
+}
+
+export function isBreakableByEnemies(map, x, y) {
+    if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
+    const tile = map[y][x];
+    const breakable = new Set(['wall', 'door', 'fence', 'void_wall', 'void_door']);
+    return breakable.has(tile.structure);
 }

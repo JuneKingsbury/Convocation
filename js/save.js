@@ -83,7 +83,7 @@ export function loadGame(game) {
     game.tick = data.tick;
     game.timeOfDay = data.timeOfDay;
     game.speed = data.speed;
-    game.settings = data.settings;
+    game.settings = { ...game.settings, ...data.settings };
 
     deserializeMap(game.map, data.map);
 
@@ -191,6 +191,7 @@ function serializeMap(map) {
                 p: tile.passable ? 1 : 0,
             };
             if (tile.structure) t.s = tile.structure;
+            if (tile.structureHp !== undefined) t.shp = tile.structureHp;
             if (tile.resource) t.r = tile.resource;
             if (tile.designation) t.d = tile.designation;
             if (tile.zone) t.z = tile.zone;
@@ -211,6 +212,7 @@ function deserializeMap(map, data) {
             tile.terrain = t.t;
             tile.passable = t.p === 1;
             tile.structure = t.s || null;
+            tile.structureHp = t.shp !== undefined ? t.shp : undefined;
             tile.resource = t.r || null;
             tile.designation = t.d || null;
             tile.zone = t.z || null;

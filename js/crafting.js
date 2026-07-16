@@ -36,21 +36,12 @@ function findAvailableStation(game, stationType) {
         for (let y = 0; y < game.map.length; y++) {
             for (let x = 0; x < game.map[y].length; x++) {
                 if (game.map[y][x].structure === 'enchanting_table') {
-                    const existingTask = game.taskQueue.getByPosition(x, y);
-                    if (!existingTask) return { x, y, powered: true };
+                    return { x, y, powered: true };
                 }
             }
         }
     }
 
-    for (let y = 0; y < game.map.length; y++) {
-        for (let x = 0; x < game.map[y].length; x++) {
-            if (game.map[y][x].structure === stationType) {
-                const existingTask = game.taskQueue.getByPosition(x, y);
-                if (!existingTask) return { x, y, powered: false };
-            }
-        }
-    }
     for (let y = 0; y < game.map.length; y++) {
         for (let x = 0; x < game.map[y].length; x++) {
             if (game.map[y][x].structure === stationType) {
@@ -70,4 +61,21 @@ export function getAvailableRecipes(game) {
         available.push({ key, recipe, hasResources, hasStation, canCraft: hasResources && hasStation });
     }
     return available;
+}
+
+export function updateAutoCook(game) {
+    const target = game.settings.autoCookTarget || 0;
+    if (target <= 0) return;
+
+    const recipe = RECIPES.cook_meal;
+    if (!recipe) return;
+    if (!findAvailableStation(game, recipe.station)) return;
+
+    const currentFood = game.resources.stockpile.food || 0;
+    const pendingCookTasks = game.taskQueue.getAll().filter(t => t.type === 'cook').length;
+    const expectedFood = currentFood + pendingCookTasks * recipe.output.food;
+
+    if (expectedFood < target && game.resources.has(recipe.input)) {
+        queueCraftingOrder(game, 'cook_meal');
+    }
 }

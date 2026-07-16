@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILD_COSTS, TILE_CHARS, TILE_COLORS, POWER_BUILDINGS, RESEARCH, TAMED_ANIMALS, WAVE_CONFIG } from './config.js';
+import { CONFIG, TRAITS, BUILD_COSTS, TILE_CHARS, TILE_COLORS, POWER_BUILDINGS, RESEARCH, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, STRUCTURE_HP, WEAPONS } from './config.js';
 import { getAvailableRecipes } from './crafting.js';
 import { CROP_RESEARCH_REQS } from './farming.js';
 
@@ -29,6 +29,15 @@ export class UI {
         this.elements.inventoryPanel = document.getElementById('inventory-panel');
         this.elements.tamingPanel = document.getElementById('taming-panel');
         this.elements.settingsPanel = document.getElementById('settings-panel');
+
+        this.elements.craftPanel.addEventListener('click', (e) => {
+            const tab = e.target.closest('[data-craft-tab]');
+            if (tab) {
+                this._craftTab = tab.dataset.craftTab;
+                this._lastCraftHtml = '';
+                this.updateCraftPanel();
+            }
+        });
 
         this.elements.colonistHud.addEventListener('click', (e) => {
             const row = e.target.closest('[data-colonist-id]');
@@ -243,9 +252,9 @@ export class UI {
         const powerDef = POWER_BUILDINGS[structure];
         let html = '';
         const desc = {
-            wall: 'Blocks movement. Forms rooms when enclosing an area with doors.',
+            wall: 'Blocks movement (50 HP). Forms rooms when enclosing an area with doors.',
             floor: 'Cosmetic flooring. Makes rooms nicer.',
-            door: 'Allows passage through walls. Acts as a room boundary.',
+            door: 'Allows colonist passage (30 HP). Blocks enemies. Room boundary.',
             bed: 'Colonists sleep here. Assign for a mood bonus.',
             workbench: 'Required for crafting recipes (planks, weapons, bricks).',
             cauldron: 'Required for cooking meals from raw food and crops.',
@@ -260,8 +269,9 @@ export class UI {
             ember_ward: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.',
             arcane_sentinel: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.',
             void_nexus: 'Start wave defense here. Defend it from enemies to earn void essence.',
-            void_wall: 'Reinforced wall. Blocks movement.',
+            void_wall: 'Reinforced wall (120 HP). Blocks enemies.',
             void_turret: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.',
+            void_door: 'Reinforced door (80 HP). Colonists pass through, enemies must break it.',
         };
         if (desc[structure]) {
             html += `<div class="info-row" style="color:#999;font-size:11px;">${desc[structure]}</div>`;
@@ -299,32 +309,79 @@ export class UI {
     showColonistInfo(colonist) {
         this._switchToInfoTab();
         const moodLevel = getMoodLabel(colonist.mood);
-        const traitNames = colonist.traits.map(t => TRAITS[t]?.name || t).join(', ');
+        const traitSpans = colonist.traits.map(t => {
+            const trait = TRAITS[t];
+            if (!trait) return t;
+            return `<span class="skill-tip" data-tip="${trait.description}">${trait.name}</span>`;
+        }).join(', ');
         const thoughts = colonist.thoughts.slice(-5).map(t =>
             `<span class="${t.moodEffect >= 0 ? 'positive' : 'negative'}">${t.text} (${t.moodEffect > 0 ? '+' : ''}${t.moodEffect.toFixed(0)})</span>`
         ).join('<br>');
+
+        const weaponTip = colonist.weapon ? `${colonist.weapon.damage} damage` : 'No weapon equipped';
+        const armorTip = colonist.armor ? `${Math.round(colonist.armor.damageReduction * 100)}% damage reduction` : 'No armor equipped';
 
         let html = `<div class="info-header" style="cursor:pointer" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}</div>`;
         html += `<div class="info-row">HP: ${colonist.hp}/${colonist.maxHp}</div>`;
         html += `<div class="info-row">Mood: <span class="mood-${moodLevel}">${colonist.mood.toFixed(0)} (${moodLevel})</span></div>`;
         html += `<div class="info-row">State: ${colonist.state}</div>`;
-        html += `<div class="info-row">Traits: ${traitNames}</div>`;
+        html += `<div class="info-row">Traits: ${traitSpans}</div>`;
         html += `<div class="info-row">Hunger: ${bar(colonist.needs.hunger)} Rest: ${bar(colonist.needs.rest)}</div>`;
-        html += `<div class="info-row">Skills: B:${colonist.skills.building} F:${colonist.skills.farming} C:${colonist.skills.crafting} K:${colonist.skills.cooking}</div>`;
-        html += `<div class="info-row">Weapon: ${colonist.weapon?.name || 'Fists'}</div>`;
-        html += `<div class="info-row">Armor: ${colonist.armor?.name || 'None'}</div>`;
+        html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${colonist.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${colonist.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${colonist.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${colonist.skills.cooking}</span></div>`;
+        html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${colonist.weapon?.name || 'Fists'}</span></div>`;
+        html += `<div class="info-row">Armor: <span class="skill-tip" data-tip="${armorTip}">${colonist.armor?.name || 'None'}</span></div>`;
         html += `<div class="info-row">Bed: ${colonist.assignedBed ? `(${colonist.assignedBed.x},${colonist.assignedBed.y})` : 'None'}</div>`;
         if (thoughts) html += `<div class="info-thoughts"><b>Thoughts:</b><br>${thoughts}</div>`;
         html += `<div class="info-actions">`;
         html += `<button onclick="window.game.toggleDraft(${colonist.id})">Draft/Undraft</button>`;
-        html += `<button onclick="window.game.equipWeapon(${colonist.id})">Equip Weapon</button>`;
-        html += `<button onclick="window.game.equipArmor(${colonist.id})">Equip Armor</button>`;
+        html += this.buildWeaponDropdown(colonist);
+        html += this.buildArmorDropdown(colonist);
         html += `<button onclick="window.game.centerOnColonist(${colonist.id})">Center Camera</button>`;
         const isFollowing = this.game.followingColonist === colonist.id;
         html += `<button onclick="window.game.toggleFollow(${colonist.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
         html += `</div>`;
 
         this.elements.infoPanel.innerHTML = html;
+    }
+
+    buildWeaponDropdown(colonist) {
+        const weapons = this.game.resources.weapons;
+        let html = `<select onchange="if(this.value==='unequip'){window.game.unequipWeapon(${colonist.id})}else if(this.value!==''){window.game.equipWeapon(${colonist.id},parseInt(this.value))}">`;
+        html += `<option value="">Weapon: ${colonist.weapon?.name || 'Fists'}</option>`;
+        if (colonist.weapon) {
+            html += `<option value="unequip">Unequip ${colonist.weapon.name}</option>`;
+        }
+        weapons.forEach((w, i) => {
+            html += `<option value="${i}">${w.name} (${w.damage} dmg)</option>`;
+        });
+        if (weapons.length === 0 && !colonist.weapon) {
+            html += `<option disabled>No weapons available</option>`;
+        }
+        html += `</select>`;
+        return html;
+    }
+
+    buildArmorDropdown(colonist) {
+        const armors = this.game.resources.armors;
+        let html = `<select onchange="if(this.value==='unequip'){window.game.unequipArmor(${colonist.id})}else if(this.value!==''){window.game.equipArmor(${colonist.id},parseInt(this.value))}">`;
+        html += `<option value="">Armor: ${colonist.armor?.name || 'None'}</option>`;
+        if (colonist.armor) {
+            html += `<option value="unequip">Unequip ${colonist.armor.name}</option>`;
+        }
+        armors.forEach((a, i) => {
+            html += `<option value="${i}">${a.name} (${Math.round(a.damageReduction * 100)}% DR)</option>`;
+        });
+        if (armors.length === 0 && !colonist.armor) {
+            html += `<option disabled>No armor available</option>`;
+        }
+        html += `</select>`;
+        return html;
+    }
+
+    getCraftOutputTip(outputKey) {
+        if (WEAPONS[outputKey]) return `${WEAPONS[outputKey].damage} damage`;
+        if (outputKey === 'void_armor') return '30% damage reduction';
+        return null;
     }
 
     showAnimalInfo(animal) {
@@ -346,6 +403,12 @@ export class UI {
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
         if (tile.structure) {
             html += `<div class="info-row" style="color:#ddd;font-weight:bold;">${tile.structure.replace(/_/g,' ')}</div>`;
+            const maxHp = STRUCTURE_HP[tile.structure];
+            if (maxHp) {
+                const currentHp = tile.structureHp !== undefined ? tile.structureHp : maxHp;
+                const hpColor = currentHp >= maxHp ? '#88ff88' : currentHp > maxHp * 0.5 ? '#ffcc00' : '#ff4444';
+                html += `<div class="info-row" style="color:${hpColor}">HP: ${currentHp} / ${maxHp}</div>`;
+            }
             html += this.getStructureDescription(tile.structure);
         }
         if (tile.resource) html += `<div class="info-row">Resource: ${tile.resource.type} (${tile.resource.amount})</div>`;
@@ -413,18 +476,25 @@ export class UI {
 
         for (const c of colonists) {
             const moodLevel = getMoodLabel(c.mood);
-            const traitNames = c.traits.map(t => TRAITS[t]?.name || t).join(', ');
+            const traitSpans = c.traits.map(t => {
+                const trait = TRAITS[t];
+                if (!trait) return t;
+                return `<span class="skill-tip" data-tip="${trait.description}">${trait.name}</span>`;
+            }).join(', ');
+            const weaponTip = c.weapon ? `${c.weapon.damage} damage` : 'No weapon equipped';
+            const armorTip = c.armor ? `${Math.round(c.armor.damageReduction * 100)}% damage reduction` : 'No armor equipped';
             html += `<div style="border-bottom:1px solid #444;margin-bottom:6px;padding-bottom:6px;">`;
             html += `<div class="info-header" style="cursor:pointer" onclick="window.game.selectColonistById(${c.id})">${c.name} ${c.drafted ? '[DRAFTED]' : ''}</div>`;
             html += `<div class="info-row">HP: ${c.hp}/${c.maxHp} | Mood: <span class="mood-${moodLevel}">${c.mood.toFixed(0)} (${moodLevel})</span></div>`;
             html += `<div class="info-row">State: ${c.state}</div>`;
             html += `<div class="info-row">Hunger: ${bar(c.needs.hunger)} Rest: ${bar(c.needs.rest)}</div>`;
-            html += `<div class="info-row">Traits: ${traitNames}</div>`;
-            html += `<div class="info-row">Weapon: ${c.weapon?.name || 'Fists'} | Armor: ${c.armor?.name || 'None'}</div>`;
+            html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${c.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${c.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${c.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${c.skills.cooking}</span></div>`;
+            html += `<div class="info-row">Traits: ${traitSpans}</div>`;
+            html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${c.weapon?.name || 'Fists'}</span> | Armor: <span class="skill-tip" data-tip="${armorTip}">${c.armor?.name || 'None'}</span></div>`;
             html += `<div class="info-actions">`;
             html += `<button onclick="window.game.toggleDraft(${c.id})">${c.drafted ? 'Undraft' : 'Draft'}</button>`;
-            html += `<button onclick="window.game.equipWeapon(${c.id})">Equip Wpn</button>`;
-            html += `<button onclick="window.game.equipArmor(${c.id})">Equip Armor</button>`;
+            html += this.buildWeaponDropdown(c);
+            html += this.buildArmorDropdown(c);
             const isFollowing = this.game.followingColonist === c.id;
             html += `<button onclick="window.game.toggleFollow(${c.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
             html += `</div></div>`;
@@ -443,6 +513,12 @@ export class UI {
         if (tile.onFire) html += `<div class="info-row fire">ON FIRE!</div>`;
         if (tile.structure) {
             html += `<div class="info-row" style="color:#ddd;font-weight:bold;">${tile.structure.replace(/_/g,' ')}</div>`;
+            const maxHp = STRUCTURE_HP[tile.structure];
+            if (maxHp) {
+                const currentHp = tile.structureHp !== undefined ? tile.structureHp : maxHp;
+                const hpColor = currentHp >= maxHp ? '#88ff88' : currentHp > maxHp * 0.5 ? '#ffcc00' : '#ff4444';
+                html += `<div class="info-row" style="color:${hpColor}">HP: ${currentHp} / ${maxHp}</div>`;
+            }
             html += this.getStructureDescription(tile.structure);
         }
         if (tile.zone) html += `<div class="info-row">Zone: ${tile.zone.crop} (${tile.zone.state})</div>`;
@@ -610,16 +686,44 @@ export class UI {
     }
 
     updateCraftPanel() {
+        if (!this._craftTab) this._craftTab = RECIPE_CATEGORIES[0];
         const recipes = getAvailableRecipes(this.game);
         let html = '<div class="panel-close" data-panel-close="craft">&times;</div><h3>Crafting Orders</h3>';
-        for (const { key, recipe, canCraft } of recipes) {
-            const inputStr = Object.entries(recipe.input).map(([k, v]) => `${k}:${v}`).join('+');
-            const outputStr = Object.entries(recipe.output).map(([k, v]) => `${k}:${v}`).join('+');
+        html += '<div class="craft-tabs">';
+        for (const cat of RECIPE_CATEGORIES) {
+            const active = cat === this._craftTab ? ' active' : '';
+            html += `<button class="craft-tab${active}" data-craft-tab="${cat}">${cat}</button>`;
+        }
+        html += '</div>';
+        const filtered = recipes.filter(r => (r.recipe.category || 'Materials') === this._craftTab);
+        for (const { key, recipe, canCraft } of filtered) {
+            const inputStr = Object.entries(recipe.input).map(([k, v]) => {
+                if (k === 'foodstuffs') return `${v} foodstuffs (have ${this.game.resources.getFoodstuffTotal()})`;
+                return `${k}:${v}`;
+            }).join(' + ');
+            const outputStr = Object.entries(recipe.output).map(([k, v]) => {
+                const tip = this.getCraftOutputTip(k);
+                if (tip) return `<span class="skill-tip" data-tip="${tip}">${k.replace(/_/g, ' ')}${v > 1 ? ':' + v : ''}</span>`;
+                return `${k}:${v}`;
+            }).join('+');
             const cls = canCraft ? 'craft-available' : 'craft-unavailable';
             html += `<div class="craft-row ${cls}">`;
             html += `<button ${canCraft ? '' : 'disabled'} onclick="window.game.craft('${key}')">${key.replace(/_/g, ' ')}</button>`;
             html += `<span>${inputStr} → ${outputStr}</span>`;
             html += `</div>`;
+        }
+        if (filtered.length === 0) {
+            html += '<div style="color:#666; padding:8px;">No recipes available in this category.</div>';
+        }
+        if (this._craftTab === 'Food & Potions') {
+            const target = this.game.settings.autoCookTarget || 0;
+            html += '<div style="margin-top:12px; padding-top:8px; border-top:1px solid #444;">';
+            html += `<div style="display:flex; align-items:center; gap:8px;">`;
+            html += `<label style="color:#ccc; white-space:nowrap;">Auto-cook target: <span id="autocook-val" style="color:#88cc88; font-weight:bold;">${target || 'Off'}</span></label>`;
+            html += `<input type="range" id="set-autocook" min="0" max="100" step="10" value="${target}" style="flex:1" oninput="window.game.settings.autoCookTarget=parseInt(this.value);document.getElementById('autocook-val').textContent=this.value||'Off'">`;
+            html += `</div>`;
+            html += `<div style="color:#777; font-size:0.83em; margin-top:4px;">Automatically queues cooking when food drops below target.</div>`;
+            html += '</div>';
         }
         if (html !== this._lastCraftHtml) {
             this._lastCraftHtml = html;
@@ -968,17 +1072,17 @@ export class UI {
 
         if (weapons.length > 0) {
             html += '<div class="info-row" style="color:#cc8888;margin-top:8px;margin-bottom:4px;"><b>Weapons in Storage:</b></div>';
-            for (const w of weapons) {
-                html += `<div class="inv-row"><span class="inv-name">${w.name}</span><span class="inv-amount">Dmg: ${w.damage}</span></div>`;
-            }
+            weapons.forEach((w, i) => {
+                html += `<div class="inv-row"><span class="inv-name">${w.name}</span><span class="inv-amount">Dmg: ${w.damage}</span><button class="inv-delete" onclick="if(confirm('Discard ${w.name}?')){window.game.discardWeapon(${i})}">x</button></div>`;
+            });
         }
 
         const armors = this.game.resources.armors;
         if (armors.length > 0) {
             html += '<div class="info-row" style="color:#9966cc;margin-top:8px;margin-bottom:4px;"><b>Armor in Storage:</b></div>';
-            for (const a of armors) {
-                html += `<div class="inv-row"><span class="inv-name">${a.name}</span><span class="inv-amount">-${Math.round(a.damageReduction * 100)}% dmg</span></div>`;
-            }
+            armors.forEach((a, i) => {
+                html += `<div class="inv-row"><span class="inv-name">${a.name}</span><span class="inv-amount">-${Math.round(a.damageReduction * 100)}% dmg</span><button class="inv-delete" onclick="if(confirm('Discard ${a.name}?')){window.game.discardArmor(${i})}">x</button></div>`;
+            });
         }
 
         const tamed = this.game.tamedAnimals;

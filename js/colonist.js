@@ -1,6 +1,7 @@
-import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, BUILD_COSTS } from './config.js';
+import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, BUILD_COSTS, STRUCTURE_HP } from './config.js';
 import { findPath, findPathAdjacent, manhattanDist } from './pathfinding.js';
 import { isPassable, getMoveCost } from './map.js';
+import { FOODSTUFFS } from './resources.js';
 
 let nextColonistId = 1;
 
@@ -187,14 +188,18 @@ function updateIdle(colonist, game) {
         return;
     }
 
+    const waveActive = game.waves && game.waves.active && game.waves.enemies.length > 0;
     const threat = findNearestHostile(colonist, game);
-    if (threat && manhattanDist(colonist.x, colonist.y, threat.x, threat.y) <= 8) {
-        colonist.state = 'fighting';
-        return;
+    if (threat) {
+        const dist = manhattanDist(colonist.x, colonist.y, threat.x, threat.y);
+        if (waveActive || dist <= 8) {
+            colonist.state = 'fighting';
+            return;
+        }
     }
 
     if (colonist.needs.hunger < 20 &&
-        (game.resources.stockpile.food > 0 || game.resources.stockpile.berries > 0 || game.resources.stockpile.meat > 0)) {
+        (game.resources.stockpile.food > 0 || game.resources.getFoodstuffTotal() > 0)) {
         colonist.state = 'eating';
         return;
     }
@@ -246,6 +251,17 @@ function wander(colonist, game) {
 }
 
 function updateMoving(colonist, game) {
+    if (game.waves && game.waves.active && game.waves.enemies.length > 0) {
+        const threat = findNearestHostile(colonist, game);
+        if (threat && colonist.currentTaskId) {
+            game.taskQueue.release(colonist.currentTaskId);
+            colonist.currentTaskId = null;
+            colonist.path = [];
+            colonist.state = 'fighting';
+            return;
+        }
+    }
+
     if (colonist.moveCooldown > 0) {
         colonist.moveCooldown--;
         return;
@@ -289,6 +305,16 @@ function updateMoving(colonist, game) {
 }
 
 function updateWorking(colonist, game) {
+    if (game.waves && game.waves.active && game.waves.enemies.length > 0) {
+        const threat = findNearestHostile(colonist, game);
+        if (threat && colonist.currentTaskId) {
+            game.taskQueue.release(colonist.currentTaskId);
+            colonist.currentTaskId = null;
+            colonist.state = 'fighting';
+            return;
+        }
+    }
+
     const task = game.taskQueue.getAll().find(t => t.id === colonist.currentTaskId);
     if (!task) {
         colonist.state = 'idle';
@@ -328,6 +354,7 @@ function completeTask(colonist, task, game) {
             const impassableTypes = ['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret'];
             tile.passable = !impassableTypes.includes(task.buildType);
             game.roomsDirty = true;
+            if (game.waves && game.waves.active) game.waves.invalidatePathPreview();
             addThought(colonist, 'Built something', 3, 100, game.tick);
             break;
         }
@@ -401,7 +428,11 @@ function completeTask(colonist, task, game) {
         }
         case 'cook': {
             if (task.recipe) {
-                game.resources.add(task.recipe.output);
+                const output = { ...task.recipe.output };
+                if (output.food && game.research.isResearched('alchemy')) {
+                    output.food += 2;
+                }
+                game.resources.add(output);
                 addThought(colonist, 'Cooked a meal', 3, 100, game.tick);
             }
             break;
@@ -425,6 +456,14 @@ function completeTask(colonist, task, game) {
         }
         case 'research': {
             game.research.addProgress(colonist.skills.crafting + 2);
+            break;
+        }
+        case 'repair': {
+            const tile = game.map[task.y][task.x];
+            if (tile.structure && tile.structureHp !== undefined) {
+                tile.structureHp = undefined;
+                addThought(colonist, 'Repaired a structure', 3, 100, game.tick);
+            }
             break;
         }
         case 'deconstruct': {
@@ -464,28 +503,31 @@ function updateEating(colonist, game) {
         } else {
             addThought(colonist, 'Ate a meal', 5, 150, game.tick);
         }
-    } else if (game.resources.stockpile.meat > 0) {
-        game.resources.stockpile.meat--;
-        colonist.needs.hunger = Math.min(100, colonist.needs.hunger + 40);
-        colonist.state = 'idle';
-        if (colonist.traits.includes('gourmand')) {
-            addThought(colonist, 'Ate raw meat', TRAITS.gourmand.rawFoodMoodPenalty, 200, game.tick);
-        } else {
-            addThought(colonist, 'Ate raw meat', -5, 100, game.tick);
-        }
-    } else if (game.resources.stockpile.berries > 0) {
-        game.resources.stockpile.berries--;
-        colonist.needs.hunger = Math.min(100, colonist.needs.hunger + 30);
-        colonist.state = 'idle';
-        if (colonist.traits.includes('gourmand')) {
-            addThought(colonist, 'Ate raw food', TRAITS.gourmand.rawFoodMoodPenalty, 200, game.tick);
-        } else {
-            addThought(colonist, 'Ate raw berries', -3, 100, game.tick);
-        }
     } else {
-        colonist.state = 'idle';
-        addThought(colonist, 'Starving', -20, 100, game.tick);
+        const eaten = eatRawFoodstuff(game);
+        if (eaten) {
+            colonist.needs.hunger = Math.min(100, colonist.needs.hunger + 35);
+            colonist.state = 'idle';
+            if (colonist.traits.includes('gourmand')) {
+                addThought(colonist, 'Ate raw food', TRAITS.gourmand.rawFoodMoodPenalty, 200, game.tick);
+            } else {
+                addThought(colonist, 'Ate raw food', -4, 100, game.tick);
+            }
+        } else {
+            colonist.state = 'idle';
+            addThought(colonist, 'Starving', -20, 100, game.tick);
+        }
     }
+}
+
+function eatRawFoodstuff(game) {
+    for (const item of FOODSTUFFS) {
+        if ((game.resources.stockpile[item] || 0) > 0) {
+            game.resources.stockpile[item]--;
+            return true;
+        }
+    }
+    return false;
 }
 
 function startSleeping(colonist, game) {
@@ -531,7 +573,8 @@ function updateFighting(colonist, game) {
     }
 
     const dist = manhattanDist(colonist.x, colonist.y, target.x, target.y);
-    if (dist > 8) {
+    const waveActive = game.waves && game.waves.active && game.waves.enemies.length > 0;
+    if (dist > 8 && !waveActive) {
         colonist.state = 'idle';
         return;
     }

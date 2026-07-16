@@ -1,4 +1,4 @@
-import { CONFIG, RESEARCH } from './config.js';
+import { CONFIG, RESEARCH, STRUCTURE_HP } from './config.js';
 import { generateMap } from './map.js';
 import { Camera } from './camera.js';
 import { Renderer } from './renderer.js';
@@ -8,7 +8,7 @@ import { TaskQueue } from './tasks.js';
 import { ResourceManager } from './resources.js';
 import { detectRooms } from './rooms.js';
 import { updateFarming } from './farming.js';
-import { queueCraftingOrder } from './crafting.js';
+import { queueCraftingOrder, updateAutoCook } from './crafting.js';
 import { Weather } from './weather.js';
 import { updateWildlife, designateHunt } from './wildlife.js';
 import { CombatSystem } from './combat.js';
@@ -35,6 +35,7 @@ class Game {
             autoPauseHostile: true,
             autoPauseEvent: true,
             uiFontSize: 12,
+            autoCookTarget: 0,
         };
 
         this.map = generateMap();
@@ -148,6 +149,8 @@ class Game {
         if (this.tick % 10 === 0) {
             this.power.update(this);
             updateTamedAnimals(this);
+            updateAutoCook(this);
+            updateAutoRepair(this);
         }
 
         if (this.tick % 3 === 0 && this.power.hasPower()) {
@@ -294,18 +297,24 @@ class Game {
         if (this.selectedColonist) this.ui.showColonistInfo(this.selectedColonist);
     }
 
-    equipWeapon(colonistId) {
+    equipWeapon(colonistId, index) {
         const c = this.colonists.find(col => col.id === colonistId);
         if (!c) return;
-        const weapon = this.resources.takeWeapon();
-        if (weapon) {
-            if (c.weapon) this.resources.addWeapon(c.weapon);
-            c.weapon = weapon;
-            this.notifications.push({ text: `${c.name} equipped ${weapon.name}`, tick: this.tick, type: 'success' });
-            this.ui.showColonistInfo(c);
-        } else {
-            this.notifications.push({ text: 'No weapons available! Craft some first.', tick: this.tick, type: 'danger' });
-        }
+        if (index === undefined || index < 0 || index >= this.resources.weapons.length) return;
+        const weapon = this.resources.weapons.splice(index, 1)[0];
+        if (c.weapon) this.resources.addWeapon(c.weapon);
+        c.weapon = weapon;
+        this.notifications.push({ text: `${c.name} equipped ${weapon.name}`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    unequipWeapon(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c || !c.weapon) return;
+        this.resources.addWeapon(c.weapon);
+        c.weapon = null;
+        this.notifications.push({ text: `${c.name} unequipped weapon`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
     }
 
     huntAnimal(animalId) {
@@ -361,18 +370,38 @@ class Game {
         }
     }
 
-    equipArmor(colonistId) {
+    equipArmor(colonistId, index) {
         const c = this.colonists.find(col => col.id === colonistId);
         if (!c) return;
-        const armor = this.resources.takeArmor();
-        if (armor) {
-            if (c.armor) this.resources.addArmor(c.armor);
-            c.armor = armor;
-            this.notifications.push({ text: `${c.name} equipped ${armor.name}`, tick: this.tick, type: 'success' });
-            this.ui.showColonistInfo(c);
-        } else {
-            this.notifications.push({ text: 'No armor available! Craft some first.', tick: this.tick, type: 'danger' });
-        }
+        if (index === undefined || index < 0 || index >= this.resources.armors.length) return;
+        const armor = this.resources.armors.splice(index, 1)[0];
+        if (c.armor) this.resources.addArmor(c.armor);
+        c.armor = armor;
+        this.notifications.push({ text: `${c.name} equipped ${armor.name}`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    unequipArmor(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c || !c.armor) return;
+        this.resources.addArmor(c.armor);
+        c.armor = null;
+        this.notifications.push({ text: `${c.name} unequipped armor`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    discardWeapon(index) {
+        if (index < 0 || index >= this.resources.weapons.length) return;
+        const w = this.resources.weapons.splice(index, 1)[0];
+        this.notifications.push({ text: `Discarded ${w.name}`, tick: this.tick, type: 'event' });
+        this.ui.updateInventoryPanel();
+    }
+
+    discardArmor(index) {
+        if (index < 0 || index >= this.resources.armors.length) return;
+        const a = this.resources.armors.splice(index, 1)[0];
+        this.notifications.push({ text: `Discarded ${a.name}`, tick: this.tick, type: 'event' });
+        this.ui.updateInventoryPanel();
     }
 
     tameAnimalType(type) {
@@ -425,6 +454,25 @@ class Game {
             this.research.completed.add(key);
         }
         this.notifications.push({ text: '[DEBUG] 999 resources + all research granted', tick: this.tick, type: 'success' });
+    }
+}
+
+function updateAutoRepair(game) {
+    for (let y = 0; y < game.map.length; y++) {
+        for (let x = 0; x < game.map[y].length; x++) {
+            const tile = game.map[y][x];
+            if (!tile.structure || tile.structureHp === undefined) continue;
+            const maxHp = STRUCTURE_HP[tile.structure];
+            if (!maxHp || tile.structureHp >= maxHp) continue;
+            const existing = game.taskQueue.getByPosition(x, y);
+            if (existing) continue;
+            game.taskQueue.add({
+                type: 'repair',
+                skillRequired: 'building',
+                x, y,
+                workAmount: 15,
+            });
+        }
     }
 }
 

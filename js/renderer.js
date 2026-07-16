@@ -39,11 +39,11 @@ export class Renderer {
         if (game.waves && game.waves.active && game.waves.portals.length > 0) {
             for (const p of game.waves.portals) {
                 portalMap.set(p.y * CONFIG.MAP_WIDTH + p.x, true);
-                const points = getLinePoints(p.x, p.y, game.waves.nexusPosition.x, game.waves.nexusPosition.y);
-                for (const pt of points) {
-                    const key = pt.y * CONFIG.MAP_WIDTH + pt.x;
-                    if (!portalMap.has(key)) portalPathMap.set(key, true);
-                }
+            }
+            const pathPoints = game.waves.getPathPreview(game);
+            for (const pt of pathPoints) {
+                const key = pt.y * CONFIG.MAP_WIDTH + pt.x;
+                if (!portalMap.has(key)) portalPathMap.set(key, true);
             }
         }
 

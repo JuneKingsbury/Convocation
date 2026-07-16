@@ -16,8 +16,8 @@ export class InputHandler {
         this.keysDown = new Set();
         this.touchPanMode = false;
 
-        this.buildOptions = ['wall', 'floor', 'door', 'bed', 'workbench', 'cauldron', 'storage_chest', 'torch', 'fence', 'arcanum', 'beast_circle', 'mana_crystal', 'glowstone', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret'];
-        this.dragBuildTypes = new Set(['wall', 'floor', 'door', 'fence', 'torch']);
+        this.buildOptions = ['wall', 'floor', 'door', 'bed', 'workbench', 'cauldron', 'storage_chest', 'torch', 'fence', 'arcanum', 'beast_circle', 'mana_crystal', 'glowstone', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret', 'void_door'];
+        this.dragBuildTypes = new Set(['wall', 'floor', 'door', 'fence', 'torch', 'void_wall', 'void_door']);
         this.singlePlaceTypes = new Set(['bed', 'workbench', 'cauldron', 'storage_chest', 'arcanum', 'beast_circle', 'mana_crystal', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus']);
         this.cropOptions = Object.keys(CROPS);
         this.designateMode = 'chop';

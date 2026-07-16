@@ -1,5 +1,7 @@
 import { CONFIG } from './config.js';
 
+export const FOODSTUFFS = ['wheat', 'berries', 'corn', 'potatoes', 'meat', 'eggs', 'milk'];
+
 export class ResourceManager {
     constructor() {
         this.stockpile = { ...CONFIG.START_RESOURCES };
@@ -7,16 +9,43 @@ export class ResourceManager {
         this.armors = [];
     }
 
+    getFoodstuffTotal() {
+        let total = 0;
+        for (const item of FOODSTUFFS) {
+            total += this.stockpile[item] || 0;
+        }
+        return total;
+    }
+
     has(costs) {
         for (const [resource, amount] of Object.entries(costs)) {
-            if ((this.stockpile[resource] || 0) < amount) return false;
+            if (resource === 'foodstuffs') {
+                if (this.getFoodstuffTotal() < amount) return false;
+            } else {
+                if ((this.stockpile[resource] || 0) < amount) return false;
+            }
         }
         return true;
     }
 
     deduct(costs) {
         for (const [resource, amount] of Object.entries(costs)) {
-            this.stockpile[resource] = (this.stockpile[resource] || 0) - amount;
+            if (resource === 'foodstuffs') {
+                this.deductFoodstuffs(amount);
+            } else {
+                this.stockpile[resource] = (this.stockpile[resource] || 0) - amount;
+            }
+        }
+    }
+
+    deductFoodstuffs(amount) {
+        let remaining = amount;
+        for (const item of FOODSTUFFS) {
+            if (remaining <= 0) break;
+            const available = this.stockpile[item] || 0;
+            const take = Math.min(available, remaining);
+            this.stockpile[item] -= take;
+            remaining -= take;
         }
     }
 

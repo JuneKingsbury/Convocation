@@ -482,6 +482,25 @@ body {
 
 .info-row { margin: 3px 0; color: #ccc; }
 .info-row.fire { color: #ff4400; font-weight: bold; }
+.skill-tip { position: relative; cursor: help; border-bottom: 1px dotted #666; }
+.skill-tip::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    color: #eee;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+    z-index: 20;
+}
+.skill-tip:hover::after { opacity: 1; }
 .info-thoughts { margin-top: 8px; font-size: 0.92em; line-height: 1.5; }
 .info-thoughts .positive { color: #66cc66; }
 .info-thoughts .negative { color: #cc6666; }
@@ -505,6 +524,18 @@ body {
 }
 
 .info-actions button:hover { background: #3a3a6a; }
+
+.info-actions select {
+    padding: 3px 6px;
+    font-family: inherit;
+    font-size: 0.92em;
+    background: #2a2a4a;
+    border: 1px solid #555;
+    color: #ccc;
+    cursor: pointer;
+    border-radius: 3px;
+    max-width: 150px;
+}
 
 .mood-inspired { color: #66ffcc; }
 .mood-content { color: #88cc88; }
@@ -766,6 +797,37 @@ body {
 }
 
 .prio-cell:hover { background: #2a2a4a; }
+
+.craft-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #444;
+}
+
+.craft-tab {
+    padding: 5px 12px;
+    font-family: inherit;
+    font-size: 0.92em;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: #888;
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.craft-tab:hover {
+    color: #ccc;
+    background: #1a1a2e;
+}
+
+.craft-tab.active {
+    color: #ffcc00;
+    background: #1a1a2e;
+    border-color: #444;
+}
 
 .craft-row {
     display: flex;
@@ -1073,6 +1135,20 @@ body {
     color: #88cc88;
     font-weight: bold;
 }
+
+.inv-delete {
+    background: transparent;
+    border: 1px solid #663333;
+    color: #cc4444;
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 0 5px;
+    margin-left: 6px;
+    font-family: inherit;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+.inv-delete:hover { background: #442222; border-color: #cc4444; }
 
 
 #inventory-panel {

@@ -10,6 +10,7 @@ const BUILDING_RESEARCH_REQS = {
     void_nexus: 'void_summoning',
     void_wall: 'void_forging',
     void_turret: 'void_forging',
+    void_door: 'void_forging',
 };
 
 export function designateBuild(game, x, y, buildType) {
