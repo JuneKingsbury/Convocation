@@ -16,7 +16,7 @@ export function detectRooms(map) {
             if (visited.has(key)) continue;
             const tile = map[y][x];
             if (isWall(tile)) continue;
-            if (tile.terrain === 'water') continue;
+            if (tile.terrain === 'water' || tile.terrain === 'rock') continue;
             if (!tile.passable) continue;
 
             const result = floodFill(map, x, y, visited);

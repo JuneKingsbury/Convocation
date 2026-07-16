@@ -1,4 +1,4 @@
-import { CONFIG, RESEARCH, STRUCTURE_HP } from './config.js';
+import { CONFIG, RESEARCH, BUILDINGS } from './config.js';
 import { generateMap } from './map.js';
 import { Camera } from './camera.js';
 import { Renderer } from './renderer.js';
@@ -10,13 +10,13 @@ import { detectRooms } from './rooms.js';
 import { updateFarming } from './farming.js';
 import { queueCraftingOrder, updateAutoCook } from './crafting.js';
 import { Weather } from './weather.js';
-import { updateWildlife, designateHunt } from './wildlife.js';
+import { updateWildlife, designateHunt, createAnimal } from './wildlife.js';
 import { CombatSystem } from './combat.js';
 import { EventSystem, updateFires } from './events.js';
 import { UI } from './ui.js';
 import { Minimap } from './minimap.js';
 import { ResearchSystem, updateResearch } from './research.js';
-import { updateTamedAnimals, tameAnimal } from './taming.js';
+import { updateTamedAnimals, designateTame } from './taming.js';
 import { PowerSystem } from './power.js';
 import { WaveSystem } from './waves.js';
 import { EventLog } from './eventlog.js';
@@ -63,6 +63,7 @@ class Game {
         this.roomsDirty = true;
 
         this.spawnStartingColonists();
+        this.spawnStartingWildlife();
 
         const preElement = document.getElementById('game');
         this.renderer = new Renderer(preElement);
@@ -84,6 +85,17 @@ class Game {
             const c = createColonist(cx + i - 1, cy, biases[i], existingNames);
             c.priorities[biases[i]] = 1;
             this.colonists.push(c);
+        }
+    }
+
+    spawnStartingWildlife() {
+        const types = ['deer', 'deer', 'rabbit', 'rabbit', 'rabbit', 'chicken', 'chicken', 'cow', 'sheep'];
+        for (const type of types) {
+            const x = Math.floor(Math.random() * CONFIG.MAP_WIDTH);
+            const y = Math.floor(Math.random() * CONFIG.MAP_HEIGHT);
+            const tile = this.map[y][x];
+            if (tile.terrain === 'water' || tile.terrain === 'rock' || tile.resource) continue;
+            this.wildlife.push(createAnimal(type, x, y));
         }
     }
 
@@ -404,8 +416,8 @@ class Game {
         this.ui.updateInventoryPanel();
     }
 
-    tameAnimalType(type) {
-        tameAnimal(this, type);
+    tameWildAnimal(animalId) {
+        designateTame(this, animalId);
     }
 
     logEvent(text, type, linkedEntity) {
@@ -462,7 +474,7 @@ function updateAutoRepair(game) {
         for (let x = 0; x < game.map[y].length; x++) {
             const tile = game.map[y][x];
             if (!tile.structure || tile.structureHp === undefined) continue;
-            const maxHp = STRUCTURE_HP[tile.structure];
+            const maxHp = BUILDINGS[tile.structure]?.hp;
             if (!maxHp || tile.structureHp >= maxHp) continue;
             const existing = game.taskQueue.getByPosition(x, y);
             if (existing) continue;

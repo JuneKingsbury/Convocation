@@ -1,6 +1,11 @@
-import { CONFIG, TAMED_ANIMALS } from './config.js';
+import { CONFIG, ANIMALS, TAMED_ANIMALS } from './config.js';
 
 let nextTamedId = 1;
+
+export function syncTamedIdCounter(animals) {
+    const maxId = animals.reduce((max, a) => Math.max(max, a.id || 0), 0);
+    if (maxId >= nextTamedId) nextTamedId = maxId + 1;
+}
 
 export function createTamedAnimal(type, x, y) {
     const def = TAMED_ANIMALS[type];
@@ -70,20 +75,48 @@ function wanderInPen(animal, pen, map) {
     }
 }
 
-export function tameAnimal(game, animalType) {
+export function designateTame(game, wildAnimalId) {
     if (!game.research.isResearched('beast_binding')) return false;
-    const def = TAMED_ANIMALS[animalType];
-    if (!def) return false;
-    if (!game.resources.has({ food: def.foodToTame })) return false;
+
+    const wildAnimal = game.wildlife.find(a => a.id === wildAnimalId);
+    if (!wildAnimal || wildAnimal.hp <= 0) return false;
+
+    const animalDef = ANIMALS[wildAnimal.type];
+    if (!animalDef || !animalDef.tameable) return false;
+
+    const tamedDef = TAMED_ANIMALS[wildAnimal.type];
+    if (!tamedDef) return false;
+
+    if (!game.resources.has({ food: tamedDef.foodToTame })) return false;
+    if (!findAnyPen(game)) return false;
+
+    game.resources.deduct({ food: tamedDef.foodToTame });
+
+    game.taskQueue.add({
+        type: 'tame',
+        skillRequired: 'animals',
+        x: wildAnimal.x,
+        y: wildAnimal.y,
+        workAmount: 20,
+        targetAnimalId: wildAnimalId,
+    });
+
+    game.notifications.push({ text: `Taming ${wildAnimal.type}...`, tick: game.tick, type: 'success' });
+    return true;
+}
+
+export function completeTame(game, wildAnimalId) {
+    const wildAnimal = game.wildlife.find(a => a.id === wildAnimalId);
+    if (!wildAnimal || wildAnimal.hp <= 0) return false;
 
     const pen = findAnyPen(game);
     if (!pen) return false;
 
-    game.resources.deduct({ food: def.foodToTame });
-    const tamed = createTamedAnimal(animalType, pen.x, pen.y);
+    game.wildlife = game.wildlife.filter(a => a.id !== wildAnimalId);
+    const tamed = createTamedAnimal(wildAnimal.type, pen.x, pen.y);
     game.tamedAnimals.push(tamed);
-    game.notifications.push({ text: `Tamed a ${animalType}!`, tick: game.tick, type: 'success' });
-    game.eventLog.add(game, `Tamed a ${animalType}`, 'success', { type: 'position', x: pen.x, y: pen.y });
+    game.notifications.push({ text: `Tamed a ${wildAnimal.type}!`, tick: game.tick, type: 'success' });
+    game.eventLog.add(game, `Tamed a ${wildAnimal.type}`, 'success', { type: 'position', x: pen.x, y: pen.y });
     return true;
 }
 

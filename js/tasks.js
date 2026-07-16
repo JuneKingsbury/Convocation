@@ -14,6 +14,11 @@ export class TaskQueue {
         return task;
     }
 
+    syncIdCounter() {
+        const maxId = this.tasks.reduce((max, t) => Math.max(max, t.id || 0), 0);
+        if (maxId >= nextTaskId) nextTaskId = maxId + 1;
+    }
+
     remove(taskId) {
         this.tasks = this.tasks.filter(t => t.id !== taskId);
     }
@@ -24,6 +29,7 @@ export class TaskQueue {
             if (t.status !== 'pending' || t.assignedTo !== null) return false;
             if (colonist.priorities[t.skillRequired] <= 0) return false;
             if (failedTasks && failedTasks[t.id] !== undefined && tick - failedTasks[t.id] < 30) return false;
+            if ((t.type === 'craft' || t.type === 'cook') && this.isStationBusy(t.x, t.y)) return false;
             return true;
         });
 
@@ -39,6 +45,10 @@ export class TaskQueue {
         });
 
         return available[0];
+    }
+
+    isStationBusy(x, y) {
+        return this.tasks.some(t => (t.type === 'craft' || t.type === 'cook') && t.status === 'in_progress' && t.x === x && t.y === y);
     }
 
     claim(taskId, colonistId) {

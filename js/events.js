@@ -1,4 +1,4 @@
-import { CONFIG, EVENTS, CROPS } from './config.js';
+import { CONFIG, EVENTS, CARAVAN_TRADES } from './config.js';
 import { createColonist, addThought } from './colonist.js';
 import { createAnimal } from './wildlife.js';
 
@@ -32,17 +32,105 @@ export class EventSystem {
     }
 
     triggerEvent(eventKey, game) {
-        switch (eventKey) {
-            case 'wanderer': this.eventWanderer(game); break;
-            case 'blight': this.eventBlight(game); break;
-            case 'caravan': this.eventCaravan(game); break;
-            case 'windfall': this.eventWindfall(game); break;
-            case 'fire': this.eventFire(game); break;
-            case 'cold_snap': this.eventColdSnap(game); break;
-            case 'migration': this.eventMigration(game); break;
-            case 'inspiration': this.eventInspiration(game); break;
+        const def = EVENTS[eventKey];
+        switch (def.effect) {
+            case 'deposit': this.handleDeposit(def, game); break;
+            case 'spawn_animals': this.handleSpawnAnimals(def, game); break;
+            case 'mood': this.handleMood(def, game); break;
+            case 'crop_damage': this.handleCropDamage(def, game); break;
+            case 'custom':
+                switch (eventKey) {
+                    case 'wanderer': this.eventWanderer(game); break;
+                    case 'caravan': this.eventCaravan(game); break;
+                    case 'fire': this.eventFire(game); break;
+                }
+                break;
         }
     }
+
+    // ========================================================================
+    // DATA-DRIVEN EFFECT HANDLERS
+    // ========================================================================
+
+    handleDeposit(def, game) {
+        const center = def.location === 'edge' ? getRandomEdgeZone() : getRandomInterior();
+        const r = def.radius;
+        let count = 0;
+
+        for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+                const nx = center.x + dx, ny = center.y + dy;
+                if (nx < 0 || nx >= CONFIG.MAP_WIDTH || ny < 0 || ny >= CONFIG.MAP_HEIGHT) continue;
+                const tile = game.map[ny][nx];
+                if (!def.terrain.includes(tile.terrain)) continue;
+                if (tile.resource || tile.structure) continue;
+                if (Math.random() >= def.fillChance) continue;
+
+                const deposit = pickWeighted(def.deposits);
+                tile.resource = { type: deposit.type, amount: randRange(deposit.amount) };
+                count++;
+            }
+        }
+
+        if (count > 0) {
+            const msg = def.notification.replace('{count}', count);
+            game.notifications.push({ text: msg, tick: game.tick, type: 'event' });
+            game.eventLog.add(game, def.logMessage.replace('{count}', count), def.logType, { type: 'position', x: center.x, y: center.y });
+        }
+    }
+
+    handleSpawnAnimals(def, game) {
+        let totalCount = 0;
+        for (const entry of def.animals) {
+            const count = randRange(entry.count);
+            for (let i = 0; i < count; i++) {
+                const edge = getRandomEdge();
+                game.wildlife.push(createAnimal(entry.type, edge.x, edge.y));
+            }
+            totalCount += count;
+        }
+        const msg = def.notification.replace('{count}', totalCount);
+        game.notifications.push({ text: msg, tick: game.tick, type: 'event' });
+        game.eventLog.add(game, def.logMessage.replace('{count}', totalCount), def.logType, null);
+    }
+
+    handleMood(def, game) {
+        const alive = game.colonists.filter(c => c.hp > 0);
+        if (alive.length === 0) return;
+        const colonist = alive[Math.floor(Math.random() * alive.length)];
+        addThought(colonist, def.thought, def.moodChange, def.moodDuration, game.tick);
+        const msg = def.notification.replace('{name}', colonist.name);
+        game.notifications.push({ text: msg, tick: game.tick, type: 'success' });
+        game.eventLog.add(game, def.logMessage.replace('{name}', colonist.name), def.logType, { type: 'colonist', id: colonist.id });
+    }
+
+    handleCropDamage(def, game) {
+        let count = 0;
+        for (let y = 0; y < game.map.length; y++) {
+            for (let x = 0; x < game.map[y].length; x++) {
+                const tile = game.map[y][x];
+                if (tile.zone && tile.zone.state === 'growing' && Math.random() < def.chance) {
+                    tile.zone.state = 'empty';
+                    tile.zone.growth = 0;
+                    count++;
+                }
+            }
+        }
+        if (count > 0) {
+            const msg = def.notification.replace('{count}', count);
+            game.notifications.push({ text: msg, tick: game.tick, type: 'danger' });
+            game.eventLog.add(game, def.logMessage.replace('{count}', count), def.logType, null);
+            if (def.thought) {
+                for (const c of game.colonists) {
+                    addThought(c, def.thought, def.moodChange, def.moodDuration, game.tick);
+                }
+            }
+        }
+    }
+
+    // ========================================================================
+    // CUSTOM EVENT HANDLERS (complex logic that can't be data-driven)
+    // ========================================================================
 
     eventWanderer(game) {
         const aliveColonists = game.colonists.filter(c => c.hp > 0);
@@ -91,32 +179,18 @@ export class EventSystem {
         this.pendingEvent = null;
     }
 
-    eventBlight(game) {
-        let blighted = 0;
-        for (let y = 0; y < game.map.length; y++) {
-            for (let x = 0; x < game.map[y].length; x++) {
-                const tile = game.map[y][x];
-                if (tile.zone && tile.zone.state === 'growing' && Math.random() < 0.4) {
-                    tile.zone.state = 'empty';
-                    tile.zone.growth = 0;
-                    blighted++;
-                }
-            }
-        }
-        if (blighted > 0) {
-            game.notifications.push({ text: `Crop blight! ${blighted} plants destroyed.`, tick: game.tick, type: 'danger' });
-            game.eventLog.add(game, `Crop blight destroyed ${blighted} plants`, 'danger', null);
-            for (const c of game.colonists) {
-                addThought(c, 'Crops died', -15, 300, game.tick);
-            }
-        }
-    }
-
     eventCaravan(game) {
+        const choices = CARAVAN_TRADES.map(t => {
+            const giveStr = Object.entries(t.give).map(([r, n]) => `${n} ${r}`).join(', ');
+            const recvStr = Object.entries(t.receive).map(([r, n]) => `${n} ${r}`).join(', ');
+            return `Trade ${giveStr} for ${recvStr}`;
+        });
+        choices.push('Dismiss');
+
         this.pendingEvent = {
             type: 'caravan',
             text: 'A trade caravan arrives! Trade resources?',
-            choices: ['Trade wood for food (5→4)', 'Trade stone for wood (3→4)', 'Trade food for planks (4→3)', 'Dismiss'],
+            choices,
             data: {},
         };
         game.notifications.push({ text: 'Trade caravan arrived!', tick: game.tick, type: 'event' });
@@ -127,48 +201,15 @@ export class EventSystem {
     }
 
     resolveCaravan(game, choice) {
-        switch (choice) {
-            case 0:
-                if (game.resources.stockpile.wood >= 5) {
-                    game.resources.deduct({ wood: 5 });
-                    game.resources.add({ food: 4 });
-                }
-                break;
-            case 1:
-                if (game.resources.stockpile.stone >= 3) {
-                    game.resources.deduct({ stone: 3 });
-                    game.resources.add({ wood: 4 });
-                }
-                break;
-            case 2:
-                if (game.resources.stockpile.food >= 4) {
-                    game.resources.deduct({ food: 4 });
-                    game.resources.add({ planks: 3 });
-                }
-                break;
-        }
-        this.pendingEvent = null;
-    }
-
-    eventWindfall(game) {
-        const cx = Math.floor(Math.random() * CONFIG.MAP_WIDTH);
-        const cy = Math.floor(Math.random() * CONFIG.MAP_HEIGHT);
-        let placed = 0;
-        for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-                const nx = cx + dx, ny = cy + dy;
-                if (nx < 0 || nx >= CONFIG.MAP_WIDTH || ny < 0 || ny >= CONFIG.MAP_HEIGHT) continue;
-                const tile = game.map[ny][nx];
-                if (tile.terrain === 'grass' && !tile.resource && !tile.structure && Math.random() < 0.6) {
-                    tile.resource = { type: 'stone', amount: 3 + Math.floor(Math.random() * 3) };
-                    placed++;
-                }
+        if (choice >= 0 && choice < CARAVAN_TRADES.length) {
+            const trade = CARAVAN_TRADES[choice];
+            const canAfford = Object.entries(trade.give).every(([r, n]) => game.resources.stockpile[r] >= n);
+            if (canAfford) {
+                game.resources.deduct(trade.give);
+                game.resources.add(trade.receive);
             }
         }
-        if (placed > 0) {
-            game.notifications.push({ text: `Mineral vein discovered! ${placed} new stone deposits.`, tick: game.tick, type: 'event' });
-            game.eventLog.add(game, `Mineral windfall: ${placed} new stone deposits`, 'event', { type: 'position', x: cx, y: cy });
-        }
+        this.pendingEvent = null;
     }
 
     eventFire(game) {
@@ -192,42 +233,25 @@ export class EventSystem {
             }
         }
     }
+}
 
-    eventColdSnap(game) {
-        for (let y = 0; y < game.map.length; y++) {
-            for (let x = 0; x < game.map[y].length; x++) {
-                const tile = game.map[y][x];
-                if (tile.zone && tile.zone.state === 'growing') {
-                    tile.zone.state = 'empty';
-                    tile.zone.growth = 0;
-                }
-            }
-        }
-        game.notifications.push({ text: 'Cold snap! All outdoor crops frozen.', tick: game.tick, type: 'danger' });
-        game.eventLog.add(game, 'Cold snap froze all outdoor crops', 'danger', null);
-        for (const c of game.colonists) {
-            addThought(c, 'Freezing cold snap', -12, 300, game.tick);
-        }
-    }
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
 
-    eventMigration(game) {
-        const count = 4 + Math.floor(Math.random() * 4);
-        for (let i = 0; i < count; i++) {
-            const edge = getRandomEdge();
-            game.wildlife.push(createAnimal('deer', edge.x, edge.y));
-        }
-        game.notifications.push({ text: `Animal migration! ${count} deer passing through.`, tick: game.tick, type: 'event' });
-        game.eventLog.add(game, `Animal migration: ${count} deer passing through`, 'event', null);
-    }
+function randRange(arr) {
+    return arr[0] + Math.floor(Math.random() * (arr[1] - arr[0] + 1));
+}
 
-    eventInspiration(game) {
-        const alive = game.colonists.filter(c => c.hp > 0);
-        if (alive.length === 0) return;
-        const colonist = alive[Math.floor(Math.random() * alive.length)];
-        addThought(colonist, 'Feeling inspired!', 25, 300, game.tick);
-        game.notifications.push({ text: `${colonist.name} is feeling inspired!`, tick: game.tick, type: 'success' });
-        game.eventLog.add(game, `${colonist.name} is feeling inspired!`, 'success', { type: 'colonist', id: colonist.id });
+function pickWeighted(entries) {
+    if (entries.length === 1) return entries[0];
+    const totalWeight = entries.reduce((s, e) => s + (e.weight || 1), 0);
+    let roll = Math.random() * totalWeight;
+    for (const entry of entries) {
+        roll -= entry.weight || 1;
+        if (roll <= 0) return entry;
     }
+    return entries[entries.length - 1];
 }
 
 function getRandomEdge() {
@@ -238,6 +262,24 @@ function getRandomEdge() {
         case 2: return { x: Math.floor(Math.random() * CONFIG.MAP_WIDTH), y: CONFIG.MAP_HEIGHT - 1 };
         case 3: return { x: 0, y: Math.floor(Math.random() * CONFIG.MAP_HEIGHT) };
     }
+}
+
+function getRandomEdgeZone() {
+    const margin = 15;
+    const side = Math.floor(Math.random() * 4);
+    switch (side) {
+        case 0: return { x: margin + Math.floor(Math.random() * (CONFIG.MAP_WIDTH - margin * 2)), y: 3 + Math.floor(Math.random() * margin) };
+        case 1: return { x: CONFIG.MAP_WIDTH - 3 - Math.floor(Math.random() * margin), y: margin + Math.floor(Math.random() * (CONFIG.MAP_HEIGHT - margin * 2)) };
+        case 2: return { x: margin + Math.floor(Math.random() * (CONFIG.MAP_WIDTH - margin * 2)), y: CONFIG.MAP_HEIGHT - 3 - Math.floor(Math.random() * margin) };
+        case 3: return { x: 3 + Math.floor(Math.random() * margin), y: margin + Math.floor(Math.random() * (CONFIG.MAP_HEIGHT - margin * 2)) };
+    }
+}
+
+function getRandomInterior() {
+    return {
+        x: Math.floor(Math.random() * CONFIG.MAP_WIDTH),
+        y: Math.floor(Math.random() * CONFIG.MAP_HEIGHT),
+    };
 }
 
 export function updateFires(game) {

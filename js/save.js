@@ -1,4 +1,7 @@
 import { CONFIG } from './config.js';
+import { syncColonistIdCounter } from './colonist.js';
+import { syncAnimalIdCounter } from './wildlife.js';
+import { syncTamedIdCounter } from './taming.js';
 
 const SAVE_KEY = 'colony_save';
 
@@ -88,6 +91,10 @@ export function loadGame(game) {
     deserializeMap(game.map, data.map);
 
     game.colonists = data.colonists;
+    for (const c of game.colonists) {
+        if (c.skills && c.skills.animals === undefined) c.skills.animals = 1 + Math.floor(Math.random() * 3);
+        if (c.priorities && c.priorities.animals === undefined) c.priorities.animals = 3;
+    }
     game.wildlife = data.wildlife;
     game.raiders = data.raiders;
     game.tamedAnimals = data.tamedAnimals || [];
@@ -128,7 +135,12 @@ export function loadGame(game) {
     game.research.studyPoints = data.research.studyPoints || 0;
 
     game.taskQueue.tasks = data.tasks;
+    game.taskQueue.syncIdCounter();
     game.eventLog.entries = data.eventLog || [];
+
+    syncColonistIdCounter(game.colonists);
+    syncAnimalIdCounter(game.wildlife);
+    syncTamedIdCounter(game.tamedAnimals);
 
     game.roomsDirty = true;
 
@@ -210,7 +222,8 @@ function deserializeMap(map, data) {
             const t = data[y][x];
             const tile = map[y][x];
             tile.terrain = t.t;
-            tile.passable = t.p === 1;
+            // Rock/water terrain is now passable (slow); only structures block
+            tile.passable = (t.t === 'rock' || t.t === 'water') ? true : t.p === 1;
             tile.structure = t.s || null;
             tile.structureHp = t.shp !== undefined ? t.shp : undefined;
             tile.resource = t.r || null;

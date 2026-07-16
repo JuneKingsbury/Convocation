@@ -8,7 +8,7 @@ export function createTile(terrain) {
         designation: null,
         zone: null,
         items: [],
-        passable: terrain !== 'rock',
+        passable: true,
         roomId: null,
         onFire: false,
         fireTimer: 0,
@@ -65,7 +65,6 @@ function placeRockFormations(map) {
                 if (nx >= 0 && nx < CONFIG.MAP_WIDTH && ny >= 0 && ny < CONFIG.MAP_HEIGHT) {
                     if (Math.abs(dx) + Math.abs(dy) <= size && Math.random() < 0.7) {
                         map[ny][nx].terrain = 'rock';
-                        map[ny][nx].passable = false;
                         if (Math.random() < 0.5) {
                             const isRunite = Math.random() < 0.2;
                             map[ny][nx].resource = {
@@ -163,7 +162,7 @@ export function getTileColor(tile, season) {
     return TILE_COLORS[tile.terrain] || '#fff';
 }
 
-const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret']);
+export const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret']);
 const ENEMY_BLOCKED_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret', 'door', 'void_door']);
 
 export function isPassable(map, x, y) {
@@ -176,12 +175,16 @@ export function isPassable(map, x, y) {
 
 export function getMoveCost(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return Infinity;
-    return map[y][x].terrain === 'water' ? 3 : 1;
+    const terrain = map[y][x].terrain;
+    if (terrain === 'rock') return 4;
+    if (terrain === 'water') return 3;
+    return 1;
 }
 
 export function isPassableForAnimals(map, x, y) {
     if (!isPassable(map, x, y)) return false;
     const tile = map[y][x];
+    if (tile.terrain === 'rock' || tile.terrain === 'water') return false;
     if (tile.structure === 'door' || tile.structure === 'void_door') return false;
     return true;
 }
@@ -190,13 +193,14 @@ export function isPassableForEnemies(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
     const tile = map[y][x];
     if (!tile.passable) return false;
+    if (tile.terrain === 'rock' || tile.terrain === 'water') return false;
     if (ENEMY_BLOCKED_STRUCTURES.has(tile.structure)) return false;
     return true;
 }
 
+const BREAKABLE_STRUCTURES = new Set(['wall', 'door', 'fence', 'void_wall', 'void_door']);
+
 export function isBreakableByEnemies(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
-    const tile = map[y][x];
-    const breakable = new Set(['wall', 'door', 'fence', 'void_wall', 'void_door']);
-    return breakable.has(tile.structure);
+    return BREAKABLE_STRUCTURES.has(map[y][x].structure);
 }

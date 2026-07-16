@@ -1,4 +1,4 @@
-import { CONFIG, WAVE_CONFIG, STRUCTURE_HP } from './config.js';
+import { CONFIG, WAVE_CONFIG, BUILDINGS } from './config.js';
 import { isPassableForEnemies, isBreakableByEnemies } from './map.js';
 import { manhattanDist } from './pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
@@ -239,7 +239,7 @@ const ENEMY_MAX_NODES = 2000;
 
 function getBreakCost(map, x, y) {
     const tile = map[y][x];
-    const hp = tile.structureHp !== undefined ? tile.structureHp : (STRUCTURE_HP[tile.structure] || 50);
+    const hp = tile.structureHp !== undefined ? tile.structureHp : (BUILDINGS[tile.structure]?.hp || 50);
     return Math.max(2, Math.ceil(hp / 5));
 }
 
@@ -283,9 +283,6 @@ function findEnemyPath(map, startX, startY, endX, endY) {
             const nKey = key(nx, ny);
             if (closed.has(nKey)) continue;
 
-            const tile = map[ny][nx];
-            if (!tile.passable) continue;
-
             let cost = 1;
             if (isBreakableByEnemies(map, nx, ny)) {
                 cost = getBreakCost(map, nx, ny);
@@ -316,7 +313,7 @@ function attackStructure(game, x, y, damage) {
     if (!tile.structure) return;
 
     if (tile.structureHp === undefined) {
-        tile.structureHp = STRUCTURE_HP[tile.structure] || 50;
+        tile.structureHp = BUILDINGS[tile.structure]?.hp || 50;
     }
 
     tile.structureHp -= damage;

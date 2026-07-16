@@ -5,6 +5,11 @@ import { colonistTakeDamage } from './colonist.js';
 
 let nextAnimalId = 1;
 
+export function syncAnimalIdCounter(animals) {
+    const maxId = animals.reduce((max, a) => Math.max(max, a.id || 0), 0);
+    if (maxId >= nextAnimalId) nextAnimalId = maxId + 1;
+}
+
 export function createAnimal(type, x, y) {
     const def = ANIMALS[type];
     return {
@@ -25,6 +30,7 @@ export function createAnimal(type, x, y) {
 
 export function updateWildlife(game) {
     maybeSpawnAnimal(game);
+    syncAnimalTasks(game);
 
     for (let i = game.wildlife.length - 1; i >= 0; i--) {
         const animal = game.wildlife[i];
@@ -53,8 +59,11 @@ function maybeSpawnAnimal(game) {
 
 function pickAnimalType(game) {
     const roll = Math.random();
-    if (roll < 0.5) return 'deer';
-    if (roll < 0.8) return 'rabbit';
+    if (roll < 0.35) return 'deer';
+    if (roll < 0.55) return 'rabbit';
+    if (roll < 0.7) return 'chicken';
+    if (roll < 0.8) return 'sheep';
+    if (roll < 0.88) return 'cow';
     if (!CONFIG.PEACEFUL_MODE && (game.weather.season === 'winter' || game.timeOfDay > 75)) return 'wolf';
     return 'rabbit';
 }
@@ -76,14 +85,38 @@ function updateAnimal(animal, game) {
 
     const def = ANIMALS[animal.type];
 
-    updatePassiveAnimal(animal, def, game);
+    if (def.hostile) {
+        updateHostileAnimal(animal, def, game);
+    } else {
+        updatePassiveAnimal(animal, def, game);
+    }
 
     if (animal.x < 0 || animal.x >= CONFIG.MAP_WIDTH || animal.y < 0 || animal.y >= CONFIG.MAP_HEIGHT) {
         animal.hp = 0;
     }
 }
 
+function syncAnimalTasks(game) {
+    for (const task of game.taskQueue.getAll()) {
+        if (task.type !== 'hunt' && task.type !== 'tame') continue;
+        const animal = game.wildlife.find(a => a.id === task.targetAnimalId);
+        if (!animal || animal.hp <= 0) {
+            game.taskQueue.remove(task.id);
+        } else {
+            task.x = animal.x;
+            task.y = animal.y;
+        }
+    }
+}
+
+function isBeingTamed(animal, game) {
+    return game.taskQueue.getAll().some(t => t.type === 'tame' && t.targetAnimalId === animal.id);
+}
+
 function updatePassiveAnimal(animal, def, game) {
+    // Animals being tamed stay put (lured by food)
+    if (isBeingTamed(animal, game)) return;
+
     const nearestColonist = findNearestColonist(animal, game);
     if (nearestColonist && manhattanDist(animal.x, animal.y, nearestColonist.x, nearestColonist.y) <= def.fleeRange) {
         fleeFrom(animal, nearestColonist, game.map);
@@ -173,7 +206,7 @@ export function designateHunt(game, animalId) {
 
     game.taskQueue.add({
         type: 'hunt',
-        skillRequired: 'building',
+        skillRequired: 'animals',
         x: animal.x,
         y: animal.y,
         workAmount: 1,

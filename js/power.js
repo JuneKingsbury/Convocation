@@ -1,4 +1,4 @@
-import { POWER_BUILDINGS } from './config.js';
+import { BUILDINGS } from './config.js';
 import { manhattanDist } from './pathfinding.js';
 
 export class PowerSystem {
@@ -25,16 +25,17 @@ export class PowerSystem {
             for (let x = 0; x < game.map[y].length; x++) {
                 const structure = game.map[y][x].structure;
                 if (!structure) continue;
-                const def = POWER_BUILDINGS[structure];
-                if (!def) continue;
+                const bDef = BUILDINGS[structure];
+                if (!bDef || !bDef.power) continue;
+                const pwr = bDef.power;
 
-                if (def.generates) this.totalGenerated += def.generates;
-                if (def.consumes) this.totalConsumed += def.consumes;
+                if (pwr.generates) this.totalGenerated += pwr.generates;
+                if (pwr.consumes) this.totalConsumed += pwr.consumes;
 
-                if (structure === 'ember_ward') this.heaters.push({ x, y });
-                else if (structure === 'glowstone') this.lamps.push({ x, y });
-                else if (structure === 'arcane_sentinel') this.turrets.push({ x, y });
-                else if (structure === 'void_turret') this.voidTurrets.push({ x, y });
+                if (pwr.warmRadius) this.heaters.push({ x, y });
+                else if (pwr.radius) this.lamps.push({ x, y });
+                else if (pwr.damage && structure === 'arcane_sentinel') this.turrets.push({ x, y });
+                else if (pwr.damage && structure === 'void_turret') this.voidTurrets.push({ x, y });
             }
         }
 
@@ -52,7 +53,7 @@ export class PowerSystem {
     isTileWarmed(game, x, y) {
         if (!this.powered) return false;
         for (const h of this.heaters) {
-            if (manhattanDist(x, y, h.x, h.y) <= POWER_BUILDINGS.ember_ward.warmRadius) {
+            if (manhattanDist(x, y, h.x, h.y) <= BUILDINGS.ember_ward.power.warmRadius) {
                 return true;
             }
         }
@@ -62,7 +63,7 @@ export class PowerSystem {
     isTileLit(game, x, y) {
         if (!this.powered) return false;
         for (const l of this.lamps) {
-            if (manhattanDist(x, y, l.x, l.y) <= POWER_BUILDINGS.glowstone.radius) {
+            if (manhattanDist(x, y, l.x, l.y) <= BUILDINGS.glowstone.power.radius) {
                 return true;
             }
         }
@@ -81,9 +82,9 @@ export class PowerSystem {
         ];
 
         for (const t of allTurrets) {
-            const def = POWER_BUILDINGS[t.type];
-            const range = def.range;
-            const damage = def.damage;
+            const pwr = BUILDINGS[t.type].power;
+            const range = pwr.range;
+            const damage = pwr.damage;
 
             let target = null;
             let bestDist = Infinity;

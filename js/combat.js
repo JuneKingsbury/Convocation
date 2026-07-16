@@ -15,8 +15,12 @@ export class CombatSystem {
     }
 
     update(game) {
+        if (CONFIG.PEACEFUL_MODE) return;
+
         if (this.raidActive) {
             this.updateRaid(game);
+        } else if (game.tick >= this.nextRaidTick) {
+            this.startRaid(game);
         }
     }
 

@@ -1,4 +1,4 @@
-import { CONFIG, CROPS } from './config.js';
+import { CONFIG, CROPS, BUILDINGS } from './config.js';
 import { designateBuild, designateChop, designateMine, cancelDesignation } from './building.js';
 import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from './farming.js';
 import { isPassable } from './map.js';
@@ -16,7 +16,7 @@ export class InputHandler {
         this.keysDown = new Set();
         this.touchPanMode = false;
 
-        this.buildOptions = ['wall', 'floor', 'door', 'bed', 'workbench', 'cauldron', 'storage_chest', 'torch', 'fence', 'arcanum', 'beast_circle', 'mana_crystal', 'glowstone', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret', 'void_door'];
+        this.buildOptions = Object.keys(BUILDINGS);
         this.dragBuildTypes = new Set(['wall', 'floor', 'door', 'fence', 'torch', 'void_wall', 'void_door']);
         this.singlePlaceTypes = new Set(['bed', 'workbench', 'cauldron', 'storage_chest', 'arcanum', 'beast_circle', 'mana_crystal', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus']);
         this.cropOptions = Object.keys(CROPS);
@@ -526,29 +526,40 @@ export class InputHandler {
     selectColonistsInRect(start, end) {
         const minX = Math.min(start.x, end.x), maxX = Math.max(start.x, end.x);
         const minY = Math.min(start.y, end.y), maxY = Math.max(start.y, end.y);
-        const selected = this.game.colonists.filter(c =>
-            c.hp > 0 && c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY
-        );
-        if (selected.length === 0) return;
-        if (selected.length === 1) {
-            this.game.selectedColonist = selected[0];
-            this.game.selectedColonists = [selected[0]];
-            this.game.ui.showColonistInfo(selected[0]);
-            return;
+        const inRect = (e) => e.hp > 0 && e.x >= minX && e.x <= maxX && e.y >= minY && e.y <= maxY;
+
+        const colonists = this.game.colonists.filter(inRect);
+        const animals = this.game.wildlife.filter(inRect);
+        const tamed = (this.game.tamedAnimals || []).filter(inRect);
+        const raiders = this.game.raiders.filter(inRect);
+        const waveEnemies = this.game.waves ? this.game.waves.enemies.filter(inRect) : [];
+
+        if (colonists.length === 0 && animals.length === 0 && tamed.length === 0 && raiders.length === 0 && waveEnemies.length === 0) return;
+
+        if (colonists.length > 0) {
+            this.game.selectedColonist = colonists[0];
+            this.game.selectedColonists = colonists;
+            if (colonists.length > 1 && animals.length === 0 && tamed.length === 0 && raiders.length === 0 && waveEnemies.length === 0) {
+                this.game.ui.showMultiColonistInfo(colonists);
+                this.game.notifications.push({ text: `Selected ${colonists.length} colonists`, tick: this.game.tick, type: 'success' });
+                return;
+            }
+        } else {
+            this.game.selectedColonist = null;
+            this.game.selectedColonists = [];
         }
-        this.game.selectedColonist = selected[0];
-        this.game.selectedColonists = selected;
-        this.game.ui.showMultiColonistInfo(selected);
-        this.game.notifications.push({
-            text: `Selected ${selected.length} colonists`,
-            tick: this.game.tick,
-            type: 'success'
-        });
+
+        // Mixed selection or non-colonist selection - show as tile entities view
+        const cx = Math.floor((minX + maxX) / 2);
+        const cy = Math.floor((minY + maxY) / 2);
+        const tile = this.game.map[cy][cx];
+        this.game.ui.showTileEntities(tile, cx, cy, colonists, animals, [...raiders, ...waveEnemies], tamed);
     }
 
     selectAt(pos) {
         const colonistsHere = this.game.colonists.filter(c => c.x === pos.x && c.y === pos.y && c.hp > 0);
         const animalsHere = this.game.wildlife.filter(a => a.x === pos.x && a.y === pos.y && a.hp > 0);
+        const tamedHere = (this.game.tamedAnimals || []).filter(a => a.x === pos.x && a.y === pos.y && a.hp > 0);
         const raidersHere = this.game.raiders.filter(r => r.x === pos.x && r.y === pos.y && r.hp > 0);
         const waveEnemiesHere = this.game.waves ? this.game.waves.enemies.filter(e => e.x === pos.x && e.y === pos.y && e.hp > 0) : [];
         const tile = this.game.map[pos.y][pos.x];
@@ -560,6 +571,6 @@ export class InputHandler {
             this.game.selectedColonist = null;
             this.game.selectedColonists = [];
         }
-        this.game.ui.showTileEntities(tile, pos.x, pos.y, colonistsHere, animalsHere, [...raidersHere, ...waveEnemiesHere]);
+        this.game.ui.showTileEntities(tile, pos.x, pos.y, colonistsHere, animalsHere, [...raidersHere, ...waveEnemiesHere], tamedHere);
     }
 }

@@ -5,8 +5,8 @@
 // ============================================================================
 
 export const CONFIG = {
-    MAP_WIDTH: 150,
-    MAP_HEIGHT: 80,
+    MAP_WIDTH: 200,
+    MAP_HEIGHT: 106,
     VIEWPORT_WIDTH: 80,
     VIEWPORT_HEIGHT: 40,
     TICK_RATE: 200,
@@ -17,28 +17,16 @@ export const CONFIG = {
     GAME_SPEED: 1,
 };
 
-export const TILE_CHARS = {
+const BASE_TILE_CHARS = {
     grass: '.', dirt: ',', rock: '#', water: '~',
     tree: 'T', stone_resource: 'o',
-    wall: '█', floor: '·', door: '+',
-    bed: 'B', workbench: 'C', cauldron: 'F',
-    storage_chest: 'S', torch: 'i', fence: '|',
-    arcanum: 'R', beast_circle: 'A',
-    mana_crystal: 'W', glowstone: 'L', enchanting_table: 'P',
-    ember_ward: 'H', arcane_sentinel: 'X', void_nexus: 'V', void_wall: '▓', void_turret: 'Y', void_door: '▒',
     farm_empty: '=', farm_growing: '%', farm_ready: '*',
     snow: '*',
 };
 
-export const TILE_COLORS = {
+const BASE_TILE_COLORS = {
     grass: '#5a8c3a', dirt: '#a07040', rock: '#777', water: '#4488ff',
     tree: '#2d7a2d', tree_autumn: '#cc8822', stone_resource: '#999', runite_ore: '#44cccc',
-    wall: '#aa7744', floor: '#666666', door: '#cc9955',
-    bed: '#8855aa', workbench: '#bb8833', cauldron: '#ff6633',
-    storage_chest: '#997744', torch: '#ffcc00', fence: '#886644',
-    arcanum: '#44aaff', beast_circle: '#77aa44',
-    mana_crystal: '#aa44ff', glowstone: '#ffff88', enchanting_table: '#bb88ff',
-    ember_ward: '#ff8844', arcane_sentinel: '#ff4444', void_nexus: '#9933ff', void_wall: '#6622aa', void_turret: '#aa33ff', void_door: '#7733bb',
     farm_empty: '#664400', farm_growing: '#55aa22', farm_ready: '#ffdd00',
     colonist: '#ffff00', raider: '#ff3333', deer: '#bb8855', rabbit: '#ccaa88', wolf: '#666666',
     snow: '#ffffff', cursor: '#ffffff',
@@ -62,40 +50,38 @@ export const CROPS = {
     potatoes: { growthTicks: 180, harvestYield: 3, seasons: ['spring', 'autumn', 'winter'], char: '%', readyChar: '*', color: '#aa7744' },
 };
 
-export const BUILD_COSTS = {
-    wall: { wood: 2 },
-    floor: { stone: 1 },
-    door: { wood: 3 },
-    bed: { wood: 5 },
-    workbench: { wood: 5, stone: 2 },
-    cauldron: { stone: 3, wood: 1 },
-    storage_chest: { wood: 4 },
-    torch: { wood: 1 },
-    fence: { wood: 1 },
-    arcanum: { wood: 5, stone: 3, planks: 2 },
-    beast_circle: { wood: 6 },
-    mana_crystal: { wood: 8, stone: 4 },
-    glowstone: { planks: 2, stone: 1 },
-    enchanting_table: { planks: 4, stone: 3 },
-    ember_ward: { stone: 4, planks: 2 },
-    arcane_sentinel: { stone: 5, planks: 3 },
-    void_nexus: { runite: 5, stone: 6, planks: 4 },
-    void_wall: { stone: 3, void_essence: 2 },
-    void_turret: { stone: 5, planks: 3, void_essence: 4 },
-    void_door: { stone: 3, planks: 2, void_essence: 3 },
+// To add a building: add an entry here. The game will pick it up automatically.
+// Fields: char, color, cost, work, and optionally: hp, research, power, description.
+// Power sub-object: { generates } or { consumes, radius?, warmRadius?, damage?, range? }
+export const BUILDINGS = {
+    wall:              { char: '█', color: '#aa7744', cost: { wood: 2 }, work: 12, hp: 50, description: 'Blocks movement. Forms rooms when enclosing an area with doors.' },
+    floor:             { char: '·', color: '#666666', cost: { stone: 1 }, work: 6, description: 'Cosmetic flooring. Makes rooms nicer.' },
+    door:              { char: '+', color: '#cc9955', cost: { wood: 3 }, work: 15, hp: 30, description: 'Allows colonist passage. Blocks enemies. Room boundary.' },
+    bed:               { char: 'B', color: '#8855aa', cost: { wood: 5 }, work: 25, description: 'Colonists sleep here. Assign for a mood bonus.' },
+    workbench:         { char: 'C', color: '#bb8833', cost: { wood: 5, stone: 2 }, work: 30, description: 'Required for crafting recipes (planks, weapons, bricks).' },
+    cauldron:          { char: 'F', color: '#ff6633', cost: { stone: 3, wood: 1 }, work: 18, description: 'Required for cooking meals from raw food and crops.' },
+    storage_chest:     { char: 'S', color: '#997744', cost: { wood: 4 }, work: 20, description: 'Increases colony storage capacity.' },
+    torch:             { char: 'i', color: '#ffcc00', cost: { wood: 1 }, work: 4, description: 'Light source. Provides warmth in winter.' },
+    fence:             { char: '|', color: '#886644', cost: { wood: 1 }, work: 5, hp: 20, description: 'Blocks movement like a wall but lighter to build.' },
+    arcanum:           { char: 'R', color: '#44aaff', cost: { wood: 5, stone: 3, planks: 2 }, work: 40, description: 'Colonists study here to generate research points.' },
+    beast_circle:      { char: 'A', color: '#77aa44', cost: { wood: 6 }, work: 28, research: 'beast_binding', description: 'Required for binding creatures. Bound animals produce resources.' },
+    mana_crystal:      { char: 'W', color: '#aa44ff', cost: { wood: 8, stone: 4 }, work: 45, research: 'ley_channeling', power: { generates: 10 }, description: 'Generates 10 mana for powering magical buildings.' },
+    glowstone:         { char: 'L', color: '#ffff88', cost: { planks: 2, stone: 1 }, work: 14, research: 'luminance', power: { consumes: 2, radius: 5 }, description: 'Mana-powered light, radius 5. Consumes 2 mana.' },
+    enchanting_table:  { char: 'P', color: '#bb88ff', cost: { planks: 4, stone: 3 }, work: 35, research: 'arcane_infusion', power: { consumes: 4, speedMult: 2.0 }, description: '2x crafting speed. Consumes 4 mana.' },
+    ember_ward:        { char: 'H', color: '#ff8844', cost: { stone: 4, planks: 2 }, work: 28, research: 'ember_magic', power: { consumes: 3, warmRadius: 4 }, description: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.' },
+    arcane_sentinel:   { char: 'X', color: '#ff4444', cost: { stone: 5, planks: 3 }, work: 50, research: 'warding', power: { consumes: 3, damage: 12, range: 4 }, description: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.' },
+    void_nexus:        { char: 'V', color: '#9933ff', cost: { runite: 5, stone: 6, planks: 4 }, work: 60, research: 'void_summoning', description: 'Start wave defense here. Defend it from enemies to earn void essence.' },
+    void_wall:         { char: '▓', color: '#6622aa', cost: { stone: 3, void_essence: 2 }, work: 15, hp: 120, research: 'void_forging', description: 'Reinforced wall (120 HP). Blocks enemies.' },
+    void_turret:       { char: 'Y', color: '#aa33ff', cost: { stone: 5, planks: 3, void_essence: 4 }, work: 55, research: 'void_forging', power: { consumes: 5, damage: 20, range: 5 }, description: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.' },
+    void_door:         { char: '▒', color: '#7733bb', cost: { stone: 3, planks: 2, void_essence: 3 }, work: 20, hp: 80, research: 'void_forging', description: 'Reinforced door (80 HP). Colonists pass through, enemies must break it.' },
 };
 
-export const BUILD_WORK = {
-    wall: 12, floor: 6, door: 15, bed: 25,
-    workbench: 30, cauldron: 18, storage_chest: 20,
-    torch: 4, fence: 5, arcanum: 40,
-    beast_circle: 28, mana_crystal: 45, glowstone: 14,
-    enchanting_table: 35, ember_ward: 28, arcane_sentinel: 50,
-    void_nexus: 60, void_wall: 15, void_turret: 55, void_door: 20,
-};
+// Auto-derived from BUILDINGS (terrain chars/colors + building chars/colors merged)
+export const TILE_CHARS = { ...BASE_TILE_CHARS, ...Object.fromEntries(Object.entries(BUILDINGS).map(([k, v]) => [k, v.char])) };
+export const TILE_COLORS = { ...BASE_TILE_COLORS, ...Object.fromEntries(Object.entries(BUILDINGS).map(([k, v]) => [k, v.color])) };
 
 // To add a recipe: add entry here. Set 'research' field to gate behind tech.
-// Station must exist as a buildable structure. Output weapons need handling in colonist.js completeTask.
+// Station must exist as a buildable structure. Equipment outputs auto-detected from WEAPONS/ARMORS.
 export const RECIPE_CATEGORIES = ['Materials', 'Equipment', 'Food & Potions'];
 
 export const RECIPES = {
@@ -131,8 +117,12 @@ export const ANIMALS = {
     deer: { char: 'd', color: '#bb8855', hp: 40, speed: 0.5, hostile: false, meatYield: 3, fleeRange: 5 },
     rabbit: { char: 'r', color: '#ccaa88', hp: 10, speed: 0.7, hostile: false, meatYield: 1, fleeRange: 4 },
     wolf: { char: 'w', color: '#555555', hp: 60, speed: 0.6, hostile: true, meatYield: 2, damage: 8, aggroRange: 6 },
+    chicken: { char: 'c', color: '#ddaa44', hp: 15, speed: 0.4, hostile: false, meatYield: 1, fleeRange: 3, tameable: true },
+    cow: { char: 'C', color: '#aa7744', hp: 80, speed: 0.3, hostile: false, meatYield: 4, fleeRange: 4, tameable: true },
+    sheep: { char: 's', color: '#cccccc', hp: 40, speed: 0.35, hostile: false, meatYield: 2, fleeRange: 4, tameable: true },
 };
 
+// To add a weapon: add entry here + a recipe with output: { <key>: 1 }. Auto-detected on craft.
 export const WEAPONS = {
     fists: { name: 'Fists', damage: 5 },
     wooden_club: { name: 'Wooden Club', damage: 10 },
@@ -140,6 +130,11 @@ export const WEAPONS = {
     runic_blade: { name: 'Runic Blade', damage: 22 },
     runic_pick: { name: 'Runic Pick', damage: 12 },
     void_blade: { name: 'Void Blade', damage: 30 },
+};
+
+// To add armor: add entry here + a recipe with output: { <key>: 1 }. Auto-detected on craft.
+export const ARMORS = {
+    void_armor: { name: 'Void Armor', damageReduction: 0.3 },
 };
 
 export const NEED_DECAY = {
@@ -168,28 +163,99 @@ export const COLONIST_NAMES = [
     'Quinn', 'Rex', 'Sage', 'Tara', 'Uma', 'Vex', 'Wren', 'Xia',
 ];
 
+// To add an event: add an entry here with an 'effect' type. Data-driven effects
+// are handled automatically. Supported effects:
+//   'deposit'       - places resources on the map (see meteorite, windfall, forest_growth)
+//   'spawn_animals' - spawns animals at map edges (see migration)
+//   'mood'          - gives a random colonist a thought (see inspiration)
+//   'crop_damage'   - destroys growing crops (see blight, cold_snap)
+//   'custom'        - requires a handler method in events.js (wanderer, caravan, fire)
 export const EVENTS = {
-    wanderer: { weight: 10, minTick: 300, cooldown: 800 },
-    blight: { weight: 8, minTick: 200, cooldown: 600, seasons: ['summer', 'autumn'] },
-    caravan: { weight: 6, minTick: 400, cooldown: 1000 },
-    windfall: { weight: 5, minTick: 500, cooldown: 1200 },
-    fire: { weight: 4, minTick: 200, cooldown: 400, seasons: ['summer'] },
-    cold_snap: { weight: 7, minTick: 100, cooldown: 600, seasons: ['winter'] },
-    migration: { weight: 8, minTick: 300, cooldown: 800, seasons: ['autumn', 'spring'] },
-    inspiration: { weight: 12, minTick: 100, cooldown: 300 },
+    wanderer: { weight: 10, minTick: 300, cooldown: 800, effect: 'custom' },
+    caravan: { weight: 6, minTick: 400, cooldown: 1000, effect: 'custom' },
+    fire: { weight: 4, minTick: 200, cooldown: 400, seasons: ['summer'], effect: 'custom' },
+
+    blight: {
+        weight: 8, minTick: 200, cooldown: 600, seasons: ['summer', 'autumn'],
+        effect: 'crop_damage',
+        chance: 0.4,
+        thought: 'Crops died', moodChange: -15, moodDuration: 300,
+        notification: 'Crop blight! {count} plants destroyed.',
+        logMessage: 'Crop blight destroyed {count} plants', logType: 'danger',
+    },
+    cold_snap: {
+        weight: 7, minTick: 100, cooldown: 600, seasons: ['winter'],
+        effect: 'crop_damage',
+        chance: 1.0,
+        thought: 'Freezing cold snap', moodChange: -12, moodDuration: 300,
+        notification: 'Cold snap! All outdoor crops frozen.',
+        logMessage: 'Cold snap froze all outdoor crops', logType: 'danger',
+    },
+
+    windfall: {
+        weight: 5, minTick: 500, cooldown: 1200,
+        effect: 'deposit',
+        location: 'anywhere', radius: 1, terrain: ['grass'], fillChance: 0.6,
+        deposits: [{ type: 'stone', amount: [3, 5] }],
+        notification: 'Mineral vein discovered! {count} new stone deposits.',
+        logMessage: 'Mineral windfall: {count} new stone deposits', logType: 'event',
+    },
+    meteorite: {
+        weight: 5, minTick: 600, cooldown: 1500,
+        effect: 'deposit',
+        location: 'edge', radius: 2, terrain: ['grass', 'dirt'], fillChance: 0.5,
+        deposits: [
+            { type: 'runite_ore', weight: 3, amount: [2, 3] },
+            { type: 'stone', weight: 7, amount: [4, 7] },
+        ],
+        notification: 'Meteorite impact! {count} deposits found.',
+        logMessage: 'Meteorite: {count} deposits at map edge', logType: 'event',
+    },
+    forest_growth: {
+        weight: 7, minTick: 400, cooldown: 1000,
+        effect: 'deposit',
+        location: 'edge', radius: 3, terrain: ['grass'], fillChance: 0.55,
+        deposits: [{ type: 'tree', amount: [3, 5] }],
+        notification: 'Forest growth! {count} new trees appeared.',
+        logMessage: 'Forest growth: {count} new trees near map edge', logType: 'event',
+    },
+
+    migration: {
+        weight: 8, minTick: 300, cooldown: 800, seasons: ['autumn', 'spring'],
+        effect: 'spawn_animals',
+        animals: [{ type: 'deer', count: [4, 7] }],
+        notification: 'Animal migration! {count} deer passing through.',
+        logMessage: 'Animal migration: {count} deer passing through', logType: 'event',
+    },
+    inspiration: {
+        weight: 12, minTick: 100, cooldown: 300,
+        effect: 'mood',
+        thought: 'Feeling inspired!', moodChange: 25, moodDuration: 300,
+        notification: '{name} is feeling inspired!',
+        logMessage: '{name} is feeling inspired!', logType: 'success',
+    },
 };
 
+// To add a trade: add an entry here. Caravan event auto-generates choices from this.
+export const CARAVAN_TRADES = [
+    { give: { wood: 5 }, receive: { food: 4 } },
+    { give: { stone: 3 }, receive: { wood: 4 } },
+    { give: { food: 4 }, receive: { planks: 3 } },
+    { give: { food: 6 }, receive: { stone: 5 } },
+    { give: { stone: 8 }, receive: { runite: 2 } },
+];
+
 export const RAID_CONFIG = {
-    firstRaidTick: 1200,
-    minInterval: 800,
-    maxInterval: 2000,
+    firstRaidTick: 1500,
+    minInterval: 1200,
+    maxInterval: 3000,
     baseRaiders: 2,
-    wealthScaling: 0.01,
-    raiderHp: 80,
-    raiderDamage: 8,
+    wealthScaling: 0.005,
+    raiderHp: 60,
+    raiderDamage: 6,
     raiderSpeed: 0.4,
-    fleeThreshold: 0.4,
-    timeout: 200,
+    fleeThreshold: 0.5,
+    timeout: 150,
 };
 
 // To add research: add entry here with requires:[] for prerequisites.
@@ -221,23 +287,6 @@ export const TAMED_ANIMALS = {
     sheep: { char: 's', color: '#cccccc', hp: 40, produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 3 },
 };
 
-// Mana stats for magical buildings (build costs/work are in BUILD_COSTS/BUILD_WORK)
-export const POWER_BUILDINGS = {
-    mana_crystal: { generates: 10 },
-    glowstone: { consumes: 2, radius: 5 },
-    enchanting_table: { consumes: 4, speedMult: 2.0 },
-    ember_ward: { consumes: 3, warmRadius: 4 },
-    arcane_sentinel: { consumes: 3, damage: 12, range: 4 },
-    void_turret: { consumes: 5, damage: 20, range: 5 },
-};
-
-export const STRUCTURE_HP = {
-    wall: 50,
-    door: 30,
-    fence: 20,
-    void_wall: 120,
-    void_door: 80,
-};
 
 export const WAVE_CONFIG = {
     baseEnemies: 4,

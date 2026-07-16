@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILD_COSTS, TILE_CHARS, TILE_COLORS, POWER_BUILDINGS, RESEARCH, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, STRUCTURE_HP, WEAPONS } from './config.js';
+import { CONFIG, TRAITS, BUILDINGS, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS } from './config.js';
 import { getAvailableRecipes } from './crafting.js';
 import { CROP_RESEARCH_REQS } from './farming.js';
 
@@ -190,14 +190,12 @@ export class UI {
             html += '<span class="mode-options">';
             input.buildOptions.forEach((opt, i) => {
                 const active = opt === input.buildType ? ' active' : '';
-                const cost = BUILD_COSTS[opt];
-                const costStr = Object.entries(cost).map(([k, v]) => `${k}:${v}`).join(' ');
+                const def = BUILDINGS[opt];
+                const costStr = Object.entries(def.cost).map(([k, v]) => `${k}:${v}`).join(' ');
                 const keyLabel = i < 9 ? i + 1 : (i === 9 ? '0' : '');
                 const locked = this.isBuildingLocked(opt);
                 const lockStr = locked ? ' [LOCKED]' : '';
-                const tileChar = TILE_CHARS[opt] || '?';
-                const tileColor = TILE_COLORS[opt] || '#ccc';
-                html += `<span class="mode-opt${active}" data-build-opt="${opt}"${locked ? ' style="opacity:0.4"' : ''}>${keyLabel ? `[${keyLabel}]` : ''}<span style="color:${tileColor}">${tileChar}</span> ${opt.replace(/_/g,' ')}(${costStr})${lockStr}</span>`;
+                html += `<span class="mode-opt${active}" data-build-opt="${opt}"${locked ? ' style="opacity:0.4"' : ''}>${keyLabel ? `[${keyLabel}]` : ''}<span style="color:${def.color}">${def.char}</span> ${opt.replace(/_/g,' ')}(${costStr})${lockStr}</span>`;
             });
             html += '</span>';
             html += '<span class="mode-hint">Click item to select | Left-click/drag to place | Right-click/drag to deconstruct</span>';
@@ -248,41 +246,20 @@ export class UI {
     }
 
     getStructureDescription(structure) {
+        const def = BUILDINGS[structure];
+        if (!def) return '';
         const powered = this.game.power.hasPower();
-        const powerDef = POWER_BUILDINGS[structure];
         let html = '';
-        const desc = {
-            wall: 'Blocks movement (50 HP). Forms rooms when enclosing an area with doors.',
-            floor: 'Cosmetic flooring. Makes rooms nicer.',
-            door: 'Allows colonist passage (30 HP). Blocks enemies. Room boundary.',
-            bed: 'Colonists sleep here. Assign for a mood bonus.',
-            workbench: 'Required for crafting recipes (planks, weapons, bricks).',
-            cauldron: 'Required for cooking meals from raw food and crops.',
-            storage_chest: 'Increases colony storage capacity.',
-            torch: 'Light source. Provides warmth in winter.',
-            fence: 'Blocks movement like a wall but lighter to build.',
-            arcanum: 'Colonists study here to generate research points.',
-            beast_circle: 'Required for binding creatures. Bound animals produce resources.',
-            mana_crystal: 'Generates 10 mana for powering magical buildings.',
-            glowstone: 'Mana-powered light, radius 5. Consumes 2 mana.',
-            enchanting_table: '2x crafting speed. Consumes 4 mana.',
-            ember_ward: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.',
-            arcane_sentinel: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.',
-            void_nexus: 'Start wave defense here. Defend it from enemies to earn void essence.',
-            void_wall: 'Reinforced wall (120 HP). Blocks enemies.',
-            void_turret: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.',
-            void_door: 'Reinforced door (80 HP). Colonists pass through, enemies must break it.',
-        };
-        if (desc[structure]) {
-            html += `<div class="info-row" style="color:#999;font-size:11px;">${desc[structure]}</div>`;
+        if (def.description) {
+            html += `<div class="info-row" style="color:#999;font-size:11px;">${def.description}</div>`;
         }
-        if (powerDef) {
-            if (powerDef.generates) {
-                html += `<div class="info-row" style="color:#88ff88;">Generates ${powerDef.generates} mana</div>`;
+        if (def.power) {
+            if (def.power.generates) {
+                html += `<div class="info-row" style="color:#88ff88;">Generates ${def.power.generates} mana</div>`;
             }
-            if (powerDef.consumes) {
+            if (def.power.consumes) {
                 const status = powered ? '<span style="color:#88ff88;">Powered</span>' : '<span style="color:#ff4444;">No power!</span>';
-                html += `<div class="info-row">Consumes ${powerDef.consumes} mana — ${status}</div>`;
+                html += `<div class="info-row">Consumes ${def.power.consumes} mana — ${status}</div>`;
             }
         }
         return html;
@@ -327,7 +304,7 @@ export class UI {
         html += `<div class="info-row">State: ${colonist.state}</div>`;
         html += `<div class="info-row">Traits: ${traitSpans}</div>`;
         html += `<div class="info-row">Hunger: ${bar(colonist.needs.hunger)} Rest: ${bar(colonist.needs.rest)}</div>`;
-        html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${colonist.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${colonist.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${colonist.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${colonist.skills.cooking}</span></div>`;
+        html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${colonist.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${colonist.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${colonist.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${colonist.skills.cooking}</span> <span class="skill-tip" data-tip="Taming and handling animals">Animals:${colonist.skills.animals || 1}</span></div>`;
         html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${colonist.weapon?.name || 'Fists'}</span></div>`;
         html += `<div class="info-row">Armor: <span class="skill-tip" data-tip="${armorTip}">${colonist.armor?.name || 'None'}</span></div>`;
         html += `<div class="info-row">Bed: ${colonist.assignedBed ? `(${colonist.assignedBed.x},${colonist.assignedBed.y})` : 'None'}</div>`;
@@ -380,7 +357,7 @@ export class UI {
 
     getCraftOutputTip(outputKey) {
         if (WEAPONS[outputKey]) return `${WEAPONS[outputKey].damage} damage`;
-        if (outputKey === 'void_armor') return '30% damage reduction';
+        if (ARMORS[outputKey]) return `${Math.round(ARMORS[outputKey].damageReduction * 100)}% damage reduction`;
         return null;
     }
 
@@ -403,7 +380,7 @@ export class UI {
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
         if (tile.structure) {
             html += `<div class="info-row" style="color:#ddd;font-weight:bold;">${tile.structure.replace(/_/g,' ')}</div>`;
-            const maxHp = STRUCTURE_HP[tile.structure];
+            const maxHp = BUILDINGS[tile.structure]?.hp;
             if (maxHp) {
                 const currentHp = tile.structureHp !== undefined ? tile.structureHp : maxHp;
                 const hpColor = currentHp >= maxHp ? '#88ff88' : currentHp > maxHp * 0.5 ? '#ffcc00' : '#ff4444';
@@ -458,7 +435,7 @@ export class UI {
         this.elements.infoPanel.innerHTML = html;
     }
 
-    showTileEntities(tile, x, y, colonists, animals, raiders = []) {
+    showTileEntities(tile, x, y, colonists, animals, raiders = [], tamedAnimals = []) {
         this._switchToInfoTab();
         let html = '';
 
@@ -488,7 +465,7 @@ export class UI {
             html += `<div class="info-row">HP: ${c.hp}/${c.maxHp} | Mood: <span class="mood-${moodLevel}">${c.mood.toFixed(0)} (${moodLevel})</span></div>`;
             html += `<div class="info-row">State: ${c.state}</div>`;
             html += `<div class="info-row">Hunger: ${bar(c.needs.hunger)} Rest: ${bar(c.needs.rest)}</div>`;
-            html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${c.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${c.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${c.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${c.skills.cooking}</span></div>`;
+            html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${c.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${c.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${c.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${c.skills.cooking}</span> <span class="skill-tip" data-tip="Taming and handling animals">Animals:${c.skills.animals || 1}</span></div>`;
             html += `<div class="info-row">Traits: ${traitSpans}</div>`;
             html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${c.weapon?.name || 'Fists'}</span> | Armor: <span class="skill-tip" data-tip="${armorTip}">${c.armor?.name || 'None'}</span></div>`;
             html += `<div class="info-actions">`;
@@ -501,19 +478,46 @@ export class UI {
         }
 
         for (const a of animals) {
+            const def = ANIMALS[a.type];
+            const color = def?.color || '#ccaa88';
             html += `<div style="border-bottom:1px solid #444;margin-bottom:6px;padding-bottom:6px;">`;
-            html += `<div class="info-header">${a.type} ${a.hostile ? '(hostile)' : ''}</div>`;
+            html += `<div class="info-header" style="color:${color};">${a.type}${a.hostile ? ' (hostile)' : ''}${def?.tameable ? ' (tameable)' : ''}</div>`;
             html += `<div class="info-row">HP: ${a.hp}/${a.maxHp}</div>`;
+            if (def?.meatYield) html += `<div class="info-row">Meat yield: ${def.meatYield}</div>`;
+            if (a.hostile && def?.damage) html += `<div class="info-row">Damage: ${def.damage}</div>`;
+            if (def?.tameable) {
+                const tamedDef = TAMED_ANIMALS[a.type];
+                if (tamedDef) html += `<div class="info-row" style="color:#88cc88">Produces: ${tamedDef.produces} (every ${tamedDef.produceRate} ticks)</div>`;
+            }
+            html += `<div class="info-row">Speed: ${def?.speed || a.speed}</div>`;
             html += `<div class="info-actions">`;
-            if (!a.hostile) html += `<button onclick="window.game.huntAnimal(${a.id})">Hunt</button>`;
+            html += `<button onclick="window.game.huntAnimal(${a.id})">Hunt</button>`;
+            if (def?.tameable && this.game.research.isResearched('beast_binding')) {
+                const tamedDef = TAMED_ANIMALS[a.type];
+                const canAfford = tamedDef && this.game.resources.has({ food: tamedDef.foodToTame });
+                html += `<button ${canAfford ? '' : 'disabled'} onclick="window.game.tameWildAnimal(${a.id})">Tame (${tamedDef?.foodToTame || '?'} food)</button>`;
+            }
             html += `</div></div>`;
+        }
+
+        for (const a of tamedAnimals) {
+            const def = TAMED_ANIMALS[a.type];
+            const color = def?.color || '#ccaa88';
+            html += `<div style="border-bottom:1px solid #444;margin-bottom:6px;padding-bottom:6px;">`;
+            html += `<div class="info-header" style="color:${color};">${a.type} (tamed)</div>`;
+            html += `<div class="info-row">HP: ${a.hp}/${a.maxHp}</div>`;
+            if (def) {
+                html += `<div class="info-row">Produces: ${def.produces} (every ${def.produceRate} ticks)</div>`;
+                html += `<div class="info-row">Next in: ${a.produceCooldown} ticks</div>`;
+            }
+            html += `</div>`;
         }
 
         html += `<div class="info-header" style="font-size:11px;color:#aaa;">Tile (${x},${y})</div>`;
         if (tile.onFire) html += `<div class="info-row fire">ON FIRE!</div>`;
         if (tile.structure) {
             html += `<div class="info-row" style="color:#ddd;font-weight:bold;">${tile.structure.replace(/_/g,' ')}</div>`;
-            const maxHp = STRUCTURE_HP[tile.structure];
+            const maxHp = BUILDINGS[tile.structure]?.hp;
             if (maxHp) {
                 const currentHp = tile.structureHp !== undefined ? tile.structureHp : maxHp;
                 const hpColor = currentHp >= maxHp ? '#88ff88' : currentHp > maxHp * 0.5 ? '#ffcc00' : '#ff4444';
@@ -652,7 +656,7 @@ export class UI {
     }
 
     updatePriorityPanel() {
-        const skills = ['building', 'farming', 'crafting', 'cooking', 'hauling'];
+        const skills = ['building', 'farming', 'crafting', 'cooking', 'animals', 'hauling'];
         let html = '<table><tr><th>Colonist</th>';
         skills.forEach(s => { html += `<th>${s.substring(0, 5)}</th>`; });
         html += '</tr>';
@@ -1122,14 +1126,12 @@ export class UI {
             return;
         }
 
-        html += '<div class="info-row" style="color:#aaa;margin-bottom:6px;">Bind creatures to produce resources. Requires a beast circle and food.</div>';
+        html += '<div class="info-row" style="color:#aaa;margin-bottom:6px;">Click a tameable animal on the map to tame it. Requires a Beast Circle and food.</div>';
 
+        html += '<div class="info-row" style="margin-top:6px;color:#aaa;"><b>Tameable species:</b></div>';
         for (const [type, def] of Object.entries(TAMED_ANIMALS)) {
-            const canAfford = this.game.resources.has({ food: def.foodToTame });
-            const cls = canAfford ? 'craft-available' : 'craft-unavailable';
-            html += `<div class="craft-row ${cls}">`;
-            html += `<button ${canAfford ? '' : 'disabled'} onclick="window.game.tameAnimalType('${type}')">Tame ${type}</button>`;
-            html += `<span>Cost: ${def.foodToTame} food | Produces: ${def.produces} every ${def.produceRate} ticks</span>`;
+            html += `<div class="info-row" style="color:${ANIMALS[type]?.color || '#ccc'}">`;
+            html += `${type} — Cost: ${def.foodToTame} food | Produces: ${def.produces} (every ${def.produceRate} ticks)`;
             html += `</div>`;
         }
 
@@ -1137,8 +1139,11 @@ export class UI {
         if (tamed.length > 0) {
             html += '<div class="info-row" style="margin-top:8px;color:#88cc88"><b>Your Animals:</b></div>';
             for (const a of tamed) {
-                html += `<div class="info-row">${a.type} - HP:${a.hp}/${a.maxHp}</div>`;
+                const def = TAMED_ANIMALS[a.type];
+                html += `<div class="info-row" style="color:${def?.color || '#ccc'}">${a.type} — HP:${a.hp}/${a.maxHp} | Next ${def?.produces}: ${a.produceCooldown} ticks</div>`;
             }
+        } else {
+            html += '<div class="info-row" style="margin-top:8px;color:#666">No tamed animals yet.</div>';
         }
 
         if (html !== this._lastTamingHtml) {
@@ -1189,19 +1194,8 @@ export class UI {
     }
 
     isBuildingLocked(buildType) {
-        const reqs = {
-            beast_circle: 'beast_binding',
-            mana_crystal: 'ley_channeling',
-            glowstone: 'luminance',
-            enchanting_table: 'arcane_infusion',
-            ember_ward: 'ember_magic',
-            arcane_sentinel: 'warding',
-            void_nexus: 'void_summoning',
-            void_wall: 'void_forging',
-            void_turret: 'void_forging',
-        };
-        const req = reqs[buildType];
-        return req && !this.game.research.isResearched(req);
+        const def = BUILDINGS[buildType];
+        return def?.research && !this.game.research.isResearched(def.research);
     }
 
     updateNotifications() {

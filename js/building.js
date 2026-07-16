@@ -1,37 +1,24 @@
-import { BUILD_COSTS, BUILD_WORK } from './config.js';
-
-const BUILDING_RESEARCH_REQS = {
-    beast_circle: 'beast_binding',
-    mana_crystal: 'ley_channeling',
-    glowstone: 'luminance',
-    enchanting_table: 'arcane_infusion',
-    ember_ward: 'ember_magic',
-    arcane_sentinel: 'warding',
-    void_nexus: 'void_summoning',
-    void_wall: 'void_forging',
-    void_turret: 'void_forging',
-    void_door: 'void_forging',
-};
+import { BUILDINGS } from './config.js';
 
 export function designateBuild(game, x, y, buildType) {
     const tile = game.map[y][x];
     if (tile.structure || !tile.passable || tile.resource) return false;
-    if (tile.terrain === 'water') return false;
+    if (tile.terrain === 'water' || tile.terrain === 'rock') return false;
 
-    const researchReq = BUILDING_RESEARCH_REQS[buildType];
-    if (researchReq && !game.research.isResearched(researchReq)) return false;
+    const def = BUILDINGS[buildType];
+    if (!def) return false;
 
-    const cost = BUILD_COSTS[buildType];
-    if (!cost || !game.resources.has(cost)) return false;
+    if (def.research && !game.research.isResearched(def.research)) return false;
+    if (!game.resources.has(def.cost)) return false;
 
-    game.resources.deduct(cost);
+    game.resources.deduct(def.cost);
     tile.designation = { type: 'build', buildType };
 
     game.taskQueue.add({
         type: 'build',
         skillRequired: 'building',
         x, y,
-        workAmount: BUILD_WORK[buildType] || 15,
+        workAmount: def.work,
         buildType,
     });
 
@@ -73,8 +60,8 @@ export function cancelDesignation(game, x, y) {
 
     if (tile.designation) {
         if (tile.designation.type === 'build') {
-            const cost = BUILD_COSTS[tile.designation.buildType];
-            if (cost) game.resources.add(cost);
+            const def = BUILDINGS[tile.designation.buildType];
+            if (def) game.resources.add(def.cost);
         }
         const task = game.taskQueue.getByPosition(x, y);
         if (task) game.taskQueue.remove(task.id);

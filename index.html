@@ -78,7 +78,8 @@
             <div><b style="color:#fff">Ember Ward</b> (H) — Warms nearby tiles (radius 4) in winter. Consumes 3 mana.</div>
             <div><b style="color:#fff">Arcane Sentinel</b> (X) — Auto-attacks hostile enemies in range 4. Consumes 3 mana.</div>
             <div><b style="color:#fff">Void Nexus</b> (V) — Click to start wave defense. Needs research: Void Summoning.</div>
-            <div><b style="color:#fff">Void Wall</b> (▓) — Reinforced wall. Needs research: Void Forging.</div>
+            <div><b style="color:#fff">Void Wall</b> (▓) — Reinforced wall (120 HP). Needs research: Void Forging.</div>
+            <div><b style="color:#fff">Void Door</b> (▒) — Reinforced door (80 HP). Colonists pass, enemies must break. Needs research: Void Forging.</div>
             <div><b style="color:#fff">Void Turret</b> (Y) — Stronger sentinel, range 5, 20 dmg. Consumes 5 mana. Needs research: Void Forging.</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Rooms --</div>
@@ -121,7 +122,7 @@
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Wildlife &amp; Beast Binding --</div>
             <div><b style="color:#fff">Deer</b> (d) — Passive. Flees colonists. Yields 3 meat when hunted.</div>
             <div><b style="color:#fff">Rabbit</b> (r) — Passive. Fast. Yields 1 meat.</div>
-            <div><b style="color:#fff">Wolf</b> (w) — Passive. Yields 2 meat.</div>
+            <div><b style="color:#fff">Wolf</b> (w) — Hostile. Attacks colonists at night/winter. Yields 2 meat.</div>
             <div><b style="color:#fff">Hunting</b> — Select an animal, click Hunt. Creates a task for a colonist to kill it.</div>
             <div><b style="color:#fff">Beast Binding</b> — Requires Beast Binding research + Beast Circle. Bound creatures produce resources (eggs, milk, wool).</div>
 
@@ -129,15 +130,17 @@
             <div><b style="color:#fff">Combat</b> — Melee, 1-tile range. Damage = base + weapon bonus. Colonists auto-defend when attacked. Yellow ! = colonist strikes, red ! = colonist hit.</div>
             <div><b style="color:#fff">Weapons</b> — Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22), Void Blade (30). Craft and equip for better defense.</div>
             <div><b style="color:#fff">Armor</b> — Void Armor (-30% damage taken). Craft with void essence. Equip from colonist info panel.</div>
-            <div><b style="color:#fff">Peaceful Mode</b> — Disables pyromaniac fires. All hostile combat comes from the Void Nexus.</div>
+            <div><b style="color:#fff">Raids</b> — Raiders attack periodically (disabled in Peaceful Mode). Scale with colony wealth.</div>
+            <div><b style="color:#fff">Structure HP</b> — Walls/doors/fences have HP. Enemies break through them. Auto-repairs when idle.</div>
+            <div><b style="color:#fff">Peaceful Mode</b> — Disables raids, wolves, and pyromaniac fires. Void Nexus still works.</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Wave Defense (Void Nexus) --</div>
             <div><b style="color:#fff">Void Nexus</b> (V) — Build after researching Void Summoning. Click to start a wave defense challenge.</div>
             <div><b style="color:#fff">Waves</b> — Each wave is harder (more enemies, more HP/dmg). Enemies (E, purple) spawn from all sides and attack the nexus.</div>
             <div><b style="color:#fff">Nexus HP</b> — 200 HP. If destroyed, you must rebuild. Wave progress is kept.</div>
             <div><b style="color:#fff">Colony Cap</b> — 3 + (waves completed) colonists, max 12. Complete waves to grow your colony.</div>
-            <div><b style="color:#fff">Void Essence</b> — Dropped by wave enemies. Used for Void Blade, Void Armor, Void Wall, Void Turret.</div>
-            <div><b style="color:#fff">Strategy</b> — Build walls to funnel enemies, place turrets along path, draft colonists at chokepoints. Turret beams show as * traveling to targets.</div>
+            <div><b style="color:#fff">Void Essence</b> — Dropped by wave enemies. Used for Void Blade, Void Armor, Void Wall, Void Turret, Void Door.</div>
+            <div><b style="color:#fff">Strategy</b> — Build walls/doors to funnel enemies, place turrets along path, draft colonists at chokepoints. During waves, colonists prioritize combat.</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Events --</div>
             <div><b style="color:#fff">Wanderer</b> — A new colonist wants to join. More likely when colony is happy. Accept or reject.</div>
@@ -158,7 +161,7 @@
             <div>Runeforging → Runic Blade, Runic Pick</div>
             <div>Warding → Arcane Sentinel</div>
             <div>Void Summoning (Ley Channeling + Warding) → Void Nexus</div>
-            <div>Void Forging (Void Summoning + Runeforging) → Void Blade, Void Armor, Void Wall, Void Turret</div>
+            <div>Void Forging (Void Summoning + Runeforging) → Void Blade, Void Armor, Void Wall, Void Turret, Void Door</div>
 
             <div style="color:#88ccff; font-weight:bold; margin-top:12px;">-- Mana (Leylines) --</div>
             <div><b style="color:#fff">Net Mana</b> — Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels, void turrets). If negative, all mana-powered buildings stop working.</div>
@@ -167,7 +170,7 @@
             <div style="font-family:monospace; color:#aaa;">
                 <span style="color:#22aa22">.</span> Grass &nbsp;
                 <span style="color:#88aa44">,</span> Dirt &nbsp;
-                <span style="color:#666666">#</span> Rock &nbsp;
+                <span style="color:#666666">#</span> Rock (slow to cross) &nbsp;
                 <span style="color:#4488cc">~</span> Water (slow to cross) &nbsp;
                 <span style="color:#228822">T</span> Tree &nbsp;
                 <span style="color:#aaaaaa">o</span> Stone/Runite deposit &nbsp;

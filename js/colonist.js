@@ -1,9 +1,15 @@
-import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, BUILD_COSTS, STRUCTURE_HP } from './config.js';
+import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS } from './config.js';
 import { findPath, findPathAdjacent, manhattanDist } from './pathfinding.js';
-import { isPassable, getMoveCost } from './map.js';
+import { isPassable, getMoveCost, IMPASSABLE_STRUCTURES } from './map.js';
 import { FOODSTUFFS } from './resources.js';
+import { completeTame } from './taming.js';
 
 let nextColonistId = 1;
+
+export function syncColonistIdCounter(colonists) {
+    const maxId = colonists.reduce((max, c) => Math.max(max, c.id || 0), 0);
+    if (maxId >= nextColonistId) nextColonistId = maxId + 1;
+}
 
 export function createColonist(x, y, skillBias, existingNames = []) {
     const id = nextColonistId++;
@@ -28,6 +34,7 @@ export function createColonist(x, y, skillBias, existingNames = []) {
         farming: 2 + Math.floor(Math.random() * 4),
         crafting: 2 + Math.floor(Math.random() * 4),
         cooking: 2 + Math.floor(Math.random() * 4),
+        animals: 1 + Math.floor(Math.random() * 4),
     };
     if (skillBias && skills[skillBias] !== undefined) {
         skills[skillBias] = Math.min(10, skills[skillBias] + 3);
@@ -35,7 +42,7 @@ export function createColonist(x, y, skillBias, existingNames = []) {
 
     return {
         id, name, x, y, skills, traits,
-        priorities: { building: 3, farming: 3, crafting: 3, cooking: 3, hauling: 4 },
+        priorities: { building: 3, farming: 3, crafting: 3, cooking: 3, animals: 3, hauling: 4 },
         needs: { hunger: 80 + Math.random() * 20, rest: 80 + Math.random() * 20 },
         mood: 60,
         thoughts: [],
@@ -351,8 +358,7 @@ function completeTask(colonist, task, game) {
             const tile = game.map[task.y][task.x];
             tile.structure = task.buildType;
             tile.designation = null;
-            const impassableTypes = ['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret'];
-            tile.passable = !impassableTypes.includes(task.buildType);
+            tile.passable = !IMPASSABLE_STRUCTURES.has(task.buildType);
             game.roomsDirty = true;
             if (game.waves && game.waves.active) game.waves.invalidatePathPreview();
             addThought(colonist, 'Built something', 3, 100, game.tick);
@@ -407,19 +413,17 @@ function completeTask(colonist, task, game) {
         case 'craft': {
             if (task.recipe) {
                 const output = task.recipe.output;
-                if (output.wooden_club) {
-                    game.resources.addWeapon({ ...WEAPONS.wooden_club });
-                } else if (output.etched_axe) {
-                    game.resources.addWeapon({ ...WEAPONS.etched_axe });
-                } else if (output.runic_blade) {
-                    game.resources.addWeapon({ ...WEAPONS.runic_blade });
-                } else if (output.runic_pick) {
-                    game.resources.addWeapon({ ...WEAPONS.runic_pick });
-                } else if (output.void_blade) {
-                    game.resources.addWeapon({ ...WEAPONS.void_blade });
-                } else if (output.void_armor) {
-                    game.resources.addArmor({ name: 'Void Armor', damageReduction: 0.3 });
-                } else {
+                let handled = false;
+                for (const key of Object.keys(output)) {
+                    if (WEAPONS[key]) {
+                        game.resources.addWeapon({ ...WEAPONS[key] });
+                        handled = true;
+                    } else if (ARMORS[key]) {
+                        game.resources.addArmor({ ...ARMORS[key] });
+                        handled = true;
+                    }
+                }
+                if (!handled) {
                     game.resources.add(output);
                 }
                 addThought(colonist, 'Crafted something', 4, 120, game.tick);
@@ -442,7 +446,7 @@ function completeTask(colonist, task, game) {
                 const animal = game.wildlife.find(a => a.id === task.targetAnimalId);
                 if (animal && animal.hp > 0) {
                     const weaponDmg = colonist.weapon ? colonist.weapon.damage : 5;
-                    animal.hp -= weaponDmg + colonist.skills.building * 2;
+                    animal.hp -= weaponDmg + (colonist.skills.animals || 1) * 2;
                 }
             }
             break;
@@ -458,6 +462,14 @@ function completeTask(colonist, task, game) {
             game.research.addProgress(colonist.skills.crafting + 2);
             break;
         }
+        case 'tame': {
+            if (task.targetAnimalId) {
+                if (completeTame(game, task.targetAnimalId)) {
+                    addThought(colonist, 'Tamed an animal', 6, 150, game.tick);
+                }
+            }
+            break;
+        }
         case 'repair': {
             const tile = game.map[task.y][task.x];
             if (tile.structure && tile.structureHp !== undefined) {
@@ -469,10 +481,10 @@ function completeTask(colonist, task, game) {
         case 'deconstruct': {
             const tile = game.map[task.y][task.x];
             if (tile.structure) {
-                const cost = BUILD_COSTS[tile.structure];
-                if (cost) {
+                const def = BUILDINGS[tile.structure];
+                if (def) {
                     const partial = {};
-                    for (const [res, amt] of Object.entries(cost)) {
+                    for (const [res, amt] of Object.entries(def.cost)) {
                         partial[res] = Math.ceil(amt * 0.5);
                     }
                     game.resources.add(partial);

@@ -13,18 +13,8 @@ export class Renderer {
         const parts = [];
 
         // Build entity position map for O(1) lookup per tile
+        // Render order: lower priority first, higher priority overwrites (colonists always on top)
         const entityMap = new Map();
-        for (const c of colonists) {
-            if (c.hp > 0) entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: TILE_COLORS.colonist });
-        }
-        for (const r of raiders) {
-            if (r.hp > 0) entityMap.set(r.y * CONFIG.MAP_WIDTH + r.x, { char: 'R', color: TILE_COLORS.raider });
-        }
-        if (game.waves) {
-            for (const e of game.waves.enemies) {
-                if (e.hp > 0) entityMap.set(e.y * CONFIG.MAP_WIDTH + e.x, { char: e.char, color: e.color });
-            }
-        }
         for (const a of wildlife) {
             if (a.hp > 0) entityMap.set(a.y * CONFIG.MAP_WIDTH + a.x, { char: a.char, color: a.color });
         }
@@ -32,6 +22,17 @@ export class Renderer {
             for (const a of tamedAnimals) {
                 if (a.hp > 0) entityMap.set(a.y * CONFIG.MAP_WIDTH + a.x, { char: a.char, color: a.color });
             }
+        }
+        if (game.waves) {
+            for (const e of game.waves.enemies) {
+                if (e.hp > 0) entityMap.set(e.y * CONFIG.MAP_WIDTH + e.x, { char: e.char, color: e.color });
+            }
+        }
+        for (const r of raiders) {
+            if (r.hp > 0) entityMap.set(r.y * CONFIG.MAP_WIDTH + r.x, { char: 'R', color: TILE_COLORS.raider });
+        }
+        for (const c of colonists) {
+            if (c.hp > 0) entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: TILE_COLORS.colonist });
         }
 
         const portalMap = new Map();
