@@ -1,7 +1,7 @@
-import { CONFIG, CROPS, BUILDINGS } from './config.js';
-import { designateBuild, designateChop, designateMine, cancelDesignation } from './building.js';
-import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from './farming.js';
-import { isPassable } from './map.js';
+import { CONFIG, CROPS, BUILDINGS } from '../core/config.js';
+import { designateBuild, designateChop, designateMine, cancelDesignation } from '../systems/building.js';
+import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from '../systems/farming.js';
+import { isPassable } from '../world/map.js';
 
 export class InputHandler {
     constructor(game, preElement) {
@@ -107,9 +107,9 @@ export class InputHandler {
             case 's': case 'arrowdown': this.game.camera.pan(0, 3); break;
             case 'a': case 'arrowleft': this.game.camera.pan(-3, 0); break;
             case 'd': case 'arrowright': this.game.camera.pan(3, 0); break;
-            case 'b': this.setMode('build'); break;
-            case 'z': this.setMode('zone'); break;
-            case 'g': this.setMode('designate'); break;
+            case 'b': this.setMode(this.mode === 'build' ? 'normal' : 'build'); break;
+            case 'z': this.setMode(this.mode === 'zone' ? 'normal' : 'zone'); break;
+            case 'g': this.setMode(this.mode === 'designate' ? 'normal' : 'designate'); break;
             case 'escape': {
                 const ui = this.game.ui;
                 const hadPanel = ui.priorityPanelVisible || ui.craftPanelVisible ||

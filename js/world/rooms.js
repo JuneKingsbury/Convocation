@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from '../core/config.js';
 
 export function detectRooms(map) {
     for (let y = 0; y < CONFIG.MAP_HEIGHT; y++) {

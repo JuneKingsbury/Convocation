@@ -1,4 +1,4 @@
-import { RESEARCH } from './config.js';
+import { RESEARCH } from '../core/config.js';
 
 export class ResearchSystem {
     constructor() {

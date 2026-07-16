@@ -1,4 +1,4 @@
-import { CONFIG, TILE_CHARS, TILE_COLORS, TERRAIN, RESOURCES } from './config.js';
+import { CONFIG, TILE_CHARS, TILE_COLORS, TERRAIN, RESOURCES } from '../core/config.js';
 
 export function createTile(terrain) {
     return {

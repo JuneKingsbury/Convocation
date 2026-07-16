@@ -1,7 +1,7 @@
-import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS } from './config.js';
-import { findPath, findPathAdjacent, manhattanDist } from './pathfinding.js';
-import { isPassable, getMoveCost, IMPASSABLE_STRUCTURES } from './map.js';
-import { FOODSTUFFS } from './resources.js';
+import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS } from '../core/config.js';
+import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
+import { isPassable, getMoveCost, IMPASSABLE_STRUCTURES } from '../world/map.js';
+import { FOODSTUFFS } from '../systems/resources.js';
 import { completeTame } from './taming.js';
 
 let nextColonistId = 1;

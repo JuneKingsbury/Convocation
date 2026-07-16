@@ -1,4 +1,4 @@
-import { BUILDINGS, RESOURCES } from './config.js';
+import { BUILDINGS, RESOURCES } from '../core/config.js';
 
 export function designateBuild(game, x, y, buildType) {
     const tile = game.map[y][x];

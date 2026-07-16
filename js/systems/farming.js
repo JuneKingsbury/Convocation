@@ -1,4 +1,4 @@
-import { CROPS, RESEARCH } from './config.js';
+import { CROPS, RESEARCH } from '../core/config.js';
 
 function buildCropResearchReqs() {
     const reqs = {};

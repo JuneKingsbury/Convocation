@@ -1,8 +1,8 @@
-import { CONFIG, RAID_CONFIG, WEAPONS } from './config.js';
+import { CONFIG, RAID_CONFIG, WEAPONS } from '../core/config.js';
 
 const RAIDER_WEAPONS = ['wooden_club', 'etched_axe', 'runic_blade'];
-import { isPassable } from './map.js';
-import { manhattanDist } from './pathfinding.js';
+import { isPassable } from '../world/map.js';
+import { manhattanDist } from '../world/pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
 
 let nextRaiderId = 1;

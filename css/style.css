@@ -431,7 +431,7 @@ body {
 }
 
 #game.paused {
-    filter: saturate(0.3) brightness(0.7);
+    filter: saturate(0.5) brightness(0.85);
 }
 
 #game-canvas {

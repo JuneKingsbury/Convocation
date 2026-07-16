@@ -1,6 +1,6 @@
-import { CONFIG, EVENTS, CARAVAN_TRADES, WEATHER_TYPES, THOUGHTS, SKILLS } from './config.js';
-import { createColonist, addThought } from './colonist.js';
-import { createAnimal } from './wildlife.js';
+import { CONFIG, EVENTS, CARAVAN_TRADES, WEATHER_TYPES, THOUGHTS, SKILLS } from '../core/config.js';
+import { createColonist, addThought } from '../entities/colonist.js';
+import { createAnimal } from '../entities/wildlife.js';
 
 export class EventSystem {
     constructor() {

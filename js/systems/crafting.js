@@ -1,4 +1,4 @@
-import { RECIPES } from './config.js';
+import { RECIPES } from '../core/config.js';
 
 export function queueCraftingOrder(game, recipeKey) {
     const recipe = RECIPES[recipeKey];

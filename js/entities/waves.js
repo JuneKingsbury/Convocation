@@ -1,6 +1,6 @@
-import { CONFIG, WAVE_CONFIG, BUILDINGS } from './config.js';
-import { isPassableForEnemies, isBreakableByEnemies } from './map.js';
-import { manhattanDist } from './pathfinding.js';
+import { CONFIG, WAVE_CONFIG, BUILDINGS } from '../core/config.js';
+import { isPassableForEnemies, isBreakableByEnemies } from '../world/map.js';
+import { manhattanDist } from '../world/pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
 
 let nextWaveEnemyId = 10000;

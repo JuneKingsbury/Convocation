@@ -1,7 +1,7 @@
 import { CONFIG, SKILLS } from './config.js';
-import { syncColonistIdCounter } from './colonist.js';
-import { syncAnimalIdCounter } from './wildlife.js';
-import { syncTamedIdCounter } from './taming.js';
+import { syncColonistIdCounter } from '../entities/colonist.js';
+import { syncAnimalIdCounter } from '../entities/wildlife.js';
+import { syncTamedIdCounter } from '../entities/taming.js';
 
 const SAVE_KEY = 'colony_save';
 

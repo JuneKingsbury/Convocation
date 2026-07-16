@@ -1,4 +1,4 @@
-import { CONFIG, SEASONS, SEASON_EFFECTS, WEATHER_TYPES, SEASON_WEATHER } from './config.js';
+import { CONFIG, SEASONS, SEASON_EFFECTS, WEATHER_TYPES, SEASON_WEATHER } from '../core/config.js';
 
 export class Weather {
     constructor() {

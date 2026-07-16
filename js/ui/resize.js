@@ -2,6 +2,15 @@ export function initResizeHandles(onResize) {
     initInfoPanelResize(onResize);
     initFooterResize(onResize);
     initFooterPanelResizes();
+
+    const mq = window.matchMedia('(max-width: 768px)');
+    function handleMobileSwitch(e) {
+        if (e.matches) {
+            document.getElementById('game-container').style.gridTemplateColumns = '';
+        }
+    }
+    mq.addEventListener('change', handleMobileSwitch);
+    handleMobileSwitch(mq);
 }
 
 function initInfoPanelResize(onResize) {

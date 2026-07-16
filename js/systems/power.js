@@ -1,5 +1,5 @@
-import { BUILDINGS } from './config.js';
-import { manhattanDist } from './pathfinding.js';
+import { BUILDINGS } from '../core/config.js';
+import { manhattanDist } from '../world/pathfinding.js';
 
 export class PowerSystem {
     constructor() {

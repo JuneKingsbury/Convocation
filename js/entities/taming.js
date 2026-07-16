@@ -1,4 +1,4 @@
-import { CONFIG, ANIMALS, TAMED_ANIMALS } from './config.js';
+import { CONFIG, ANIMALS, TAMED_ANIMALS } from '../core/config.js';
 
 let nextTamedId = 1;
 

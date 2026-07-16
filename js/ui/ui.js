@@ -1,6 +1,6 @@
-import { CONFIG, TRAITS, BUILDINGS, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, SKILLS } from './config.js';
-import { getAvailableRecipes } from './crafting.js';
-import { CROP_RESEARCH_REQS } from './farming.js';
+import { CONFIG, TRAITS, BUILDINGS, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, SKILLS } from '../core/config.js';
+import { getAvailableRecipes } from '../systems/crafting.js';
+import { CROP_RESEARCH_REQS } from '../systems/farming.js';
 
 export class UI {
     constructor(game) {

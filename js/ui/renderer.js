@@ -1,5 +1,5 @@
-import { CONFIG, TILE_COLORS } from './config.js';
-import { getTileChar, getTileColor, getTileBg } from './map.js';
+import { CONFIG, TILE_COLORS } from '../core/config.js';
+import { getTileChar, getTileColor, getTileBg } from '../world/map.js';
 
 export class Renderer {
     constructor(container) {

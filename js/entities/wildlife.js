@@ -1,6 +1,6 @@
-import { CONFIG, ANIMALS, SEASON_EFFECTS } from './config.js';
-import { isPassableForAnimals } from './map.js';
-import { manhattanDist } from './pathfinding.js';
+import { CONFIG, ANIMALS, SEASON_EFFECTS } from '../core/config.js';
+import { isPassableForAnimals } from '../world/map.js';
+import { manhattanDist } from '../world/pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
 
 let nextAnimalId = 1;

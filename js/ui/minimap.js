@@ -1,7 +1,7 @@
-import { CONFIG, TILE_COLORS } from './config.js';
+import { CONFIG, TILE_COLORS } from '../core/config.js';
 
 const SCALE_X = 2;
-const SCALE_Y = 3;
+const SCALE_Y = 2;
 
 export class Minimap {
     constructor(canvas, game) {
