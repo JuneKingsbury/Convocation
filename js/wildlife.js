@@ -102,9 +102,8 @@ function syncAnimalTasks(game) {
         const animal = game.wildlife.find(a => a.id === task.targetAnimalId);
         if (!animal || animal.hp <= 0) {
             game.taskQueue.remove(task.id);
-        } else {
-            task.x = animal.x;
-            task.y = animal.y;
+        } else if (task.x !== animal.x || task.y !== animal.y) {
+            game.taskQueue.updatePosition(task.id, animal.x, animal.y);
         }
     }
 }
@@ -147,6 +146,9 @@ function updateHostileAnimal(animal, def, game) {
 }
 
 function findNearestColonist(animal, game) {
+    if (game.spatial) {
+        return game.spatial.colonists.findNearest(animal.x, animal.y, 20, null);
+    }
     let nearest = null;
     let minDist = Infinity;
     for (const c of game.colonists) {

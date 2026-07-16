@@ -230,6 +230,7 @@ export class EventSystem {
         if (fireX >= 0) {
             game.map[fireY][fireX].onFire = true;
             game.map[fireY][fireX].fireTimer = 20;
+            if (game.mapIndex) game.mapIndex.addFire(fireX, fireY);
             game.notifications.push({ text: 'Fire has broken out!', tick: game.tick, type: 'danger' });
             game.eventLog.add(game, 'Fire has broken out!', 'danger', { type: 'position', x: fireX, y: fireY });
             const t = THOUGHTS.fire_panic;
@@ -288,6 +289,71 @@ function getRandomInterior() {
 }
 
 export function updateFires(game) {
+    const firePositions = game.mapIndex ? game.mapIndex.getFirePositions() : null;
+
+    if (!firePositions) {
+        _updateFiresFallback(game);
+        return;
+    }
+
+    for (const { x, y } of firePositions) {
+        const tile = game.map[y][x];
+        if (!tile.onFire) {
+            game.mapIndex.removeFire(x, y);
+            continue;
+        }
+
+        tile.fireTimer--;
+
+        const wDef = WEATHER_TYPES[game.weather.currentWeather];
+        if (wDef && wDef.extinguishesFire) {
+            tile.onFire = false;
+            tile.fireTimer = 0;
+            game.mapIndex.removeFire(x, y);
+            continue;
+        }
+
+        if (tile.fireTimer <= 0) {
+            tile.onFire = false;
+            game.mapIndex.removeFire(x, y);
+            if (tile.resource?.type === 'tree') {
+                tile.resource = null;
+            } else if (tile.structure && tile.structure !== 'wall') {
+                const oldStructure = tile.structure;
+                tile.structure = null;
+                game.mapIndex.removeStructure(x, y, oldStructure);
+            }
+        }
+
+        if (tile.onFire && Math.random() < 0.05) {
+            const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+            const dir = dirs[Math.floor(Math.random() * 4)];
+            const nx = x + dir[0], ny = y + dir[1];
+            if (nx >= 0 && nx < CONFIG.MAP_WIDTH && ny >= 0 && ny < CONFIG.MAP_HEIGHT) {
+                const neighbor = game.map[ny][nx];
+                if (!neighbor.onFire && (neighbor.resource?.type === 'tree' || (neighbor.structure && neighbor.structure !== 'wall'))) {
+                    neighbor.onFire = true;
+                    neighbor.fireTimer = 15 + Math.floor(Math.random() * 10);
+                    game.mapIndex.addFire(nx, ny);
+                }
+            }
+        }
+
+        if (tile.onFire) {
+            const existingTask = game.taskQueue.getByPosition(x, y);
+            if (!existingTask) {
+                game.taskQueue.add({
+                    type: 'extinguish',
+                    skillRequired: 'building',
+                    x, y,
+                    workAmount: 5,
+                });
+            }
+        }
+    }
+}
+
+function _updateFiresFallback(game) {
     for (let y = 0; y < game.map.length; y++) {
         for (let x = 0; x < game.map[y].length; x++) {
             const tile = game.map[y][x];

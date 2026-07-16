@@ -49,33 +49,41 @@ export class InputHandler {
     }
 
     measureCharSize() {
-        const gameEl = document.getElementById('game');
-        const computedSize = gameEl
-            ? getComputedStyle(gameEl).fontSize
-            : '14px';
+        const renderer = this.game.renderer;
+        if (renderer && renderer.charWidth > 0) {
+            const canvas = renderer.canvas;
+            const rect = canvas.getBoundingClientRect();
+            this.charWidth = rect.width / CONFIG.VIEWPORT_WIDTH;
+            this.charHeight = rect.height / CONFIG.VIEWPORT_HEIGHT;
+        } else {
+            const gameEl = document.getElementById('game');
+            const computedSize = gameEl
+                ? getComputedStyle(gameEl).fontSize
+                : '14px';
 
-        const pre = document.createElement('pre');
-        pre.style.fontFamily = "'Courier New', monospace";
-        pre.style.fontSize = computedSize;
-        pre.style.lineHeight = '1.15';
-        pre.style.position = 'absolute';
-        pre.style.visibility = 'hidden';
-        pre.style.padding = '0';
-        pre.style.margin = '0';
-        pre.innerHTML = '<span>X</span>';
-        document.body.appendChild(pre);
-        const span = pre.querySelector('span');
-        this.charWidth = span.getBoundingClientRect().width;
-        this.charHeight = pre.getBoundingClientRect().height;
-        document.body.removeChild(pre);
+            const pre = document.createElement('pre');
+            pre.style.fontFamily = "'Courier New', monospace";
+            pre.style.fontSize = computedSize;
+            pre.style.lineHeight = '1.15';
+            pre.style.position = 'absolute';
+            pre.style.visibility = 'hidden';
+            pre.style.padding = '0';
+            pre.style.margin = '0';
+            pre.innerHTML = '<span>X</span>';
+            document.body.appendChild(pre);
+            const span = pre.querySelector('span');
+            this.charWidth = span.getBoundingClientRect().width;
+            this.charHeight = pre.getBoundingClientRect().height;
+            document.body.removeChild(pre);
+        }
         if (this.charWidth === 0) this.charWidth = 8.4;
         if (this.charHeight === 0) this.charHeight = 16.1;
     }
 
     getMouseTile(e) {
         const rect = this.pre.getBoundingClientRect();
-        const px = e.clientX - rect.left - 2;
-        const py = e.clientY - rect.top - 2;
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
         const sx = Math.max(0, Math.floor(px / this.charWidth));
         const sy = Math.max(0, Math.floor(py / this.charHeight));
         return this.game.camera.screenToWorld(sx, sy);
@@ -285,8 +293,8 @@ export class InputHandler {
 
     getTouchTile(touch) {
         const rect = this.pre.getBoundingClientRect();
-        const px = touch.clientX - rect.left - 2;
-        const py = touch.clientY - rect.top - 2;
+        const px = touch.clientX - rect.left;
+        const py = touch.clientY - rect.top;
         const sx = Math.max(0, Math.floor(px / this.charWidth));
         const sy = Math.max(0, Math.floor(py / this.charHeight));
         return this.game.camera.screenToWorld(sx, sy);

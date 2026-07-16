@@ -22,6 +22,8 @@ import { WaveSystem } from './waves.js';
 import { EventLog } from './eventlog.js';
 import { saveGame, loadGame, hasSave, exportSave, importSave } from './save.js';
 import { initResizeHandles } from './resize.js';
+import { SpatialHash } from './spatial.js';
+import { MapIndex } from './mapindex.js';
 
 class Game {
     constructor() {
@@ -62,13 +64,19 @@ class Game {
         this.followingColonist = null;
         this.roomsDirty = true;
 
+        this.spatial = {
+            hostiles: new SpatialHash(),
+            colonists: new SpatialHash(),
+        };
+        this.mapIndex = new MapIndex();
+
         this.spawnStartingColonists();
         this.spawnStartingWildlife();
 
-        const preElement = document.getElementById('game');
-        this.renderer = new Renderer(preElement);
+        const gameContainer = document.getElementById('game');
+        this.renderer = new Renderer(gameContainer);
         this.ui = new UI(this);
-        this.input = new InputHandler(this, preElement);
+        this.input = new InputHandler(this, this.renderer.canvas);
         this.minimap = new Minimap(document.getElementById('minimap'), this);
         this.ui.updateModeDisplay(this.input);
 
@@ -103,6 +111,7 @@ class Game {
         this.paused = true;
         document.getElementById('game').classList.add('paused');
         document.getElementById('pause-overlay').style.display = 'block';
+        this.mapIndex.rebuild(this.map);
         this.lastTime = performance.now();
         requestAnimationFrame(this.gameLoop);
         requestAnimationFrame(() => resetMinimapSize());
@@ -139,6 +148,14 @@ class Game {
         this.tick++;
         this.timeOfDay = this.tick % CONFIG.TICKS_PER_DAY;
 
+        // Rebuild spatial hashes for this tick
+        const hostileEntities = [];
+        for (const w of this.wildlife) { if (w.hostile && w.hp > 0) hostileEntities.push(w); }
+        for (const r of this.raiders) { if (r.hp > 0) hostileEntities.push(r); }
+        if (this.waves) { for (const e of this.waves.enemies) { if (e.hp > 0) hostileEntities.push(e); } }
+        this.spatial.hostiles.rebuild(hostileEntities);
+        this.spatial.colonists.rebuild(this.colonists);
+
         const prevSeason = this.weather.season;
         this.weather.update(this.tick);
         if (this.weather.season !== prevSeason) {
@@ -150,6 +167,7 @@ class Game {
 
         if (this.roomsDirty) {
             detectRooms(this.map);
+            this.mapIndex.rebuild(this.map);
             this.roomsDirty = false;
         }
 
@@ -470,21 +488,20 @@ class Game {
 }
 
 function updateAutoRepair(game) {
-    for (let y = 0; y < game.map.length; y++) {
-        for (let x = 0; x < game.map[y].length; x++) {
-            const tile = game.map[y][x];
-            if (!tile.structure || tile.structureHp === undefined) continue;
-            const maxHp = BUILDINGS[tile.structure]?.hp;
-            if (!maxHp || tile.structureHp >= maxHp) continue;
-            const existing = game.taskQueue.getByPosition(x, y);
-            if (existing) continue;
-            game.taskQueue.add({
-                type: 'repair',
-                skillRequired: 'building',
-                x, y,
-                workAmount: 15,
-            });
-        }
+    const allStructures = game.mapIndex.getAllStructurePositions();
+    for (const { x, y } of allStructures) {
+        const tile = game.map[y][x];
+        if (tile.structureHp === undefined) continue;
+        const maxHp = BUILDINGS[tile.structure]?.hp;
+        if (!maxHp || tile.structureHp >= maxHp) continue;
+        const existing = game.taskQueue.getByPosition(x, y);
+        if (existing) continue;
+        game.taskQueue.add({
+            type: 'repair',
+            skillRequired: 'building',
+            x, y,
+            workAmount: 15,
+        });
     }
 }
 
@@ -516,6 +533,9 @@ function fitGameFont() {
 
     document.documentElement.style.setProperty('--game-font-size', fontSize + 'px');
 
+    if (window.game?.renderer) {
+        window.game.renderer.measureFont(fontSize);
+    }
     if (window.game?.input) {
         window.game.input.measureCharSize();
     }
@@ -724,6 +744,7 @@ document.addEventListener('DOMContentLoaded', () => {
             game.settings.autoPauseHostile = autoPauseHostile;
             game.settings.autoPauseEvent = autoPauseEvent;
             game.settings.uiFontSize = uiFontSize;
+            fitGameFont();
             game.start();
         });
     });
@@ -739,6 +760,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fitGameFont();
             const game = new Game();
             game.load();
+            fitGameFont();
             game.start();
         });
     });
@@ -763,6 +785,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 fitGameFont();
                 const game = new Game();
                 game.load();
+                fitGameFont();
                 game.start();
             });
         } else {

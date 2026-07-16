@@ -21,22 +21,19 @@ export class PowerSystem {
         this.turrets = [];
         this.voidTurrets = [];
 
-        for (let y = 0; y < game.map.length; y++) {
-            for (let x = 0; x < game.map[y].length; x++) {
-                const structure = game.map[y][x].structure;
-                if (!structure) continue;
-                const bDef = BUILDINGS[structure];
-                if (!bDef || !bDef.power) continue;
-                const pwr = bDef.power;
+        const allStructures = game.mapIndex.getAllStructurePositions();
+        for (const { x, y, type } of allStructures) {
+            const bDef = BUILDINGS[type];
+            if (!bDef || !bDef.power) continue;
+            const pwr = bDef.power;
 
-                if (pwr.generates) this.totalGenerated += pwr.generates;
-                if (pwr.consumes) this.totalConsumed += pwr.consumes;
+            if (pwr.generates) this.totalGenerated += pwr.generates;
+            if (pwr.consumes) this.totalConsumed += pwr.consumes;
 
-                if (pwr.warmRadius) this.heaters.push({ x, y });
-                else if (pwr.radius) this.lamps.push({ x, y });
-                else if (pwr.damage && structure === 'arcane_sentinel') this.turrets.push({ x, y });
-                else if (pwr.damage && structure === 'void_turret') this.voidTurrets.push({ x, y });
-            }
+            if (pwr.warmRadius) this.heaters.push({ x, y });
+            else if (pwr.radius) this.lamps.push({ x, y });
+            else if (pwr.damage && type === 'arcane_sentinel') this.turrets.push({ x, y });
+            else if (pwr.damage && type === 'void_turret') this.voidTurrets.push({ x, y });
         }
 
         this.powered = this.totalGenerated >= this.totalConsumed;
@@ -87,36 +84,41 @@ export class PowerSystem {
             const damage = pwr.damage;
 
             let target = null;
-            let bestDist = Infinity;
-            for (const r of game.raiders) {
-                if (r.hp <= 0) continue;
-                const d = manhattanDist(t.x, t.y, r.x, r.y);
-                if (d <= range && d < bestDist) {
-                    bestDist = d;
-                    target = r;
-                }
-            }
-            if (!target && game.waves) {
-                for (const e of game.waves.enemies) {
-                    if (e.hp <= 0) continue;
-                    const d = manhattanDist(t.x, t.y, e.x, e.y);
+            if (game.spatial) {
+                target = game.spatial.hostiles.findNearest(t.x, t.y, range, null);
+            } else {
+                let bestDist = Infinity;
+                for (const r of game.raiders) {
+                    if (r.hp <= 0) continue;
+                    const d = manhattanDist(t.x, t.y, r.x, r.y);
                     if (d <= range && d < bestDist) {
                         bestDist = d;
-                        target = e;
+                        target = r;
+                    }
+                }
+                if (!target && game.waves) {
+                    for (const e of game.waves.enemies) {
+                        if (e.hp <= 0) continue;
+                        const d = manhattanDist(t.x, t.y, e.x, e.y);
+                        if (d <= range && d < bestDist) {
+                            bestDist = d;
+                            target = e;
+                        }
+                    }
+                }
+                if (!target) {
+                    for (const w of game.wildlife) {
+                        if (w.hp <= 0 || !w.hostile) continue;
+                        const d = manhattanDist(t.x, t.y, w.x, w.y);
+                        if (d <= range && d < bestDist) {
+                            bestDist = d;
+                            target = w;
+                        }
                     }
                 }
             }
-            if (!target) {
-                for (const w of game.wildlife) {
-                    if (w.hp <= 0 || !w.hostile) continue;
-                    const d = manhattanDist(t.x, t.y, w.x, w.y);
-                    if (d <= range && d < bestDist) {
-                        bestDist = d;
-                        target = w;
-                    }
-                }
-            }
-            if (target) {
+
+            if (target && manhattanDist(t.x, t.y, target.x, target.y) <= range) {
                 target.hp -= damage;
                 const color = t.type === 'void_turret' ? '#cc00ff' : '#ff4444';
                 this.activeShots.push({ fromX: t.x, fromY: t.y, toX: target.x, toY: target.y, color, ttl: 2 });

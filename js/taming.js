@@ -46,6 +46,9 @@ export function updateTamedAnimals(game) {
 }
 
 function findNearestPen(game, animal) {
+    if (game.mapIndex) {
+        return game.mapIndex.findNearest('beast_circle', animal.x, animal.y);
+    }
     let bestDist = Infinity;
     let bestPen = null;
     for (let y = 0; y < game.map.length; y++) {
@@ -121,6 +124,9 @@ export function completeTame(game, wildAnimalId) {
 }
 
 function findAnyPen(game) {
+    if (game.mapIndex) {
+        return game.mapIndex.findFirst('beast_circle');
+    }
     for (let y = 0; y < game.map.length; y++) {
         for (let x = 0; x < game.map[y].length; x++) {
             if (game.map[y][x].structure === 'beast_circle') {

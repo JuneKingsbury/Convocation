@@ -17,7 +17,7 @@ export class UI {
 
     initElements() {
         this.elements.statusBar = document.getElementById('status-bar');
-        this.elements.infoPanel = document.getElementById('info-panel');
+        this.elements.infoPanel = document.getElementById('info-content');
         this.elements.modeBar = document.getElementById('mode-bar');
         this.elements.notifications = document.getElementById('notifications');
         this.elements.priorityPanel = document.getElementById('priority-panel');
@@ -283,8 +283,7 @@ export class UI {
         this.elements.infoPanel.classList.add('active');
     }
 
-    showColonistInfo(colonist) {
-        this._switchToInfoTab();
+    buildColonistInfoHtml(colonist) {
         const moodLevel = getMoodLabel(colonist.mood);
         const traitSpans = colonist.traits.map(t => {
             const trait = TRAITS[t];
@@ -310,15 +309,19 @@ export class UI {
         html += `<div class="info-row">Bed: ${colonist.assignedBed ? `(${colonist.assignedBed.x},${colonist.assignedBed.y})` : 'None'}</div>`;
         if (thoughts) html += `<div class="info-thoughts"><b>Thoughts:</b><br>${thoughts}</div>`;
         html += `<div class="info-actions">`;
-        html += `<button onclick="window.game.toggleDraft(${colonist.id})">Draft/Undraft</button>`;
+        html += `<button onclick="window.game.toggleDraft(${colonist.id})">${colonist.drafted ? 'Undraft' : 'Draft'}</button>`;
         html += this.buildWeaponDropdown(colonist);
         html += this.buildArmorDropdown(colonist);
         html += `<button onclick="window.game.centerOnColonist(${colonist.id})">Center Camera</button>`;
         const isFollowing = this.game.followingColonist === colonist.id;
         html += `<button onclick="window.game.toggleFollow(${colonist.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
         html += `</div>`;
+        return html;
+    }
 
-        this.elements.infoPanel.innerHTML = html;
+    showColonistInfo(colonist) {
+        this._switchToInfoTab();
+        this.elements.infoPanel.innerHTML = this.buildColonistInfoHtml(colonist);
     }
 
     buildWeaponDropdown(colonist) {
@@ -452,29 +455,9 @@ export class UI {
         }
 
         for (const c of colonists) {
-            const moodLevel = getMoodLabel(c.mood);
-            const traitSpans = c.traits.map(t => {
-                const trait = TRAITS[t];
-                if (!trait) return t;
-                return `<span class="skill-tip" data-tip="${trait.description}">${trait.name}</span>`;
-            }).join(', ');
-            const weaponTip = c.weapon ? `${c.weapon.damage} damage` : 'No weapon equipped';
-            const armorTip = c.armor ? `${Math.round(c.armor.damageReduction * 100)}% damage reduction` : 'No armor equipped';
             html += `<div style="border-bottom:1px solid #444;margin-bottom:6px;padding-bottom:6px;">`;
-            html += `<div class="info-header" style="cursor:pointer" onclick="window.game.selectColonistById(${c.id})">${c.name} ${c.drafted ? '[DRAFTED]' : ''}</div>`;
-            html += `<div class="info-row">HP: ${c.hp}/${c.maxHp} | Mood: <span class="mood-${moodLevel}">${c.mood.toFixed(0)} (${moodLevel})</span></div>`;
-            html += `<div class="info-row">State: ${c.state}</div>`;
-            html += `<div class="info-row">Hunger: ${bar(c.needs.hunger)} Rest: ${bar(c.needs.rest)}</div>`;
-            html += `<div class="info-row">Skills: <span class="skill-tip" data-tip="Construction, mining, chopping, and repairs">Building:${c.skills.building}</span> <span class="skill-tip" data-tip="Planting and harvesting crops">Farming:${c.skills.farming}</span> <span class="skill-tip" data-tip="Crafting items at workbenches">Crafting:${c.skills.crafting}</span> <span class="skill-tip" data-tip="Cooking meals at cauldrons">Cooking:${c.skills.cooking}</span> <span class="skill-tip" data-tip="Taming and handling animals">Animals:${c.skills.animals || 1}</span></div>`;
-            html += `<div class="info-row">Traits: ${traitSpans}</div>`;
-            html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${c.weapon?.name || 'Fists'}</span> | Armor: <span class="skill-tip" data-tip="${armorTip}">${c.armor?.name || 'None'}</span></div>`;
-            html += `<div class="info-actions">`;
-            html += `<button onclick="window.game.toggleDraft(${c.id})">${c.drafted ? 'Undraft' : 'Draft'}</button>`;
-            html += this.buildWeaponDropdown(c);
-            html += this.buildArmorDropdown(c);
-            const isFollowing = this.game.followingColonist === c.id;
-            html += `<button onclick="window.game.toggleFollow(${c.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
-            html += `</div></div>`;
+            html += this.buildColonistInfoHtml(c);
+            html += `</div>`;
         }
 
         for (const a of animals) {

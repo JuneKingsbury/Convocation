@@ -144,6 +144,9 @@ function updateRaider(raider, game) {
 }
 
 function findNearestColonist(raider, game) {
+    if (game.spatial) {
+        return game.spatial.colonists.findNearest(raider.x, raider.y, 50, null);
+    }
     let nearest = null;
     let minDist = Infinity;
     for (const c of game.colonists) {

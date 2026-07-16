@@ -3,30 +3,82 @@ import { isPassable, getMoveCost } from './map.js';
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const MAX_NODES = 1500;
 
+class MinHeap {
+    constructor() {
+        this.data = [];
+    }
+
+    push(node) {
+        this.data.push(node);
+        this._bubbleUp(this.data.length - 1);
+    }
+
+    pop() {
+        const top = this.data[0];
+        const last = this.data.pop();
+        if (this.data.length > 0) {
+            this.data[0] = last;
+            this._sinkDown(0);
+        }
+        return top;
+    }
+
+    get length() {
+        return this.data.length;
+    }
+
+    _bubbleUp(i) {
+        const node = this.data[i];
+        while (i > 0) {
+            const parentIdx = (i - 1) >> 1;
+            if (this.data[parentIdx].f <= node.f) break;
+            this.data[i] = this.data[parentIdx];
+            i = parentIdx;
+        }
+        this.data[i] = node;
+    }
+
+    _sinkDown(i) {
+        const length = this.data.length;
+        const node = this.data[i];
+        while (true) {
+            let smallest = i;
+            const left = 2 * i + 1;
+            const right = 2 * i + 2;
+            if (left < length && this.data[left].f < this.data[smallest].f) smallest = left;
+            if (right < length && this.data[right].f < this.data[smallest].f) smallest = right;
+            if (smallest === i) break;
+            this.data[i] = this.data[smallest];
+            this.data[smallest] = node;
+            i = smallest;
+        }
+    }
+}
+
 export function findPath(map, startX, startY, endX, endY) {
     if (startX === endX && startY === endY) return [];
     if (!isPassable(map, endX, endY)) return null;
 
-    const open = [];
+    const open = new MinHeap();
+    const inOpen = new Set();
     const closed = new Set();
     const cameFrom = new Map();
     const gScore = new Map();
-    const fScore = new Map();
 
-    const key = (x, y) => `${x},${y}`;
+    const key = (x, y) => (y << 16) | x;
     const start = key(startX, startY);
     const end = key(endX, endY);
 
     gScore.set(start, 0);
-    fScore.set(start, heuristic(startX, startY, endX, endY));
-    open.push({ x: startX, y: startY, f: fScore.get(start) });
+    open.push({ x: startX, y: startY, f: heuristic(startX, startY, endX, endY) });
+    inOpen.add(start);
 
     let iterations = 0;
     while (open.length > 0 && iterations < MAX_NODES) {
         iterations++;
-        open.sort((a, b) => a.f - b.f);
-        const current = open.shift();
+        const current = open.pop();
         const currentKey = key(current.x, current.y);
+        inOpen.delete(currentKey);
 
         if (currentKey === end) {
             return reconstructPath(cameFrom, current.x, current.y, startX, startY);
@@ -44,11 +96,14 @@ export function findPath(map, startX, startY, endX, endY) {
 
             const tentativeG = gScore.get(currentKey) + getMoveCost(map, nx, ny);
             if (tentativeG < (gScore.get(nKey) ?? Infinity)) {
-                cameFrom.set(nKey, { x: current.x, y: current.y });
+                cameFrom.set(nKey, currentKey);
                 gScore.set(nKey, tentativeG);
                 const f = tentativeG + heuristic(nx, ny, endX, endY);
-                fScore.set(nKey, f);
-                if (!open.some(n => n.x === nx && n.y === ny)) {
+                if (!inOpen.has(nKey)) {
+                    open.push({ x: nx, y: ny, f });
+                    inOpen.add(nKey);
+                } else {
+                    // Update f score in heap by pushing duplicate (old one will be skipped via closed set)
                     open.push({ x: nx, y: ny, f });
                 }
             }
@@ -78,16 +133,17 @@ function heuristic(x1, y1, x2, y2) {
 
 function reconstructPath(cameFrom, endX, endY, startX, startY) {
     const path = [];
-    let current = { x: endX, y: endY };
-    const startKey = `${startX},${startY}`;
+    const startKey = (startY << 16) | startX;
+    let currentKey = (endY << 16) | endX;
 
-    while (`${current.x},${current.y}` !== startKey) {
-        path.unshift(current);
-        const prev = cameFrom.get(`${current.x},${current.y}`);
-        if (!prev) break;
-        current = prev;
+    while (currentKey !== startKey) {
+        path.push({ x: currentKey & 0xFFFF, y: currentKey >> 16 });
+        const prev = cameFrom.get(currentKey);
+        if (prev === undefined) break;
+        currentKey = prev;
     }
 
+    path.reverse();
     return path;
 }
 

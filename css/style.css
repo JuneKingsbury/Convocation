@@ -434,6 +434,10 @@ body {
     filter: saturate(0.3) brightness(0.7);
 }
 
+#game-canvas {
+    cursor: crosshair;
+}
+
 #notifications {
     position: absolute;
     top: 4px;

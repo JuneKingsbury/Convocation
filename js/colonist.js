@@ -71,6 +71,7 @@ export function updateColonist(colonist, game) {
         if (!tile.onFire && tile.terrain !== 'water' && tile.terrain !== 'rock') {
             tile.onFire = true;
             tile.fireTimer = 0;
+            if (game.mapIndex) game.mapIndex.addFire(colonist.x, colonist.y);
         }
     }
 
@@ -362,6 +363,7 @@ function completeTask(colonist, task, game) {
             tile.structure = task.buildType;
             tile.designation = null;
             tile.passable = !IMPASSABLE_STRUCTURES.has(task.buildType);
+            if (game.mapIndex) game.mapIndex.addStructure(task.x, task.y, task.buildType);
             game.roomsDirty = true;
             if (game.waves && game.waves.active) game.waves.invalidatePathPreview();
             applyThought(colonist, 'built_something', game.tick);
@@ -455,6 +457,7 @@ function completeTask(colonist, task, game) {
             const tile = game.map[task.y][task.x];
             tile.onFire = false;
             tile.fireTimer = 0;
+            if (game.mapIndex) game.mapIndex.removeFire(task.x, task.y);
             applyThought(colonist, 'put_out_fire', game.tick);
             break;
         }
@@ -481,7 +484,8 @@ function completeTask(colonist, task, game) {
         case 'deconstruct': {
             const tile = game.map[task.y][task.x];
             if (tile.structure) {
-                const def = BUILDINGS[tile.structure];
+                const oldStructure = tile.structure;
+                const def = BUILDINGS[oldStructure];
                 if (def) {
                     const partial = {};
                     for (const [res, amt] of Object.entries(def.cost)) {
@@ -492,6 +496,7 @@ function completeTask(colonist, task, game) {
                 tile.structure = null;
                 tile.passable = true;
                 tile.designation = null;
+                if (game.mapIndex) game.mapIndex.removeStructure(task.x, task.y, oldStructure);
                 game.roomsDirty = true;
                 applyThought(colonist, 'deconstructed', game.tick);
             }
@@ -676,6 +681,9 @@ function updateWandering(colonist, game) {
 }
 
 function findNearestHostile(colonist, game) {
+    if (game.spatial) {
+        return game.spatial.hostiles.findNearest(colonist.x, colonist.y, 30, null);
+    }
     let nearest = null;
     let minDist = Infinity;
     const waveEnemies = game.waves ? game.waves.enemies : [];

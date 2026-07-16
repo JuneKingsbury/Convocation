@@ -33,6 +33,9 @@ export class WaveSystem {
     }
 
     findNexus(game) {
+        if (game.mapIndex) {
+            return game.mapIndex.findFirst('void_nexus');
+        }
         for (let y = 0; y < game.map.length; y++) {
             for (let x = 0; x < game.map[y].length; x++) {
                 if (game.map[y][x].structure === 'void_nexus') {
@@ -128,7 +131,11 @@ export class WaveSystem {
         if (enemy.moveCooldown > 0) return;
         enemy.moveCooldown = 1;
 
-        for (const c of game.colonists) {
+        const nearbyColonists = game.spatial
+            ? game.spatial.colonists.query(enemy.x, enemy.y, 1)
+            : game.colonists.filter(c => c.hp > 0 && manhattanDist(enemy.x, enemy.y, c.x, c.y) <= 1);
+
+        for (const c of nearbyColonists) {
             if (c.hp <= 0) continue;
             if (manhattanDist(enemy.x, enemy.y, c.x, c.y) <= 1) {
                 colonistTakeDamage(c, enemy.damage, game);
@@ -136,7 +143,7 @@ export class WaveSystem {
             }
         }
 
-        for (const c of game.colonists) {
+        for (const c of nearbyColonists) {
             if (c.hp <= 0 || c.state !== 'fighting') continue;
             if (manhattanDist(enemy.x, enemy.y, c.x, c.y) <= 1) return;
         }
@@ -208,6 +215,7 @@ export class WaveSystem {
             const tile = game.map[this.nexusPosition.y][this.nexusPosition.x];
             tile.structure = null;
             tile.passable = true;
+            if (game.mapIndex) game.mapIndex.removeStructure(this.nexusPosition.x, this.nexusPosition.y, 'void_nexus');
             game.roomsDirty = true;
         }
 
@@ -237,6 +245,41 @@ function moveTowardDirect(entity, target, map) {
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const ENEMY_MAX_NODES = 2000;
 
+class EnemyHeap {
+    constructor() { this.data = []; }
+    push(node) { this.data.push(node); this._up(this.data.length - 1); }
+    pop() {
+        const top = this.data[0];
+        const last = this.data.pop();
+        if (this.data.length > 0) { this.data[0] = last; this._down(0); }
+        return top;
+    }
+    get length() { return this.data.length; }
+    _up(i) {
+        const node = this.data[i];
+        while (i > 0) {
+            const p = (i - 1) >> 1;
+            if (this.data[p].f <= node.f) break;
+            this.data[i] = this.data[p];
+            i = p;
+        }
+        this.data[i] = node;
+    }
+    _down(i) {
+        const len = this.data.length;
+        const node = this.data[i];
+        while (true) {
+            let s = i, l = 2 * i + 1, r = 2 * i + 2;
+            if (l < len && this.data[l].f < this.data[s].f) s = l;
+            if (r < len && this.data[r].f < this.data[s].f) s = r;
+            if (s === i) break;
+            this.data[i] = this.data[s];
+            this.data[s] = node;
+            i = s;
+        }
+    }
+}
+
 function getBreakCost(map, x, y) {
     const tile = map[y][x];
     const hp = tile.structureHp !== undefined ? tile.structureHp : (BUILDINGS[tile.structure]?.hp || 50);
@@ -244,12 +287,12 @@ function getBreakCost(map, x, y) {
 }
 
 function findEnemyPath(map, startX, startY, endX, endY) {
-    const open = [];
+    const open = new EnemyHeap();
     const closed = new Set();
     const cameFrom = new Map();
     const gScore = new Map();
 
-    const key = (x, y) => `${x},${y}`;
+    const key = (x, y) => (y << 16) | x;
     const start = key(startX, startY);
 
     gScore.set(start, 0);
@@ -258,19 +301,21 @@ function findEnemyPath(map, startX, startY, endX, endY) {
     let iterations = 0;
     while (open.length > 0 && iterations < ENEMY_MAX_NODES) {
         iterations++;
-        open.sort((a, b) => a.f - b.f);
-        const current = open.shift();
+        const current = open.pop();
         const currentKey = key(current.x, current.y);
+
+        if (closed.has(currentKey)) continue;
 
         if (manhattanDist(current.x, current.y, endX, endY) <= 1) {
             const path = [];
-            let c = { x: current.x, y: current.y };
-            while (`${c.x},${c.y}` !== start) {
-                path.unshift(c);
-                const prev = cameFrom.get(`${c.x},${c.y}`);
-                if (!prev) break;
-                c = prev;
+            let ck = currentKey;
+            while (ck !== start) {
+                path.push({ x: ck & 0xFFFF, y: ck >> 16 });
+                const prev = cameFrom.get(ck);
+                if (prev === undefined) break;
+                ck = prev;
             }
+            path.reverse();
             return path;
         }
 
@@ -292,15 +337,10 @@ function findEnemyPath(map, startX, startY, endX, endY) {
 
             const tentativeG = gScore.get(currentKey) + cost;
             if (tentativeG < (gScore.get(nKey) ?? Infinity)) {
-                cameFrom.set(nKey, { x: current.x, y: current.y });
+                cameFrom.set(nKey, currentKey);
                 gScore.set(nKey, tentativeG);
                 const f = tentativeG + manhattanDist(nx, ny, endX, endY);
-                if (!open.some(n => n.x === nx && n.y === ny)) {
-                    open.push({ x: nx, y: ny, f });
-                } else {
-                    const existing = open.find(n => n.x === nx && n.y === ny);
-                    if (existing) existing.f = f;
-                }
+                open.push({ x: nx, y: ny, f });
             }
         }
     }
@@ -320,9 +360,11 @@ function attackStructure(game, x, y, damage) {
     game.combatEffects.push({ x, y, char: '!', color: '#ff8800', ttl: 2 });
 
     if (tile.structureHp <= 0) {
+        const oldStructure = tile.structure;
         tile.structure = null;
         tile.structureHp = undefined;
         tile.passable = true;
+        if (game.mapIndex) game.mapIndex.removeStructure(x, y, oldStructure);
         game.roomsDirty = true;
         for (const enemy of game.waves.enemies) {
             enemy.path = null;

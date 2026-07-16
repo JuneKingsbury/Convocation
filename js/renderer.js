@@ -2,18 +2,61 @@ import { CONFIG, TILE_COLORS } from './config.js';
 import { getTileChar, getTileColor } from './map.js';
 
 export class Renderer {
-    constructor(preElement) {
-        this.pre = preElement;
-        this.lastFrame = '';
+    constructor(container) {
+        this.container = container;
+        this.canvas = document.createElement('canvas');
+        this.canvas.id = 'game-canvas';
+        this.canvas.style.display = 'block';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        container.innerHTML = '';
+        container.appendChild(this.canvas);
+        this.ctx = this.canvas.getContext('2d', { alpha: false });
+
+        this.charWidth = 0;
+        this.charHeight = 0;
+        this.fontSize = 14;
+        this._lastViewportW = 0;
+        this._lastViewportH = 0;
+        this.measureFont(14);
+    }
+
+    measureFont(fontSize) {
+        this.fontSize = fontSize;
+        this.ctx.font = `${fontSize}px 'Courier New', monospace`;
+        const metrics = this.ctx.measureText('M');
+        this.charWidth = Math.ceil(metrics.width);
+        this.charHeight = Math.ceil(fontSize * 1.15);
+        this._resizeCanvas();
+    }
+
+    _resizeCanvas() {
+        const w = CONFIG.VIEWPORT_WIDTH * this.charWidth;
+        const h = CONFIG.VIEWPORT_HEIGHT * this.charHeight;
+        if (this.canvas.width !== w || this.canvas.height !== h) {
+            this.canvas.width = w;
+            this.canvas.height = h;
+            this.ctx.font = `${this.fontSize}px 'Courier New', monospace`;
+            this.ctx.textBaseline = 'top';
+        }
+        this._lastViewportW = CONFIG.VIEWPORT_WIDTH;
+        this._lastViewportH = CONFIG.VIEWPORT_HEIGHT;
     }
 
     render(game) {
-        const { map, camera, colonists, wildlife, raiders, tamedAnimals, cursor } = game;
-        const selectionRect = game.input.getSelectionRect();
-        const parts = [];
+        if (this._lastViewportW !== CONFIG.VIEWPORT_WIDTH || this._lastViewportH !== CONFIG.VIEWPORT_HEIGHT) {
+            this._resizeCanvas();
+        }
 
-        // Build entity position map for O(1) lookup per tile
-        // Render order: lower priority first, higher priority overwrites (colonists always on top)
+        const { map, camera, colonists, wildlife, raiders, tamedAnimals, cursor } = game;
+        const ctx = this.ctx;
+        const cw = this.charWidth;
+        const ch = this.charHeight;
+        const selectionRect = game.input.getSelectionRect();
+
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
         const entityMap = new Map();
         for (const a of wildlife) {
             if (a.hp > 0) entityMap.set(a.y * CONFIG.MAP_WIDTH + a.x, { char: a.char, color: a.color });
@@ -65,20 +108,22 @@ export class Renderer {
             }
         }
 
+        let lastColor = '';
         for (let sy = 0; sy < CONFIG.VIEWPORT_HEIGHT; sy++) {
             for (let sx = 0; sx < CONFIG.VIEWPORT_WIDTH; sx++) {
                 const wx = camera.x + sx;
                 const wy = camera.y + sy;
+                const px = sx * cw;
+                const py = sy * ch;
 
                 if (wx < 0 || wx >= CONFIG.MAP_WIDTH || wy < 0 || wy >= CONFIG.MAP_HEIGHT) {
-                    parts.push('<span style="color:#333"> </span>');
                     continue;
                 }
 
                 const tile = map[wy][wx];
                 let char = getTileChar(tile, game.weather.season);
                 let color = getTileColor(tile, game.weather.season);
-                let bg = '';
+                let bg = null;
 
                 if (tile.designation) {
                     color = TILE_COLORS[`designation_${tile.designation.type}`] || '#ffff00';
@@ -124,27 +169,19 @@ export class Renderer {
                 }
 
                 if (bg) {
-                    parts.push(`<span style="color:${color};background:${bg}">${escapeChar(char)}</span>`);
-                } else {
-                    parts.push(`<span style="color:${color}">${escapeChar(char)}</span>`);
+                    ctx.fillStyle = bg;
+                    ctx.fillRect(px, py, cw, ch);
+                    lastColor = '';
                 }
-            }
-            parts.push('\n');
-        }
-        const output = parts.join('');
 
-        if (output !== this.lastFrame) {
-            this.pre.innerHTML = output;
-            this.lastFrame = output;
+                if (color !== lastColor) {
+                    ctx.fillStyle = color;
+                    lastColor = color;
+                }
+                ctx.fillText(char, px, py);
+            }
         }
     }
-}
-
-function escapeChar(ch) {
-    if (ch === '<') return '&lt;';
-    if (ch === '>') return '&gt;';
-    if (ch === '&') return '&amp;';
-    return ch;
 }
 
 function getLinePoints(x0, y0, x1, y1) {

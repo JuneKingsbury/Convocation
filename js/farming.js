@@ -38,6 +38,7 @@ export function designateFarmZone(game, x1, y1, x2, y2, cropType) {
                 growth: 0,
                 harvestYield: crop.harvestYield,
             };
+            if (game.mapIndex) game.mapIndex.addZone(x, y);
             count++;
         }
     }
@@ -48,6 +49,7 @@ export function removeFarmZone(game, x, y) {
     const tile = game.map[y][x];
     if (!tile.zone) return;
     tile.zone = null;
+    if (game.mapIndex) game.mapIndex.removeZone(x, y);
     const task = game.taskQueue.getByPosition(x, y);
     if (task && (task.type === 'plant' || task.type === 'harvest')) {
         game.taskQueue.remove(task.id);
@@ -58,42 +60,45 @@ export function updateFarming(game) {
     const season = game.weather.season;
     const growthMult = game.weather.getGrowthMultiplier();
 
-    for (let y = 0; y < game.map.length; y++) {
-        for (let x = 0; x < game.map[y].length; x++) {
-            const tile = game.map[y][x];
-            if (!tile.zone) continue;
+    const zonePositions = game.mapIndex ? game.mapIndex.getZonePositions() : null;
 
-            const crop = CROPS[tile.zone.crop];
-            if (!crop) continue;
+    if (zonePositions) {
+        for (const { x, y } of zonePositions) {
+            updateFarmTile(game, x, y, season, growthMult);
+        }
+    } else {
+        for (let y = 0; y < game.map.length; y++) {
+            for (let x = 0; x < game.map[y].length; x++) {
+                if (!game.map[y][x].zone) continue;
+                updateFarmTile(game, x, y, season, growthMult);
+            }
+        }
+    }
+}
 
-            if (tile.zone.state === 'empty') {
-                if (!crop.seasons.includes(season)) continue;
-                const existingTask = game.taskQueue.getByPosition(x, y);
-                if (!existingTask) {
-                    game.taskQueue.add({
-                        type: 'plant',
-                        skillRequired: 'farming',
-                        x, y,
-                        workAmount: 5,
-                    });
-                }
-            } else if (tile.zone.state === 'growing') {
-                if (growthMult > 0) {
-                    tile.zone.growth += growthMult;
-                    if (tile.zone.growth >= crop.growthTicks) {
-                        tile.zone.state = 'ready';
-                        const existingTask = game.taskQueue.getByPosition(x, y);
-                        if (!existingTask) {
-                            game.taskQueue.add({
-                                type: 'harvest',
-                                skillRequired: 'farming',
-                                x, y,
-                                workAmount: 8,
-                            });
-                        }
-                    }
-                }
-            } else if (tile.zone.state === 'ready') {
+function updateFarmTile(game, x, y, season, growthMult) {
+    const tile = game.map[y][x];
+    if (!tile.zone) return;
+
+    const crop = CROPS[tile.zone.crop];
+    if (!crop) return;
+
+    if (tile.zone.state === 'empty') {
+        if (!crop.seasons.includes(season)) return;
+        const existingTask = game.taskQueue.getByPosition(x, y);
+        if (!existingTask) {
+            game.taskQueue.add({
+                type: 'plant',
+                skillRequired: 'farming',
+                x, y,
+                workAmount: 5,
+            });
+        }
+    } else if (tile.zone.state === 'growing') {
+        if (growthMult > 0) {
+            tile.zone.growth += growthMult;
+            if (tile.zone.growth >= crop.growthTicks) {
+                tile.zone.state = 'ready';
                 const existingTask = game.taskQueue.getByPosition(x, y);
                 if (!existingTask) {
                     game.taskQueue.add({
@@ -104,6 +109,16 @@ export function updateFarming(game) {
                     });
                 }
             }
+        }
+    } else if (tile.zone.state === 'ready') {
+        const existingTask = game.taskQueue.getByPosition(x, y);
+        if (!existingTask) {
+            game.taskQueue.add({
+                type: 'harvest',
+                skillRequired: 'farming',
+                x, y,
+                workAmount: 8,
+            });
         }
     }
 }
