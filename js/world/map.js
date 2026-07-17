@@ -1,4 +1,4 @@
-import { CONFIG, TILE_CHARS, TILE_COLORS, TERRAIN, RESOURCES } from '../core/config.js';
+import { CONFIG, TILE_CHARS, TILE_COLORS, TERRAIN, RESOURCES, BUILDINGS, IMPASSABLE_STRUCTURES, ENEMY_BLOCKED_STRUCTURES, BREAKABLE_STRUCTURES } from '../core/config.js';
 
 export function createTile(terrain) {
     return {
@@ -202,12 +202,14 @@ export function getTileColor(tile, season) {
 }
 
 export function getTileBg(tile) {
+    if (tile.structure) {
+        const bDef = BUILDINGS[tile.structure];
+        if (bDef && bDef.bg) return bDef.bg;
+    }
     const tDef = TERRAIN[tile.terrain];
     return tDef ? tDef.bg || null : null;
 }
 
-export const IMPASSABLE_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret']);
-const ENEMY_BLOCKED_STRUCTURES = new Set(['wall', 'fence', 'mana_crystal', 'arcane_sentinel', 'void_nexus', 'void_wall', 'void_turret', 'door', 'void_door']);
 
 export function isPassable(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
@@ -224,11 +226,15 @@ export function getMoveCost(map, x, y) {
 }
 
 export function isPassableForAnimals(map, x, y) {
-    if (!isPassable(map, x, y)) return false;
+    if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;
     const tile = map[y][x];
+    if (!tile.passable) return false;
     const tDef = TERRAIN[tile.terrain];
     if (tDef && !tDef.passable.animal) return false;
-    if (tile.structure === 'door' || tile.structure === 'void_door') return false;
+    if (tile.structure) {
+        const bDef = BUILDINGS[tile.structure];
+        if (bDef && bDef.passable && !bDef.passable.animal) return false;
+    }
     return true;
 }
 
@@ -241,8 +247,6 @@ export function isPassableForEnemies(map, x, y) {
     if (ENEMY_BLOCKED_STRUCTURES.has(tile.structure)) return false;
     return true;
 }
-
-const BREAKABLE_STRUCTURES = new Set(['wall', 'door', 'fence', 'void_wall', 'void_door']);
 
 export function isBreakableByEnemies(map, x, y) {
     if (x < 0 || x >= CONFIG.MAP_WIDTH || y < 0 || y >= CONFIG.MAP_HEIGHT) return false;

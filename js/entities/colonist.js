@@ -1,6 +1,6 @@
-import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS } from '../core/config.js';
+import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES } from '../core/config.js';
 import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
-import { isPassable, getMoveCost, IMPASSABLE_STRUCTURES } from '../world/map.js';
+import { isPassable, getMoveCost } from '../world/map.js';
 import { FOODSTUFFS } from '../systems/resources.js';
 import { completeTame } from './taming.js';
 

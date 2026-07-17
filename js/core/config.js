@@ -120,43 +120,80 @@ export const THOUGHTS = {
     inspired:          { text: 'Feeling inspired!', moodEffect: 25, duration: 300 },
 };
 
-// To add a crop: add entry here, it auto-appears in zone mode
+// To add a crop: add entry here, it auto-appears in zone mode. Set 'research' to gate behind tech.
 export const CROPS = {
     wheat: { growthTicks: 200, harvestYield: 3, seasons: ['spring', 'summer', 'autumn'], char: '%', readyChar: '*', color: '#ccaa00' },
     berries: { growthTicks: 150, harvestYield: 2, seasons: ['spring', 'summer', 'autumn'], char: '%', readyChar: '*', color: '#cc44aa' },
-    corn: { growthTicks: 250, harvestYield: 4, seasons: ['summer'], char: '%', readyChar: '*', color: '#ffcc00' },
-    potatoes: { growthTicks: 180, harvestYield: 3, seasons: ['spring', 'autumn', 'winter'], char: '%', readyChar: '*', color: '#aa7744' },
+    corn: { growthTicks: 250, harvestYield: 4, seasons: ['summer'], char: '%', readyChar: '*', color: '#ffcc00', research: 'druidcraft' },
+    potatoes: { growthTicks: 180, harvestYield: 3, seasons: ['spring', 'autumn', 'winter'], char: '%', readyChar: '*', color: '#aa7744', research: 'druidcraft' },
 };
 
 // To add a building: add an entry here. The game will pick it up automatically.
 // Fields: char, color, cost, work, and optionally: hp, research, power, description.
+// structureType: 'wall' | 'floor' | 'door' | 'furniture'. Drives room detection and placement mode.
+// passable: { colonist, animal, enemy } — who can walk through. Defaults to all-true for furniture/floor.
+// breakable: true if enemies will attack it when pathfinding. bg: background color for floor tiles.
 // Power sub-object: { generates } or { consumes, radius?, warmRadius?, damage?, range? }
 export const BUILDINGS = {
-    wall:              { char: '█', color: '#aa7744', cost: { wood: 2 }, work: 12, hp: 50, description: 'Blocks movement. Forms rooms when enclosing an area with doors.' },
-    floor:             { char: '·', color: '#666666', cost: { stone: 1 }, work: 6, description: 'Cosmetic flooring. Makes rooms nicer.' },
-    door:              { char: '+', color: '#cc9955', cost: { wood: 3 }, work: 15, hp: 30, description: 'Allows colonist passage. Blocks enemies. Room boundary.' },
-    bed:               { char: 'B', color: '#8855aa', cost: { wood: 5 }, work: 25, description: 'Colonists sleep here. Assign for a mood bonus.' },
-    workbench:         { char: 'C', color: '#bb8833', cost: { wood: 5, stone: 2 }, work: 30, description: 'Required for crafting recipes (planks, weapons, bricks).' },
-    cauldron:          { char: 'F', color: '#ff6633', cost: { stone: 3, wood: 1 }, work: 18, description: 'Required for cooking meals from raw food and crops.' },
-    storage_chest:     { char: 'S', color: '#997744', cost: { wood: 4 }, work: 20, description: 'Increases colony storage capacity.' },
-    torch:             { char: 'i', color: '#ffcc00', cost: { wood: 1 }, work: 4, description: 'Light source. Provides warmth in winter.' },
-    fence:             { char: '|', color: '#886644', cost: { wood: 1 }, work: 5, hp: 20, description: 'Blocks movement like a wall but lighter to build.' },
-    arcanum:           { char: 'R', color: '#44aaff', cost: { wood: 5, stone: 3, planks: 2 }, work: 40, description: 'Colonists study here to generate research points.' },
-    beast_circle:      { char: 'A', color: '#77aa44', cost: { wood: 6 }, work: 28, research: 'beast_binding', description: 'Required for binding creatures. Bound animals produce resources.' },
-    mana_crystal:      { char: 'W', color: '#aa44ff', cost: { wood: 8, stone: 4 }, work: 45, research: 'ley_channeling', power: { generates: 10 }, description: 'Generates 10 mana for powering magical buildings.' },
-    glowstone:         { char: 'L', color: '#ffff88', cost: { planks: 2, stone: 1 }, work: 14, research: 'luminance', power: { consumes: 2, radius: 5 }, description: 'Mana-powered light, radius 5. Consumes 2 mana.' },
-    enchanting_table:  { char: 'P', color: '#bb88ff', cost: { planks: 4, stone: 3 }, work: 35, research: 'arcane_infusion', power: { consumes: 4, speedMult: 2.0 }, description: '2x crafting speed. Consumes 4 mana.' },
-    ember_ward:        { char: 'H', color: '#ff8844', cost: { stone: 4, planks: 2 }, work: 28, research: 'ember_magic', power: { consumes: 3, warmRadius: 4 }, description: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.' },
-    arcane_sentinel:   { char: 'X', color: '#ff4444', cost: { stone: 5, planks: 3 }, work: 50, research: 'warding', power: { consumes: 3, damage: 12, range: 4 }, description: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.' },
-    void_nexus:        { char: 'V', color: '#9933ff', cost: { runite: 5, stone: 6, planks: 4 }, work: 60, research: 'void_summoning', description: 'Start wave defense here. Defend it from enemies to earn void essence.' },
-    void_wall:         { char: '▓', color: '#6622aa', cost: { stone: 3, void_essence: 2 }, work: 15, hp: 120, research: 'void_forging', description: 'Reinforced wall (120 HP). Blocks enemies.' },
-    void_turret:       { char: 'Y', color: '#aa33ff', cost: { stone: 5, planks: 3, void_essence: 4 }, work: 55, research: 'void_forging', power: { consumes: 5, damage: 20, range: 5 }, description: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.' },
-    void_door:         { char: '▒', color: '#7733bb', cost: { stone: 3, planks: 2, void_essence: 3 }, work: 20, hp: 80, research: 'void_forging', description: 'Reinforced door (80 HP). Colonists pass through, enemies must break it.' },
+    wood_wall:         { char: '█', color: '#aa7744', cost: { wood: 2 }, work: 12, hp: 50, structureType: 'wall', passable: { colonist: false, animal: false, enemy: false }, breakable: true, description: 'Blocks movement. Forms rooms when enclosing an area with doors.' },
+    stone_wall:        { char: '█', color: '#666666', cost: { stone: 2 }, work: 16, hp: 70, structureType: 'wall', passable: { colonist: false, animal: false, enemy: false }, breakable: true, description: 'Blocks movement. Forms rooms when enclosing an area with doors.' },
+    brick_wall:        { char: '█', color: '#b2463c', cost: { bricks: 2 }, work: 20, hp: 90, structureType: 'wall', passable: { colonist: false, animal: false, enemy: false }, breakable: true, description: 'Blocks movement. Forms rooms when enclosing an area with doors.' },
+    wood_floor:        { char: '·', color: '#aa7744', bg: '#3d2a14', cost: { wood: 1 }, work: 6, structureType: 'floor', description: 'Cosmetic flooring. Makes rooms nicer.' },
+    stone_floor:       { char: '·', color: '#666666', bg: '#2a2a2a', cost: { stone: 1 }, work: 6, structureType: 'floor', description: 'Cosmetic flooring. Makes rooms nicer.' },
+    brick_floor:       { char: '·', color: '#b2463c', bg: '#3a1a18', cost: { bricks: 1 }, work: 6, structureType: 'floor', description: 'Cosmetic flooring. Makes rooms nicer.' },
+    door:              { char: '+', color: '#cc9955', cost: { wood: 3 }, work: 15, hp: 30, structureType: 'door', passable: { colonist: true, animal: false, enemy: false }, breakable: true, description: 'Allows colonist passage. Blocks enemies. Room boundary.' },
+    bed:               { char: 'B', color: '#8855aa', cost: { wood: 5 }, work: 25, structureType: 'furniture', description: 'Colonists sleep here. Assign for a mood bonus.' },
+    workbench:         { char: 'C', color: '#bb8833', cost: { wood: 5, stone: 2 }, work: 30, structureType: 'furniture', description: 'Required for crafting recipes (planks, weapons, bricks).' },
+    cauldron:          { char: 'F', color: '#ff6633', cost: { stone: 3, wood: 1 }, work: 18, structureType: 'furniture', description: 'Required for cooking meals from raw food and crops.' },
+    storage_chest:     { char: 'S', color: '#997744', cost: { wood: 4 }, work: 20, structureType: 'furniture', description: 'Increases colony storage capacity.' },
+    torch:             { char: 'i', color: '#ffcc00', cost: { wood: 1 }, work: 4, structureType: 'furniture', dragPlace: true, description: 'Light source. Provides warmth in winter.' },
+    fence:             { char: '|', color: '#886644', cost: { wood: 1 }, work: 5, hp: 20, structureType: 'wall', passable: { colonist: false, animal: false, enemy: false }, breakable: true, description: 'Blocks movement like a wall but lighter to build.' },
+    arcanum:           { char: 'R', color: '#44aaff', cost: { wood: 5, stone: 3, planks: 2 }, work: 40, structureType: 'furniture', description: 'Colonists study here to generate research points.' },
+    beast_circle:      { char: 'A', color: '#77aa44', cost: { wood: 6 }, work: 28, structureType: 'furniture', research: 'beast_binding', description: 'Required for binding creatures. Bound animals produce resources.' },
+    mana_crystal:      { char: 'W', color: '#aa44ff', cost: { wood: 8, stone: 4 }, work: 45, structureType: 'furniture', passable: { colonist: false, animal: false, enemy: false }, research: 'ley_channeling', power: { generates: 10 }, description: 'Generates 10 mana for powering magical buildings.' },
+    glowstone:         { char: 'L', color: '#ffff88', cost: { planks: 2, stone: 1 }, work: 14, structureType: 'furniture', research: 'luminance', power: { consumes: 2, radius: 5 }, description: 'Mana-powered light, radius 5. Consumes 2 mana.' },
+    enchanting_table:  { char: 'P', color: '#bb88ff', cost: { planks: 4, stone: 3 }, work: 35, structureType: 'furniture', research: 'arcane_infusion', power: { consumes: 4, speedMult: 2.0 }, description: '2x crafting speed. Consumes 4 mana.' },
+    ember_ward:        { char: 'H', color: '#ff8844', cost: { stone: 4, planks: 2 }, work: 28, structureType: 'furniture', research: 'ember_magic', power: { consumes: 3, warmRadius: 4 }, description: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.' },
+    arcane_sentinel:   { char: 'X', color: '#ff4444', cost: { stone: 5, planks: 3 }, work: 50, structureType: 'furniture', passable: { colonist: false, animal: false, enemy: false }, research: 'warding', power: { consumes: 3, damage: 12, range: 4 }, description: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.' },
+    void_nexus:        { char: 'V', color: '#9933ff', cost: { runite: 5, stone: 6, planks: 4 }, work: 60, structureType: 'furniture', passable: { colonist: false, animal: false, enemy: false }, research: 'void_summoning', description: 'Start wave defense here. Defend it from enemies to earn void essence.' },
+    void_wall:         { char: '▓', color: '#6622aa', cost: { stone: 3, void_essence: 2 }, work: 15, hp: 120, structureType: 'wall', passable: { colonist: false, animal: false, enemy: false }, breakable: true, research: 'void_forging', description: 'Reinforced wall (120 HP). Blocks enemies.' },
+    void_turret:       { char: 'Y', color: '#aa33ff', cost: { stone: 5, planks: 3, void_essence: 4 }, work: 55, structureType: 'furniture', passable: { colonist: false, animal: false, enemy: false }, research: 'void_forging', power: { consumes: 5, damage: 20, range: 5 }, description: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.' },
+    void_door:         { char: '▒', color: '#7733bb', cost: { stone: 3, planks: 2, void_essence: 3 }, work: 20, hp: 80, structureType: 'door', passable: { colonist: true, animal: false, enemy: false }, breakable: true, research: 'void_forging', description: 'Reinforced door (80 HP). Colonists pass through, enemies must break it.' },
 };
 
 // Auto-derived from BUILDINGS (terrain chars/colors + building chars/colors merged)
 export const TILE_CHARS = { ...BASE_TILE_CHARS, ...Object.fromEntries(Object.entries(BUILDINGS).map(([k, v]) => [k, v.char])) };
 export const TILE_COLORS = { ...BASE_TILE_COLORS, ...Object.fromEntries(Object.entries(BUILDINGS).map(([k, v]) => [k, v.color])) };
+
+// Auto-derived passability/behavior sets from BUILDINGS metadata.
+// Structures impassable to colonists (passable.colonist === false)
+export const IMPASSABLE_STRUCTURES = new Set(
+    Object.entries(BUILDINGS).filter(([, b]) => b.passable && !b.passable.colonist).map(([k]) => k)
+);
+// Structures that block enemies (passable.enemy === false)
+export const ENEMY_BLOCKED_STRUCTURES = new Set(
+    Object.entries(BUILDINGS).filter(([, b]) => b.passable && !b.passable.enemy).map(([k]) => k)
+);
+// Structures that enemies will attack to break through
+export const BREAKABLE_STRUCTURES = new Set(
+    Object.entries(BUILDINGS).filter(([, b]) => b.breakable).map(([k]) => k)
+);
+// Walls and fences — used for room detection
+export const WALL_STRUCTURES = new Set(
+    Object.entries(BUILDINGS).filter(([, b]) => b.structureType === 'wall').map(([k]) => k)
+);
+// Doors — used for room detection boundaries
+export const DOOR_STRUCTURES = new Set(
+    Object.entries(BUILDINGS).filter(([, b]) => b.structureType === 'door').map(([k]) => k)
+);
+// Drag-placeable types (walls, floors, doors, plus anything with dragPlace: true)
+export const DRAG_BUILD_TYPES = new Set(
+    Object.entries(BUILDINGS).filter(([, b]) => b.structureType === 'wall' || b.structureType === 'floor' || b.structureType === 'door' || b.dragPlace).map(([k]) => k)
+);
+// Single-place types (furniture that isn't drag-placeable)
+export const SINGLE_PLACE_TYPES = new Set(
+    Object.entries(BUILDINGS).filter(([, b]) => b.structureType === 'furniture' && !b.dragPlace).map(([k]) => k)
+);
 
 // To add a recipe: add entry here. Set 'research' field to gate behind tech.
 // Station must exist as a buildable structure. Equipment outputs auto-detected from WEAPONS/ARMORS.
@@ -195,9 +232,9 @@ export const ANIMALS = {
     deer: { char: 'd', color: '#bb8855', hp: 40, speed: 0.5, hostile: false, meatYield: 3, fleeRange: 5 },
     rabbit: { char: 'r', color: '#ccaa88', hp: 10, speed: 0.7, hostile: false, meatYield: 1, fleeRange: 4 },
     wolf: { char: 'w', color: '#555555', hp: 60, speed: 0.6, hostile: true, meatYield: 2, damage: 8, aggroRange: 6 },
-    chicken: { char: 'c', color: '#ddaa44', hp: 15, speed: 0.4, hostile: false, meatYield: 1, fleeRange: 3, tameable: true },
-    cow: { char: 'C', color: '#aa7744', hp: 80, speed: 0.3, hostile: false, meatYield: 4, fleeRange: 4, tameable: true },
-    sheep: { char: 's', color: '#cccccc', hp: 40, speed: 0.35, hostile: false, meatYield: 2, fleeRange: 4, tameable: true },
+    chicken: { char: 'c', color: '#ddaa44', hp: 15, speed: 0.4, hostile: false, meatYield: 1, fleeRange: 3, tameable: true, tamed: { produces: 'eggs', produceRate: 80, produceAmount: 1, foodToTame: 2 } },
+    cow: { char: 'C', color: '#aa7744', hp: 80, speed: 0.3, hostile: false, meatYield: 4, fleeRange: 4, tameable: true, tamed: { produces: 'milk', produceRate: 100, produceAmount: 2, foodToTame: 4 } },
+    sheep: { char: 's', color: '#cccccc', hp: 40, speed: 0.35, hostile: false, meatYield: 2, fleeRange: 4, tameable: true, tamed: { produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 3 } },
 };
 
 // To add a weapon: add entry here + a recipe with output: { <key>: 1 }. Auto-detected on craft.
@@ -337,34 +374,50 @@ export const RAID_CONFIG = {
 };
 
 // To add research: add entry here with requires:[] for prerequisites.
-// Then gate buildings in building.js BUILDING_RESEARCH_REQS or recipes via 'research' field.
+// Buildings, recipes, and crops gate themselves via their own 'research' field — no need to list them here.
+// The 'unlocks' object is auto-derived below from those fields.
 export const RESEARCH = {
-    runecraft: { name: 'Runecraft', cost: 50, requires: [], unlocks: { recipes: ['craft_etched_axe'] }, description: 'Etch runes into stone weapons' },
-    druidcraft: { name: 'Druidcraft', cost: 80, requires: [], unlocks: { crops: ['corn', 'potatoes'] }, description: 'Unlock corn and potatoes' },
-    beast_binding: { name: 'Beast Binding', cost: 100, requires: ['druidcraft'], unlocks: { buildings: ['beast_circle'] }, description: 'Bind and pen creatures' },
-    ley_channeling: { name: 'Ley Channeling', cost: 120, requires: ['runecraft'], unlocks: { buildings: ['mana_crystal'] }, description: 'Tap leylines for mana' },
-    luminance: { name: 'Luminance', cost: 80, requires: ['ley_channeling'], unlocks: { buildings: ['glowstone'] }, description: 'Mana-powered light' },
-    arcane_infusion: { name: 'Arcane Infusion', cost: 150, requires: ['ley_channeling'], unlocks: { buildings: ['enchanting_table'] }, description: 'Faster enchanted crafting' },
-    runeforging: { name: 'Runeforging', cost: 130, requires: ['runecraft'], unlocks: { recipes: ['craft_runic_blade', 'craft_runic_pick'] }, description: 'Forge runic weapons' },
-    alchemy: { name: 'Alchemy', cost: 60, requires: [], unlocks: {}, description: 'Cooking produces +2 bonus food per meal' },
-    warding: { name: 'Warding', cost: 100, requires: ['runecraft'], unlocks: { buildings: ['arcane_sentinel'] }, description: 'Conjure defensive wards' },
-    ember_magic: { name: 'Ember Magic', cost: 90, requires: ['ley_channeling'], unlocks: { buildings: ['ember_ward'] }, description: 'Warmth wards for winter' },
-    brilliance: { name: 'Brilliance', cost: 160, requires: ['luminance'], unlocks: { buildings: ['beacon'] }, description: 'Radiant beacon lights large areas' },
-    mana_weaving: { name: 'Mana Weaving', cost: 180, requires: ['arcane_infusion'], unlocks: { recipes: ['craft_mana_robes'] }, description: 'Weave mana into protective garb' },
-    pyroclasm: { name: 'Pyroclasm', cost: 200, requires: ['ember_magic', 'warding'], unlocks: { buildings: ['fire_ward'] }, description: 'Fire ward incinerates nearby foes' },
-    verdant_growth: { name: 'Verdant Growth', cost: 140, requires: ['beast_binding', 'alchemy'], unlocks: { crops: ['herbs'] }, description: 'Grow rare herbs for potent brews' },
-    masterwork: { name: 'Masterwork', cost: 220, requires: ['runeforging', 'arcane_infusion'], unlocks: { recipes: ['craft_masterwork_blade'] }, description: 'Forge legendary enchanted weapons' },
-    void_summoning: { name: 'Void Summoning', cost: 150, requires: ['ley_channeling', 'warding'], unlocks: { buildings: ['void_nexus'] }, description: 'Open portals to summon waves of enemies' },
-    void_forging: { name: 'Void Forging', cost: 180, requires: ['void_summoning', 'runeforging'], unlocks: { recipes: ['craft_void_blade', 'craft_void_armor'], buildings: ['void_wall', 'void_turret', 'void_door'] }, description: 'Forge void essence into powerful gear' },
+    runecraft: { name: 'Runecraft', cost: 50, requires: [], description: 'Etch runes into stone weapons' },
+    druidcraft: { name: 'Druidcraft', cost: 80, requires: [], description: 'Unlock corn and potatoes' },
+    beast_binding: { name: 'Beast Binding', cost: 100, requires: ['druidcraft'], description: 'Bind and pen creatures' },
+    ley_channeling: { name: 'Ley Channeling', cost: 120, requires: ['runecraft'], description: 'Tap leylines for mana' },
+    luminance: { name: 'Luminance', cost: 80, requires: ['ley_channeling'], description: 'Mana-powered light' },
+    arcane_infusion: { name: 'Arcane Infusion', cost: 150, requires: ['ley_channeling'], description: 'Faster enchanted crafting' },
+    runeforging: { name: 'Runeforging', cost: 130, requires: ['runecraft'], description: 'Forge runic weapons' },
+    alchemy: { name: 'Alchemy', cost: 60, requires: [], description: 'Cooking produces +2 bonus food per meal' },
+    warding: { name: 'Warding', cost: 100, requires: ['runecraft'], description: 'Conjure defensive wards' },
+    ember_magic: { name: 'Ember Magic', cost: 90, requires: ['ley_channeling'], description: 'Warmth wards for winter' },
+    brilliance: { name: 'Brilliance', cost: 160, requires: ['luminance'], description: 'Radiant beacon lights large areas' },
+    mana_weaving: { name: 'Mana Weaving', cost: 180, requires: ['arcane_infusion'], description: 'Weave mana into protective garb' },
+    pyroclasm: { name: 'Pyroclasm', cost: 200, requires: ['ember_magic', 'warding'], description: 'Fire ward incinerates nearby foes' },
+    verdant_growth: { name: 'Verdant Growth', cost: 140, requires: ['beast_binding', 'alchemy'], description: 'Grow rare herbs for potent brews' },
+    masterwork: { name: 'Masterwork', cost: 220, requires: ['runeforging', 'arcane_infusion'], description: 'Forge legendary enchanted weapons' },
+    void_summoning: { name: 'Void Summoning', cost: 150, requires: ['ley_channeling', 'warding'], description: 'Open portals to summon waves of enemies' },
+    void_forging: { name: 'Void Forging', cost: 180, requires: ['void_summoning', 'runeforging'], description: 'Forge void essence into powerful gear' },
 };
 
-// To add a tameable animal: add entry here. Needs beast_binding research.
-export const TAMED_ANIMALS = {
-    chicken: { char: 'c', color: '#ddaa44', hp: 15, produces: 'eggs', produceRate: 80, produceAmount: 1, foodToTame: 2 },
-    cow: { char: 'C', color: '#aa7744', hp: 80, produces: 'milk', produceRate: 100, produceAmount: 2, foodToTame: 4 },
-    sheep: { char: 's', color: '#cccccc', hp: 40, produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 3 },
-};
+// Auto-derive unlocks from the 'research' field on buildings, recipes, and crops.
+for (const [key, tech] of Object.entries(RESEARCH)) {
+    tech.unlocks = { buildings: [], recipes: [], crops: [] };
+}
+for (const [name, b] of Object.entries(BUILDINGS)) {
+    if (b.research && RESEARCH[b.research]) RESEARCH[b.research].unlocks.buildings.push(name);
+}
+for (const [name, r] of Object.entries(RECIPES)) {
+    if (r.research && RESEARCH[r.research]) RESEARCH[r.research].unlocks.recipes.push(name);
+}
+for (const [name, c] of Object.entries(CROPS)) {
+    if (c.research && RESEARCH[c.research]) RESEARCH[c.research].unlocks.crops.push(name);
+}
 
+// Auto-derived from ANIMALS entries with tameable: true
+export const TAMED_ANIMALS = Object.fromEntries(
+    Object.entries(ANIMALS).filter(([, a]) => a.tameable).map(([k, a]) => [k, { char: a.char, color: a.color, hp: a.hp, ...a.tamed }])
+);
+
+
+// Raw food ingredients usable in cooking. Add new ones here rather than in resources.js.
+export const FOODSTUFFS = ['wheat', 'berries', 'corn', 'potatoes', 'meat', 'eggs', 'milk'];
 
 export const WAVE_CONFIG = {
     baseEnemies: 4,

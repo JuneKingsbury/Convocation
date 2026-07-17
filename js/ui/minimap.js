@@ -1,4 +1,4 @@
-import { CONFIG, TILE_COLORS } from '../core/config.js';
+import { CONFIG, TILE_COLORS, BUILDINGS } from '../core/config.js';
 
 const SCALE_X = 2;
 const SCALE_Y = 2;
@@ -117,10 +117,16 @@ export class Minimap {
 
     getTileColor(tile, season) {
         if (tile.onFire) return [255, 68, 0];
-        if (tile.structure === 'wall') return [180, 180, 180];
-        if (tile.structure === 'floor') return [80, 80, 80];
-        if (tile.structure === 'door') return [150, 120, 60];
-        if (tile.structure) return [120, 100, 60];
+        if (tile.structure) {
+            const bDef = BUILDINGS[tile.structure];
+            if (bDef) {
+                const type = bDef.structureType;
+                if (type === 'wall') return [180, 180, 180];
+                if (type === 'floor') return [80, 80, 80];
+                if (type === 'door') return [150, 120, 60];
+            }
+            return [120, 100, 60];
+        }
         if (tile.zone) {
             if (tile.zone.state === 'ready') return [220, 200, 0];
             if (tile.zone.state === 'growing') return [60, 150, 30];

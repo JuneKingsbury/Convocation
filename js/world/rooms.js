@@ -1,4 +1,4 @@
-import { CONFIG } from '../core/config.js';
+import { CONFIG, WALL_STRUCTURES, DOOR_STRUCTURES } from '../core/config.js';
 
 export function detectRooms(map) {
     for (let y = 0; y < CONFIG.MAP_HEIGHT; y++) {
@@ -64,7 +64,7 @@ function floodFill(map, startX, startY, visited) {
             }
             const neighbor = map[ny][nx];
             if (isWall(neighbor)) continue;
-            if (neighbor.structure === 'door') {
+            if (DOOR_STRUCTURES.has(neighbor.structure)) {
                 localVisited.add(nKey);
                 visited.add(nKey);
                 tiles.push({ x: nx, y: ny });
@@ -83,7 +83,7 @@ function floodFill(map, startX, startY, visited) {
 }
 
 function isWall(tile) {
-    return tile.structure === 'wall' || tile.structure === 'fence';
+    return WALL_STRUCTURES.has(tile.structure);
 }
 
 export function getRoomContents(map, roomId) {

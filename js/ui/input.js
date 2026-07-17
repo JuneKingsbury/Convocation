@@ -1,4 +1,4 @@
-import { CONFIG, CROPS, BUILDINGS } from '../core/config.js';
+import { CONFIG, CROPS, BUILDINGS, DRAG_BUILD_TYPES, SINGLE_PLACE_TYPES } from '../core/config.js';
 import { designateBuild, designateChop, designateMine, cancelDesignation } from '../systems/building.js';
 import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from '../systems/farming.js';
 import { isPassable } from '../world/map.js';
@@ -8,7 +8,7 @@ export class InputHandler {
         this.game = game;
         this.pre = preElement;
         this.mode = 'normal';
-        this.buildType = 'wall';
+        this.buildType = 'wood_wall';
         this.cropType = 'wheat';
         this.dragStart = null;
         this.dragEnd = null;
@@ -17,8 +17,8 @@ export class InputHandler {
         this.touchPanMode = false;
 
         this.buildOptions = Object.keys(BUILDINGS);
-        this.dragBuildTypes = new Set(['wall', 'floor', 'door', 'fence', 'torch', 'void_wall', 'void_door']);
-        this.singlePlaceTypes = new Set(['bed', 'workbench', 'cauldron', 'storage_chest', 'arcanum', 'beast_circle', 'mana_crystal', 'enchanting_table', 'ember_ward', 'arcane_sentinel', 'void_nexus']);
+        this.dragBuildTypes = DRAG_BUILD_TYPES;
+        this.singlePlaceTypes = SINGLE_PLACE_TYPES;
         this.cropOptions = Object.keys(CROPS);
         this.designateMode = 'chop';
 

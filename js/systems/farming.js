@@ -1,18 +1,9 @@
-import { CROPS, RESEARCH } from '../core/config.js';
+import { CROPS } from '../core/config.js';
 
-function buildCropResearchReqs() {
-    const reqs = {};
-    for (const [key, tech] of Object.entries(RESEARCH)) {
-        if (tech.unlocks?.crops) {
-            for (const crop of tech.unlocks.crops) {
-                reqs[crop] = key;
-            }
-        }
-    }
-    return reqs;
-}
-
-export const CROP_RESEARCH_REQS = buildCropResearchReqs();
+// Derived from the 'research' field on each crop entry
+export const CROP_RESEARCH_REQS = Object.fromEntries(
+    Object.entries(CROPS).filter(([, c]) => c.research).map(([k, c]) => [k, c.research])
+);
 
 export function designateFarmZone(game, x1, y1, x2, y2, cropType) {
     const crop = CROPS[cropType];

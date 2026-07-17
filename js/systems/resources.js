@@ -1,6 +1,6 @@
-import { CONFIG } from '../core/config.js';
+import { CONFIG, FOODSTUFFS } from '../core/config.js';
 
-export const FOODSTUFFS = ['wheat', 'berries', 'corn', 'potatoes', 'meat', 'eggs', 'milk'];
+export { FOODSTUFFS };
 
 export class ResourceManager {
     constructor() {
