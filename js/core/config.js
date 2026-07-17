@@ -210,19 +210,19 @@ export const RECIPE_CATEGORIES = ['Materials', 'Equipment', 'Tools', 'Artifacts'
 export const RECIPES = {
     craft_planks: { input: { wood: 2 }, output: { planks: 3 }, skill: 'crafting', ticks: 10, station: 'workbench', category: 'Materials' },
     craft_bricks: { input: { stone: 2 }, output: { bricks: 3 }, skill: 'crafting', ticks: 12, station: 'workbench', category: 'Materials' },
-    craft_wooden_club: { input: { wood: 3 }, output: { wooden_club: 1 }, skill: 'crafting', ticks: 15, station: 'workbench', category: 'Equipment' },
-    craft_etched_axe: { input: { stone: 2, wood: 1 }, output: { etched_axe: 1 }, skill: 'crafting', ticks: 18, station: 'workbench', research: 'runecraft', category: 'Equipment' },
-    craft_runic_blade: { input: { runite: 3 }, output: { runic_blade: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'runeforging', category: 'Equipment' },
-    craft_runic_pick: { input: { runite: 2, wood: 1 }, output: { runic_pick: 1 }, skill: 'crafting', ticks: 20, station: 'workbench', research: 'runeforging', category: 'Equipment' },
-    craft_void_blade: { input: { void_essence: 5, runite: 2 }, output: { void_blade: 1 }, skill: 'crafting', ticks: 30, station: 'workbench', research: 'void_forging', category: 'Equipment' },
-    craft_void_armor: { input: { void_essence: 4, planks: 2 }, output: { void_armor: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'void_forging', category: 'Equipment' },
-    craft_stone_pickaxe: { input: { stone: 3, wood: 1 }, output: { stone_pickaxe: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', category: 'Tools' },
-    craft_runic_pickaxe: { input: { runite: 2, wood: 1 }, output: { runic_pickaxe: 1 }, skill: 'crafting', ticks: 22, station: 'workbench', research: 'runeforging', category: 'Tools' },
-    craft_woodcutter_axe: { input: { wood: 3, stone: 2 }, output: { woodcutter_axe: 1 }, skill: 'crafting', ticks: 16, station: 'workbench', category: 'Tools' },
-    craft_harvesting_sickle: { input: { stone: 2, wood: 1 }, output: { harvesting_sickle: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', research: 'druidcraft', category: 'Tools' },
-    craft_boots_of_haste: { input: { void_essence: 3, planks: 2 }, output: { boots_of_haste: 1 }, skill: 'crafting', ticks: 28, station: 'workbench', research: 'void_forging', category: 'Artifacts' },
-    brew_health_potion: { input: { berries: 3, wheat: 2 }, output: { health_potion: 1 }, skill: 'cooking', ticks: 12, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
-    brew_speed_potion: { input: { corn: 3, potatoes: 2 }, output: { speed_potion: 1 }, skill: 'cooking', ticks: 15, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
+    craft_wooden_club: { input: { wood: 2, planks: 1 }, output: { wooden_club: 1 }, skill: 'crafting', ticks: 15, station: 'workbench', category: 'Equipment' },
+    craft_etched_axe: { input: { stone: 2, planks: 1 }, output: { etched_axe: 1 }, skill: 'crafting', ticks: 18, station: 'workbench', research: 'runecraft', category: 'Equipment' },
+    craft_runic_blade: { input: { runite: 2, planks: 1 }, output: { runic_blade: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'runeforging', category: 'Equipment' },
+    craft_runic_pick: { input: { runite: 2, planks: 1 }, output: { runic_pick: 1 }, skill: 'crafting', ticks: 20, station: 'workbench', research: 'runeforging', category: 'Equipment' },
+    craft_void_blade: { input: { void_essence: 4, runite: 2, planks: 1 }, output: { void_blade: 1 }, skill: 'crafting', ticks: 30, station: 'workbench', research: 'void_forging', category: 'Equipment' },
+    craft_void_armor: { input: { void_essence: 3, bricks: 2, planks: 1 }, output: { void_armor: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'void_forging', category: 'Equipment' },
+    craft_stone_pickaxe: { input: { stone: 2, planks: 1 }, output: { stone_pickaxe: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', category: 'Tools' },
+    craft_runic_pickaxe: { input: { runite: 2, planks: 1 }, output: { runic_pickaxe: 1 }, skill: 'crafting', ticks: 22, station: 'workbench', research: 'runeforging', category: 'Tools' },
+    craft_woodcutter_axe: { input: { planks: 2, stone: 1 }, output: { woodcutter_axe: 1 }, skill: 'crafting', ticks: 16, station: 'workbench', category: 'Tools' },
+    craft_harvesting_sickle: { input: { stone: 1, planks: 1, wood: 1 }, output: { harvesting_sickle: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', research: 'druidcraft', category: 'Tools' },
+    craft_boots_of_haste: { input: { void_essence: 2, planks: 2, runite: 1 }, output: { boots_of_haste: 1 }, skill: 'crafting', ticks: 28, station: 'workbench', research: 'void_forging', category: 'Artifacts' },
+    brew_health_potion: { input: { berries: 3, wheat: 1 }, output: { health_potion: 1 }, skill: 'cooking', ticks: 12, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
+    brew_speed_potion: { input: { corn: 2, potatoes: 2, berries: 1 }, output: { speed_potion: 1 }, skill: 'cooking', ticks: 15, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
     cook_meal: { input: { foodstuffs: 5 }, output: { food: 4 }, skill: 'cooking', ticks: 8, station: 'cauldron', category: 'Food & Potions' },
 };
 
@@ -385,6 +385,7 @@ export const COLONIST_NAMES = [
     'Iris', 'Jake', 'Kit', 'Lena', 'Max', 'Nora', 'Otto', 'Pia',
     'Davis', 'Morgan', 'Hugh', 'Matt', 'Sam', 'Paul', 'Jim', 'Mia',
     'Quinn', 'Rex', 'Sage', 'Tara', 'Uma', 'Vex', 'Wren', 'Xia',
+    'Perry', 'Harper', 'Jules', 'Kris', 'Liam', 'Noah', 'Owen',
 ];
 
 // To add an event: add an entry here with an 'effect' type. Data-driven effects
@@ -567,7 +568,7 @@ export const WILDLIFE_CONFIG = {
 export const WORK_CONFIG = {
     plantWork: 5,                // ticks to plant a crop
     harvestWork: 8,              // ticks to harvest a crop
-    researchWork: 10,            // ticks per research task cycle at arcanum
+    researchWork: 20,            // ticks per research task cycle at arcanum
     deconstructWork: 10,         // ticks to deconstruct a building
     tameWork: 20,                // ticks to tame an animal
     poweredWorkbenchDivisor: 2,  // enchanting table divides craft time by this

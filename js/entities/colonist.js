@@ -14,10 +14,10 @@ export function syncColonistIdCounter(colonists) {
 export function createColonist(x, y, skillBias, existingNames = []) {
     const id = nextColonistId++;
     const usedNames = new Set(existingNames);
-    let name = COLONIST_NAMES[(id - 1) % COLONIST_NAMES.length];
-    if (usedNames.has(name)) {
-        name = COLONIST_NAMES.find(n => !usedNames.has(n)) || `Colonist ${id}`;
-    }
+    const available = COLONIST_NAMES.filter(n => !usedNames.has(n));
+    let name = available.length > 0
+        ? available[Math.floor(Math.random() * available.length)]
+        : `Colonist ${id}`;
     const traitKeys = Object.keys(TRAITS);
     const numTraits = 1 + Math.floor(Math.random() * 2);
     const traits = [];
