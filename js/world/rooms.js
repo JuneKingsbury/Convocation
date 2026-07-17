@@ -16,7 +16,7 @@ export function detectRooms(map) {
             if (visited.has(key)) continue;
             const tile = map[y][x];
             if (isWall(tile)) continue;
-            if (tile.terrain === 'water' || tile.terrain === 'rock') continue;
+            if (tile.terrain === 'water' || tile.terrain === 'rock' || tile.terrain === 'tall_rock') continue;
             if (!tile.passable) continue;
 
             const result = floodFill(map, x, y, visited);
@@ -64,6 +64,7 @@ function floodFill(map, startX, startY, visited) {
             }
             const neighbor = map[ny][nx];
             if (isWall(neighbor)) continue;
+            if (neighbor.terrain === 'tall_rock') continue;
             if (DOOR_STRUCTURES.has(neighbor.structure)) {
                 localVisited.add(nKey);
                 visited.add(nKey);

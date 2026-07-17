@@ -3,7 +3,7 @@ import { BUILDINGS, RESOURCES, WORK_CONFIG } from '../core/config.js';
 export function designateBuild(game, x, y, buildType) {
     const tile = game.map[y][x];
     if (tile.structure || !tile.passable || tile.resource) return false;
-    if (tile.terrain === 'water' || tile.terrain === 'rock') return false;
+    if (tile.terrain === 'water' || tile.terrain === 'rock' || tile.terrain === 'tall_rock') return false;
 
     const def = BUILDINGS[buildType];
     if (!def) return false;

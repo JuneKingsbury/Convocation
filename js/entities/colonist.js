@@ -1,4 +1,4 @@
-import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG } from '../core/config.js';
+import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG, TASK_CONFIG } from '../core/config.js';
 import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 import { isPassable, getMoveCost } from '../world/map.js';
 import { FOODSTUFFS } from '../systems/resources.js';
@@ -69,7 +69,7 @@ export function updateColonist(colonist, game) {
 
     if (!CONFIG.PEACEFUL_MODE && colonist.traits.includes('pyromaniac') && Math.random() < TRAITS.pyromaniac.fireChance) {
         const tile = game.map[colonist.y][colonist.x];
-        if (!tile.onFire && tile.terrain !== 'water' && tile.terrain !== 'rock') {
+        if (!tile.onFire && tile.terrain !== 'water' && tile.terrain !== 'rock' && tile.terrain !== 'tall_rock') {
             tile.onFire = true;
             tile.fireTimer = 0;
             if (game.mapIndex) game.mapIndex.addFire(colonist.x, colonist.y);
@@ -237,7 +237,16 @@ function updateIdle(colonist, game) {
             colonist.currentTaskId = null;
             if (!colonist._failedTasks) colonist._failedTasks = {};
             colonist._failedTasks[task.id] = game.tick;
-            if (!colonist._lastPathFailNotify || game.tick - colonist._lastPathFailNotify > 100) {
+
+            if (!task._unreachableFailers) task._unreachableFailers = new Set();
+            task._unreachableFailers.add(colonist.id);
+
+            if (task._unreachableFailers.size >= TASK_CONFIG.unreachableFailThreshold) {
+                game.taskQueue.remove(task.id);
+                const tile = game.map[task.y] && game.map[task.y][task.x];
+                if (tile) tile.designation = null;
+                game.notifications.push({ text: `Cancelled unreachable ${task.type} task`, tick: game.tick, type: 'warning' });
+            } else if (!colonist._lastPathFailNotify || game.tick - colonist._lastPathFailNotify > TASK_CONFIG.unreachableCheckInterval) {
                 colonist._lastPathFailNotify = game.tick;
                 game.notifications.push({ text: `${colonist.name} can't reach ${task.type} task`, tick: game.tick, type: 'danger' });
             }

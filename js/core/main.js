@@ -102,7 +102,7 @@ class Game {
             const x = Math.floor(Math.random() * CONFIG.MAP_WIDTH);
             const y = Math.floor(Math.random() * CONFIG.MAP_HEIGHT);
             const tile = this.map[y][x];
-            if (tile.terrain === 'water' || tile.terrain === 'rock' || tile.resource) continue;
+            if (tile.terrain === 'water' || tile.terrain === 'rock' || tile.terrain === 'tall_rock' || tile.resource) continue;
             this.wildlife.push(createAnimal(type, x, y));
         }
     }

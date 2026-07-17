@@ -49,8 +49,9 @@ export const TERRAIN = {
     dirt:   { char: ',', color: '#bb8850', bg: '#2a1e14', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
     sand:   { char: '∙', color: '#e0c878', bg: '#2a2618', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
     gravel: { char: ':', color: '#a09888', bg: '#1e1c1a', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
-    rock:   { char: '#', color: '#999', bg: '#222', moveCost: 4, passable: { colonist: true, animal: false, enemy: false } },
-    water:  { char: '~', color: '#55aaff', bg: '#0a1a2e', moveCost: 3, passable: { colonist: true, animal: false, enemy: false } },
+    rock:      { char: '#', color: '#999', bg: '#222', moveCost: 4, passable: { colonist: true, animal: false, enemy: false } },
+    tall_rock: { char: '▲', color: '#777', bg: '#1a1a1a', moveCost: Infinity, passable: { colonist: false, animal: false, enemy: false } },
+    water:     { char: '~', color: '#55aaff', bg: '#0a1a2e', moveCost: 3, passable: { colonist: true, animal: false, enemy: false } },
 };
 
 // To add a harvestable resource: add entry here. Rendering, gathering, and yields handled automatically.
@@ -575,3 +576,123 @@ export const PATHFINDING_CONFIG = {
     raiderSearchRadius: 50,      // how far raiders scan for colonists
     breakableCostPenalty: 10,    // extra path cost for breakable structures (makes raiders prefer open routes)
 };
+
+// Task reachability. When all colonists fail to path to a task this many times, auto-cancel it.
+export const TASK_CONFIG = {
+    unreachableFailThreshold: 3, // unique colonist failures before a task is deemed unreachable
+    unreachableCheckInterval: 60, // ticks between reachability re-checks (avoids spam)
+};
+
+// Map generator pipeline. Each entry runs in order during generateMap().
+// name: identifier. enabled: toggle. weight/chance: probability of appearing (1.0 = always).
+// params: passed to the generator function (defined in map.js).
+export const MAP_GENERATORS = [
+    {
+        name: 'dirt_patches',
+        enabled: true,
+        params: {
+            count: 12,          // patches per 100x80 area (scales with map size)
+            radiusRange: [2, 5], // min/max patch radius
+            fillChance: 0.6,    // chance per tile in radius to convert
+        },
+    },
+    {
+        name: 'rock_formations',
+        enabled: true,
+        params: {
+            count: 6,           // formations per 100x80 area (scales with map size)
+            sizeRange: [2, 4],  // min/max formation radius
+            fillChance: 0.7,    // chance per tile in radius to place rock
+            resourceChance: 0.5, // chance a rock tile gets a stone/runite deposit
+            runiteChance: 0.2,  // fraction of resource tiles that are runite vs stone
+            stoneAmount: [3, 5], // stone deposit amount range
+            runiteAmount: [2, 3], // runite deposit amount range
+        },
+    },
+    {
+        name: 'mountain_ranges',
+        enabled: true,
+        params: {
+            chance: 0.4,         // probability a map has a mountain range
+            lengthRange: [15, 40], // spine length in tiles
+            widthRange: [3, 6],  // half-width of the range
+            tallRockChance: 0.4, // chance of tall_rock (impassable) vs regular rock
+            resourceChance: 0.3, // chance a rock tile gets deposits
+            runiteChance: 0.3,   // fraction of resource tiles that are runite
+            stoneAmount: [3, 5],
+            runiteAmount: [2, 4],
+        },
+    },
+    {
+        name: 'trees',
+        enabled: true,
+        params: {
+            density: 0.12,      // chance per grass tile to spawn a tree
+            amountRange: [3, 5], // wood amount per tree
+        },
+    },
+    {
+        name: 'river',
+        enabled: true,
+        params: {
+            widthRange: [2, 3], // half-width of river (actual width = 2*w+1)
+            bankChance: 0.85,   // chance of sand on tiles adjacent to water
+            gravelChance: 0.5,  // chance of gravel on tiles 2 away from water
+        },
+    },
+    {
+        name: 'ruins',
+        enabled: true,
+        params: {
+            count: 1,            // number of ruin placement attempts per map
+            chance: 1,           // probability each attempt actually places a ruin
+            margin: 30,          // min distance from map edge for placement
+            decayChance: 0.33,   // chance each wall/door block is missing (ruined)
+            floorDecayChance: 0.15, // chance each floor tile is missing
+            // Blueprints: define structure layouts. Each has width, height, optional floorTerrain,
+            // and a layout array of { x, y, type } entries (relative to top-left corner).
+            // type must be a key from BUILDINGS. Add as many blueprints as you like.
+            blueprints: [
+                {
+                    name: 'temple',
+                    width: 9,
+                    height: 7,
+                    floorTerrain: 'dirt',
+                    layout: (() => {
+                        const l = [];
+                        // Outer stone walls
+                        for (let x = 0; x < 9; x++) { l.push({ x, y: 0, type: 'stone_wall' }); l.push({ x, y: 6, type: 'stone_wall' }); }
+                        for (let y = 1; y < 6; y++) { l.push({ x: 0, y, type: 'stone_wall' }); l.push({ x: 8, y, type: 'stone_wall' }); }
+                        // Door entrance
+                        l.push({ x: 4, y: 6, type: 'door' });
+                        // Stone floor interior
+                        for (let y = 1; y < 6; y++) { for (let x = 1; x < 8; x++) { l.push({ x, y, type: 'stone_floor' }); } }
+                        // Columns
+                        l.push({ x: 2, y: 2, type: 'stone_wall' });
+                        l.push({ x: 6, y: 2, type: 'stone_wall' });
+                        l.push({ x: 2, y: 4, type: 'stone_wall' });
+                        l.push({ x: 6, y: 4, type: 'stone_wall' });
+                        return l;
+                    })(),
+                },
+                {
+                    name: 'watchtower',
+                    width: 5,
+                    height: 5,
+                    floorTerrain: 'gravel',
+                    layout: (() => {
+                        const l = [];
+                        // Square stone walls
+                        for (let x = 0; x < 5; x++) { l.push({ x, y: 0, type: 'stone_wall' }); l.push({ x, y: 4, type: 'stone_wall' }); }
+                        for (let y = 1; y < 4; y++) { l.push({ x: 0, y, type: 'stone_wall' }); l.push({ x: 4, y, type: 'stone_wall' }); }
+                        // Door
+                        l.push({ x: 2, y: 4, type: 'door' });
+                        // Interior floor
+                        for (let y = 1; y < 4; y++) { for (let x = 1; x < 4; x++) { l.push({ x, y, type: 'stone_floor' }); } }
+                        return l;
+                    })(),
+                },
+            ],
+        },
+    },
+];

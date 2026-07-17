@@ -141,6 +141,7 @@ export class Minimap {
             case 'grass': return [50, 100, 40];
             case 'dirt': return [120, 80, 40];
             case 'rock': return [80, 80, 80];
+            case 'tall_rock': return [55, 55, 55];
             case 'water': return [40, 80, 180];
             default: return [30, 30, 30];
         }

@@ -228,8 +228,7 @@ function deserializeMap(map, data) {
             const t = data[y][x];
             const tile = map[y][x];
             tile.terrain = t.t;
-            // Rock/water terrain is now passable (slow); only structures block
-            tile.passable = (t.t === 'rock' || t.t === 'water') ? true : t.p === 1;
+            tile.passable = t.p === 1;
             tile.structure = t.s || null;
             tile.structureHp = t.shp !== undefined ? t.shp : undefined;
             tile.resource = t.r || null;
