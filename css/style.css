@@ -1302,10 +1302,9 @@ body {
         padding: 3px 6px;
         gap: 5px;
         font-size: 10px;
-    }
-
-    #status-bar .status-extra {
-        display: none;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     #notifications {

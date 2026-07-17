@@ -206,6 +206,7 @@ export function getTileBg(tile) {
         const bDef = BUILDINGS[tile.structure];
         if (bDef && bDef.bg) return bDef.bg;
     }
+    if (tile.snowCovered && tile.terrain === 'grass') return '#2a2a2a';
     const tDef = TERRAIN[tile.terrain];
     return tDef ? tDef.bg || null : null;
 }
