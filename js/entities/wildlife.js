@@ -1,4 +1,4 @@
-import { CONFIG, ANIMALS, SEASON_EFFECTS } from '../core/config.js';
+import { CONFIG, ANIMALS, SEASON_EFFECTS, WILDLIFE_CONFIG } from '../core/config.js';
 import { isPassableForAnimals } from '../world/map.js';
 import { manhattanDist } from '../world/pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
@@ -46,7 +46,7 @@ export function updateWildlife(game) {
 function maybeSpawnAnimal(game) {
     const spawnRate = SEASON_EFFECTS[game.weather.season].animalSpawnRate;
     if (Math.random() > spawnRate) return;
-    if (game.wildlife.length >= 15) return;
+    if (game.wildlife.length >= WILDLIFE_CONFIG.maxCount) return;
 
     const edge = getRandomEdge();
     const type = pickAnimalType(game);
@@ -59,12 +59,13 @@ function maybeSpawnAnimal(game) {
 
 function pickAnimalType(game) {
     const roll = Math.random();
-    if (roll < 0.35) return 'deer';
-    if (roll < 0.55) return 'rabbit';
-    if (roll < 0.7) return 'chicken';
-    if (roll < 0.8) return 'sheep';
-    if (roll < 0.88) return 'cow';
-    if (!CONFIG.PEACEFUL_MODE && (game.weather.season === 'winter' || game.timeOfDay > 75)) return 'wolf';
+    const w = WILDLIFE_CONFIG.spawnWeights;
+    if (roll < w.deer) return 'deer';
+    if (roll < w.rabbit) return 'rabbit';
+    if (roll < w.chicken) return 'chicken';
+    if (roll < w.sheep) return 'sheep';
+    if (roll < w.cow) return 'cow';
+    if (!CONFIG.PEACEFUL_MODE && (game.weather.season === 'winter' || game.timeOfDay / CONFIG.TICKS_PER_DAY > WILDLIFE_CONFIG.wolfNightThreshold)) return 'wolf';
     return 'rabbit';
 }
 
@@ -122,7 +123,7 @@ function updatePassiveAnimal(animal, def, game) {
         return;
     }
 
-    if (Math.random() < 0.3) {
+    if (Math.random() < WILDLIFE_CONFIG.passiveMoveChance) {
         randomMove(animal, game.map);
     }
 }
@@ -141,13 +142,13 @@ function updateHostileAnimal(animal, def, game) {
     } else if (dist <= def.aggroRange) {
         moveToward(animal, nearestColonist, game.map);
     } else {
-        if (Math.random() < 0.2) randomMove(animal, game.map);
+        if (Math.random() < WILDLIFE_CONFIG.hostileIdleMoveChance) randomMove(animal, game.map);
     }
 }
 
 function findNearestColonist(animal, game) {
     if (game.spatial) {
-        return game.spatial.colonists.findNearest(animal.x, animal.y, 20, null);
+        return game.spatial.colonists.findNearest(animal.x, animal.y, WILDLIFE_CONFIG.animalSearchRadius, null);
     }
     let nearest = null;
     let minDist = Infinity;

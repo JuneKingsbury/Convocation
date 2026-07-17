@@ -1,4 +1,4 @@
-import { CONFIG, RAID_CONFIG, WEAPONS, BUILDINGS } from '../core/config.js';
+import { CONFIG, RAID_CONFIG, WEAPONS, BUILDINGS, COMBAT_VISUALS, PATHFINDING_CONFIG } from '../core/config.js';
 
 const RAIDER_WEAPONS = ['wooden_club', 'etched_axe', 'runic_blade'];
 import { isPassableForEnemies, isBreakableByEnemies } from '../world/map.js';
@@ -154,7 +154,7 @@ function updateRaider(raider, game) {
 
     // Repath every 15 ticks or if path is empty
     raider.pathAge++;
-    if (raider.path.length === 0 || raider.pathAge > 15) {
+    if (raider.path.length === 0 || raider.pathAge > PATHFINDING_CONFIG.raiderRepathInterval) {
         raider.path = findPathForEnemies(game.map, raider.x, raider.y, nearest.x, nearest.y) || [];
         raider.pathAge = 0;
     }
@@ -175,7 +175,7 @@ function updateRaider(raider, game) {
 
 function findNearestColonist(raider, game) {
     if (game.spatial) {
-        return game.spatial.colonists.findNearest(raider.x, raider.y, 50, null);
+        return game.spatial.colonists.findNearest(raider.x, raider.y, PATHFINDING_CONFIG.raiderSearchRadius, null);
     }
     let nearest = null;
     let minDist = Infinity;
@@ -220,7 +220,7 @@ function attackStructure(game, x, y, damage) {
     }
 
     tile.structureHp -= damage;
-    if (game.combatEffects) game.combatEffects.push({ x, y, char: '!', color: '#ff8800', ttl: 2 });
+    if (game.combatEffects) game.combatEffects.push({ x, y, char: COMBAT_VISUALS.hitChar, color: COMBAT_VISUALS.structureDamageColor, ttl: COMBAT_VISUALS.hitTtl });
 
     if (tile.structureHp <= 0) {
         const oldStructure = tile.structure;

@@ -1,4 +1,4 @@
-import { CROPS } from '../core/config.js';
+import { CROPS, WORK_CONFIG } from '../core/config.js';
 
 // Derived from the 'research' field on each crop entry
 export const CROP_RESEARCH_REQS = Object.fromEntries(
@@ -82,7 +82,7 @@ function updateFarmTile(game, x, y, season, growthMult) {
                 type: 'plant',
                 skillRequired: 'farming',
                 x, y,
-                workAmount: 5,
+                workAmount: WORK_CONFIG.plantWork,
             });
         }
     } else if (tile.zone.state === 'growing') {
@@ -96,7 +96,7 @@ function updateFarmTile(game, x, y, season, growthMult) {
                         type: 'harvest',
                         skillRequired: 'farming',
                         x, y,
-                        workAmount: 8,
+                        workAmount: WORK_CONFIG.harvestWork,
                     });
                 }
             }
@@ -108,7 +108,7 @@ function updateFarmTile(game, x, y, season, growthMult) {
                 type: 'harvest',
                 skillRequired: 'farming',
                 x, y,
-                workAmount: 8,
+                workAmount: WORK_CONFIG.harvestWork,
             });
         }
     }

@@ -1,4 +1,4 @@
-import { RESEARCH } from '../core/config.js';
+import { RESEARCH, WORK_CONFIG } from '../core/config.js';
 
 export class ResearchSystem {
     constructor() {
@@ -58,7 +58,7 @@ export function updateResearch(game) {
             skillRequired: 'crafting',
             x: bench.x,
             y: bench.y,
-            workAmount: 10,
+            workAmount: WORK_CONFIG.researchWork,
         });
     }
 }

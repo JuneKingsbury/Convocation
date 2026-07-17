@@ -1,4 +1,4 @@
-import { CONFIG, FOODSTUFFS } from '../core/config.js';
+import { CONFIG, FOODSTUFFS, WORK_CONFIG } from '../core/config.js';
 
 export { FOODSTUFFS };
 
@@ -80,7 +80,7 @@ export class ResourceManager {
         for (const [, amount] of Object.entries(this.stockpile)) {
             wealth += amount;
         }
-        wealth += this.weapons.length * 10;
+        wealth += this.weapons.length * WORK_CONFIG.wealthPerWeapon;
         return wealth;
     }
 }

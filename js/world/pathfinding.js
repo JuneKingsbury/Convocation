@@ -1,8 +1,8 @@
 import { isPassable, getMoveCost, isPassableForEnemies, isBreakableByEnemies } from './map.js';
-import { CONFIG } from '../core/config.js';
+import { CONFIG, PATHFINDING_CONFIG } from '../core/config.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-const MAX_NODES = 1500;
+const MAX_NODES = PATHFINDING_CONFIG.maxNodes;
 
 class MinHeap {
     constructor() {
@@ -168,7 +168,7 @@ export function findPathForEnemies(map, startX, startY, endX, endY) {
             if (!isPassableForEnemies(map, nx, ny) && !isBreakableByEnemies(map, nx, ny)) continue;
 
             let cost = getMoveCost(map, nx, ny);
-            if (isBreakableByEnemies(map, nx, ny)) cost += 10;
+            if (isBreakableByEnemies(map, nx, ny)) cost += PATHFINDING_CONFIG.breakableCostPenalty;
 
             const tentativeG = gScore.get(currentKey) + cost;
             if (tentativeG < (gScore.get(nKey) ?? Infinity)) {

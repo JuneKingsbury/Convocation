@@ -1,4 +1,4 @@
-import { RECIPES } from '../core/config.js';
+import { RECIPES, WORK_CONFIG } from '../core/config.js';
 
 export function queueCraftingOrder(game, recipeKey) {
     const recipe = RECIPES[recipeKey];
@@ -14,7 +14,7 @@ export function queueCraftingOrder(game, recipeKey) {
 
     let workAmount = recipe.ticks;
     if (stationType === 'workbench' && station.powered) {
-        workAmount = Math.ceil(workAmount / 2);
+        workAmount = Math.ceil(workAmount / WORK_CONFIG.poweredWorkbenchDivisor);
     }
 
     game.taskQueue.add({

@@ -1,4 +1,4 @@
-import { CONFIG, TILE_COLORS, BUILDINGS } from '../core/config.js';
+import { CONFIG, TILE_COLORS, BUILDINGS, RENDER_CONFIG, COMBAT_VISUALS } from '../core/config.js';
 import { getTileChar, getTileColor, getTileBg } from '../world/map.js';
 
 export class Renderer {
@@ -13,10 +13,10 @@ export class Renderer {
 
         this.charWidth = 0;
         this.charHeight = 0;
-        this.fontSize = 14;
+        this.fontSize = RENDER_CONFIG.fontSize;
         this._lastViewportW = 0;
         this._lastViewportH = 0;
-        this.measureFont(14);
+        this.measureFont(RENDER_CONFIG.fontSize);
     }
 
     measureFont(fontSize) {
@@ -24,7 +24,7 @@ export class Renderer {
         this.ctx.font = `${fontSize}px 'Courier New', monospace`;
         const metrics = this.ctx.measureText('M');
         this._textWidth = Math.ceil(metrics.width);
-        this.charHeight = Math.ceil(fontSize * 1.15);
+        this.charHeight = Math.ceil(fontSize * RENDER_CONFIG.fontHeightMult);
         this.charWidth = this.charHeight;
         this._textOffsetX = Math.floor((this.charWidth - this._textWidth) / 2);
         this._resizeCanvas();
@@ -44,24 +44,17 @@ export class Renderer {
     }
 
     getNightDarkness(timeOfDay, season) {
-        // Normalize to 0-1 fraction of day. Season shifts dawn/dusk:
-        // summer: bright 0.15-0.75 (60%), winter: bright 0.25-0.65 (40%)
         const t = timeOfDay / CONFIG.TICKS_PER_DAY;
-        let dawn, dusk;
-        switch (season) {
-            case 'summer': dawn = 0.15; dusk = 0.75; break;
-            case 'winter': dawn = 0.25; dusk = 0.65; break;
-            case 'spring': dawn = 0.18; dusk = 0.72; break;
-            case 'autumn': dawn = 0.22; dusk = 0.68; break;
-            default: dawn = 0.20; dusk = 0.70;
-        }
-        const duskEnd = dusk + 0.12;
-        const dawnStart = dawn - 0.10;
+        const daylight = RENDER_CONFIG.seasonDaylight[season] || RENDER_CONFIG.seasonDaylight.default;
+        const { dawn, dusk } = daylight;
+        const duskEnd = dusk + RENDER_CONFIG.nightDawnDuskOffset.duskEnd;
+        const dawnStart = dawn - RENDER_CONFIG.nightDawnDuskOffset.dawnStart;
+        const maxDark = RENDER_CONFIG.nightMaxDarkness;
 
         if (t >= dawn && t <= dusk) return 0;
-        if (t > dusk && t <= duskEnd) return ((t - dusk) / (duskEnd - dusk)) * 0.55;
-        if (t >= dawnStart && t < dawn) return ((dawn - t) / (dawn - dawnStart)) * 0.55;
-        return 0.55;
+        if (t > dusk && t <= duskEnd) return ((t - dusk) / (duskEnd - dusk)) * maxDark;
+        if (t >= dawnStart && t < dawn) return ((dawn - t) / (dawn - dawnStart)) * maxDark;
+        return maxDark;
     }
 
     render(game) {
@@ -75,7 +68,7 @@ export class Renderer {
         const ch = this.charHeight;
         const selectionRect = game.input.getSelectionRect();
 
-        ctx.fillStyle = '#111';
+        ctx.fillStyle = RENDER_CONFIG.bgColor;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         const entityMap = new Map();
@@ -153,12 +146,12 @@ export class Renderer {
                 const tileKey = wy * CONFIG.MAP_WIDTH + wx;
 
                 if (portalMap.has(tileKey)) {
-                    char = 'Ø';
-                    color = '#ff55ff';
-                    bg = '#440044';
+                    char = COMBAT_VISUALS.portalChar;
+                    color = COMBAT_VISUALS.portalColor;
+                    bg = COMBAT_VISUALS.portalBg;
                 } else if (portalPathMap.has(tileKey)) {
-                    color = '#663388';
-                    bg = '#1a001a';
+                    color = COMBAT_VISUALS.portalPathColor;
+                    bg = COMBAT_VISUALS.portalPathBg;
                 }
 
                 const entity = entityMap.get(tileKey);
@@ -184,9 +177,9 @@ export class Renderer {
                     wy >= selectionRect.y1 && wy <= selectionRect.y2;
 
                 if (inSelection) {
-                    bg = game.input.mode === 'zone' ? '#2a3a2a' : '#3a2a2a';
+                    bg = game.input.mode === 'zone' ? RENDER_CONFIG.selectionBgZone : RENDER_CONFIG.selectionBgBuild;
                 } else if (cursor && cursor.x === wx && cursor.y === wy) {
-                    bg = '#444';
+                    bg = RENDER_CONFIG.cursorBg;
                 }
 
                 if (bg) {
@@ -215,10 +208,11 @@ export class Renderer {
         const darkness = this.getNightDarkness(game.timeOfDay, game.weather.season);
         if (darkness > 0) {
             const lightSources = this._getLightSources(game, camera);
-            const steps = 8;
+            const steps = RENDER_CONFIG.nightGradientSteps;
+            const [nr, ng, nb] = RENDER_CONFIG.nightOverlayColor;
             const darkStyles = [];
             for (let i = 1; i <= steps; i++) {
-                darkStyles.push(`rgba(0,0,20,${(darkness * i / steps).toFixed(3)})`);
+                darkStyles.push(`rgba(${nr},${ng},${nb},${(darkness * i / steps).toFixed(3)})`);
             }
 
             let lastDarkStyle = '';
@@ -252,7 +246,7 @@ export class Renderer {
 
     _getLightSources(game, camera) {
         const sources = [];
-        const margin = 8;
+        const margin = RENDER_CONFIG.lightSourceMargin;
         const x0 = camera.x - margin;
         const y0 = camera.y - margin;
         const x1 = camera.x + CONFIG.VIEWPORT_WIDTH + margin;
@@ -273,7 +267,7 @@ export class Renderer {
         if (firePositions) {
             for (const { x, y } of firePositions) {
                 if (x < x0 || x > x1 || y < y0 || y > y1) continue;
-                sources.push({ x, y, radius: 2 });
+                sources.push({ x, y, radius: RENDER_CONFIG.fireLightRadius });
             }
         }
 

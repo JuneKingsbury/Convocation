@@ -5,18 +5,20 @@
 // ============================================================================
 
 export const CONFIG = {
-    MAP_WIDTH: 256,
+    MAP_WIDTH: 256,             // world size in tiles
     MAP_HEIGHT: 256,
-    VIEWPORT_WIDTH: 80,
-    VIEWPORT_HEIGHT: 40,
-    TICK_RATE: 200,
-    TICKS_PER_SEASON: 600,
-    TICKS_PER_DAY: 300,
+    VIEWPORT_WIDTH: 80,         // visible tiles (columns) on screen
+    VIEWPORT_HEIGHT: 40,        // visible tiles (rows) on screen
+    TICK_RATE: 200,             // ms between game ticks (lower = faster simulation)
+    TICKS_PER_SEASON: 1500,     // ticks per season (5 days at 300 ticks/day)
+    TICKS_PER_DAY: 300,         // ticks per in-game day (60 seconds real-time at 1x)
     START_RESOURCES: { wood: 25, stone: 15, planks: 5, food: 20, meat: 0, wheat: 0, berries: 0, corn: 0, potatoes: 0, bricks: 0, runite: 0, eggs: 0, milk: 0, wool: 0, void_essence: 0 },
-    PEACEFUL_MODE: false,
-    GAME_SPEED: 1,
+    PEACEFUL_MODE: false,       // disables raids and hostile animals
+    GAME_SPEED: 1,              // default simulation speed multiplier
 };
 
+// Characters and colors for non-building tiles (farms, snow, entities, designations).
+// These get merged with BUILDINGS chars/colors to form TILE_CHARS and TILE_COLORS.
 const BASE_TILE_CHARS = {
     farm_empty: '=', farm_growing: '%', farm_ready: '*',
     snow: '*',
@@ -25,12 +27,14 @@ const BASE_TILE_CHARS = {
 const BASE_TILE_COLORS = {
     farm_empty: '#664400', farm_growing: '#55aa22', farm_ready: '#ffdd00',
     colonist: '#ffff00', raider: '#ff3333', deer: '#bb8855', rabbit: '#ccaa88', wolf: '#666666',
-    snow: '#ffffff', cursor: '#ffffff',
+    snow: '#ffffff', snowBg: '#888888', cursor: '#ffffff',
     designation_chop: '#ff8800', designation_mine: '#8888ff', designation_build: '#88ff88', designation_deconstruct: '#ff4444',
 };
 
 export const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
 
+// Per-season modifiers. cropGrowthMult: farm speed multiplier. animalSpawnRate: chance per tick.
+// tempRange: [min, max] temperature displayed in UI (cosmetic, affects freezing via winter check).
 export const SEASON_EFFECTS = {
     spring: { cropGrowthMult: 1.0, animalSpawnRate: 0.02, tempRange: [10, 20] },
     summer: { cropGrowthMult: 1.5, animalSpawnRate: 0.01, tempRange: [20, 35] },
@@ -228,6 +232,9 @@ export const TRAITS = {
     gourmand: { name: 'Gourmand', cookedFoodMoodBonus: 8, rawFoodMoodPenalty: -12, description: 'Loves cooked food, hates raw' },
 };
 
+// To add an animal: add entry here. Spawning, rendering, hunting, and taming handled automatically.
+// tameable: true enables taming. tamed sub-object: what the animal produces once tamed.
+// speed: movement rate (lower = slower). fleeRange/aggroRange: detection distance for behavior.
 export const ANIMALS = {
     deer: { char: 'd', color: '#bb8855', hp: 40, speed: 0.5, hostile: false, meatYield: 3, fleeRange: 5 },
     rabbit: { char: 'r', color: '#ccaa88', hp: 10, speed: 0.7, hostile: false, meatYield: 1, fleeRange: 4 },
@@ -252,23 +259,75 @@ export const ARMORS = {
     void_armor: { name: 'Void Armor', damageReduction: 0.3 },
 };
 
+// Colonist behavior tuning. Used by colonist.js for needs, mood, combat, and movement.
+// Mood effects: positive = good thought, negative = bad thought. Duration in ticks.
+// Thresholds: when a need drops below threshold, penalties apply.
+export const COLONIST_CONFIG = {
+    initialHunger: [80, 100],       // random range for new colonist hunger
+    initialRest: [80, 100],         // random range for new colonist rest
+    initialMood: 60,                // starting mood for new colonists
+    maxHp: 100,                     // colonist hit points
+    baseMood: 50,                   // neutral mood baseline before thoughts
+    hungerMoodThreshold: 20,        // below this hunger level, mood penalty applies
+    hungerMoodPenalty: -15,         // mood penalty when hungry
+    restMoodThreshold: 20,          // below this rest level, mood penalty applies
+    restMoodPenalty: -10,           // mood penalty when exhausted
+    bedMoodBonus: 5,                // mood bonus for having an assigned bed
+    sleepDuration: 30,              // ticks spent sleeping (without bed path)
+    sleepAfterMoveDuration: 25,     // ticks sleeping after walking to bed
+    restPerTick: 3,                 // rest recovered per sleep tick
+    breakingWanderDuration: [30, 50], // ticks of aimless wandering when mood breaks
+    wanderCooldown: [5, 15],        // tick range between idle wander attempts
+    wanderChance: 0.3,              // probability of moving during wander state
+    fightEngageDistance: 8,         // max distance to start fighting a hostile
+    fleeHpThreshold: 20,           // flee when HP drops below this
+    fleeDisengageDistance: 8,       // stop fleeing when threat is this far away
+    hostileSearchRadius: 30,        // how far colonists scan for enemies
+    socialRange: 3,                 // tile distance for socialite/loner trait checks
+    skillWorkBonus: 0.15,           // work speed bonus per skill level (1 + skill * this)
+    deconstructRecovery: 0.5,       // fraction of building cost returned on deconstruct
+    combatDamageVariance: 3,        // random bonus damage range (0 to this-1)
+    victoryMoodBonus: 5,            // mood bonus after killing an enemy
+    victoryMoodDuration: 200,       // ticks the victory thought lasts
+    cookedFoodRestore: 100,         // hunger restored by cooked food (full)
+    rawFoodRestore: 35,             // hunger restored by raw foodstuff
+    mealMoodBonus: 5,               // mood bonus from eating cooked food
+    mealMoodDuration: 150,          // ticks the meal thought lasts
+    rawFoodMoodPenalty: -4,         // mood penalty for eating raw food
+    rawFoodMoodDuration: 100,       // ticks the raw food thought lasts
+    starvingMoodPenalty: -20,       // mood penalty when no food available at all
+    starvingMoodDuration: 100,
+    sleptInRoomMoodBonus: 10,       // mood bonus for sleeping in bed inside a room
+    sleptInRoomMoodDuration: 300,
+    sleptInBedMoodBonus: 5,         // mood bonus for sleeping in bed (no room)
+    sleptInBedMoodDuration: 200,
+    sleptOnGroundMoodPenalty: -15,   // mood penalty for sleeping on the ground
+    sleptOnGroundMoodDuration: 400,
+    deathMoodPenalty: -40,           // mood penalty other colonists get when someone dies
+    deathMoodDuration: 2000,         // how long grief lasts (ticks)
+    nameColors: ['#ffff00', '#00ffff', '#00ff00'], // cycling colors for colonist names
+};
+
+// How fast needs drain per tick. Applied every tick in colonist.js updateNeeds().
 export const NEED_DECAY = {
-    hunger: 0.25,
-    rest: 0.1,
+    hunger: 0.25,               // hunger lost per tick (0-100 scale, ~400 ticks to starve)
+    rest: 0.1,                  // rest lost per tick (0-100 scale, ~1000 ticks to exhaust)
 };
 
+// Mood level boundaries. Determines colonist behavior (breaking = mental break) and work speed.
 export const MOOD_THRESHOLDS = {
-    inspired: 75,
-    content: 40,
-    stressed: 20,
-    breaking: 0,
+    inspired: 75,               // above this: inspired (bonus speed)
+    content: 40,                // above this: content (normal speed)
+    stressed: 20,               // above this: stressed (reduced speed)
+    breaking: 0,                // at or below: mental break (stops working, wanders)
 };
 
+// Work speed multipliers applied based on mood level. Used in colonist.js getWorkSpeed().
 export const MOOD_SPEED_MULT = {
     inspired: 1.2,
     content: 1.0,
     stressed: 0.7,
-    breaking: 0,
+    breaking: 0,                // can't work during mental break
 };
 
 export const COLONIST_NAMES = [
@@ -360,17 +419,18 @@ export const CARAVAN_TRADES = [
     { give: { stone: 8 }, receive: { runite: 2 } },
 ];
 
+// Raid system tuning. Used by combat.js. Raiders spawn at map edges and attack colonists.
 export const RAID_CONFIG = {
-    firstRaidTick: 1500,
-    minInterval: 1200,
-    maxInterval: 3000,
-    baseRaiders: 2,
-    wealthScaling: 0.005,
-    raiderHp: 60,
-    raiderDamage: 6,
-    raiderSpeed: 0.4,
-    fleeThreshold: 0.5,
-    timeout: 150,
+    firstRaidTick: 1500,         // earliest tick a raid can happen
+    minInterval: 1200,           // minimum ticks between raids
+    maxInterval: 3000,           // maximum ticks between raids
+    baseRaiders: 2,              // minimum raiders per raid
+    wealthScaling: 0.005,        // extra raiders = wealth * this
+    raiderHp: 60,                // hit points per raider
+    raiderDamage: 6,             // base damage per hit (+ weapon bonus)
+    raiderSpeed: 0.4,            // movement speed (lower = slower)
+    fleeThreshold: 0.5,          // remaining fraction of raiders that triggers retreat
+    timeout: 150,                // ticks after which remaining raiders flee
 };
 
 // To add research: add entry here with requires:[] for prerequisites.
@@ -419,18 +479,99 @@ export const TAMED_ANIMALS = Object.fromEntries(
 // Raw food ingredients usable in cooking. Add new ones here rather than in resources.js.
 export const FOODSTUFFS = ['wheat', 'berries', 'corn', 'potatoes', 'meat', 'eggs', 'milk'];
 
+// Wave defense (void nexus) tuning. Used by waves.js.
 export const WAVE_CONFIG = {
-    baseEnemies: 4,
-    enemiesPerWave: 2,
-    baseHp: 60,
-    hpPerWave: 15,
-    baseDamage: 6,
-    damagePerWave: 2,
-    spawnInterval: 15,
-    essencePerKill: 1,
-    nexusHp: 200,
-    nexusHpPerWave: 0,
-    colonistCapBase: 3,
-    colonistCapScale: 2.5,
-    colonistCapMax: 12,
+    baseEnemies: 4,              // enemies in wave 1
+    enemiesPerWave: 2,           // additional enemies per wave after wave 1
+    baseHp: 60,                  // enemy HP in wave 1
+    hpPerWave: 15,               // additional HP per wave
+    baseDamage: 6,               // enemy damage in wave 1
+    damagePerWave: 2,            // additional damage per wave
+    spawnInterval: 15,           // ticks between enemy spawns during a wave
+    essencePerKill: 1,           // void essence earned per kill
+    nexusHp: 200,                // starting HP of the void nexus
+    nexusHpPerWave: 0,           // additional nexus HP per wave (0 = static)
+    colonistCapBase: 3,          // starting colonist cap before any waves
+    colonistCapScale: 2.5,       // scaling factor for cap increase per wave completed
+    colonistCapMax: 12,          // maximum colonist cap
+    enemySpeed: 0.45,            // wave enemy movement speed (lower = slower)
+    enemyChar: 'E',              // character displayed for wave enemies
+    enemyColor: '#ff2222',       // color of wave enemies
+    repathInterval: 20,          // ticks before wave enemies recalculate path
+    spawnDistance: { near: 25, far: 50, offsetRange: 10 }, // portal spawn distances from nexus
+    maxPathNodes: 2000,          // A* node limit for wave enemy pathfinding
+    bonusEssencePerWave: 2,      // multiplied by wave number for completion bonus
+};
+
+// Wildlife spawning and behavior. Used by wildlife.js.
+export const WILDLIFE_CONFIG = {
+    maxCount: 15,                // max wild animals on map at once
+    spawnWeights: { deer: 0.35, rabbit: 0.55, chicken: 0.70, sheep: 0.80, cow: 0.88 }, // cumulative probability thresholds
+    passiveMoveChance: 0.3,      // chance per tick a passive animal moves randomly
+    hostileIdleMoveChance: 0.2,  // chance per tick a hostile animal moves when no target nearby
+    animalSearchRadius: 20,      // how far animals scan for colonists (flee/aggro)
+    wolfNightThreshold: 0.75,    // fraction of day after which wolves can spawn (evening)
+};
+
+// Task work amounts and miscellaneous work tuning. Used by farming, building, research, crafting, taming.
+export const WORK_CONFIG = {
+    plantWork: 5,                // ticks to plant a crop
+    harvestWork: 8,              // ticks to harvest a crop
+    researchWork: 10,            // ticks per research task cycle at arcanum
+    deconstructWork: 10,         // ticks to deconstruct a building
+    tameWork: 20,                // ticks to tame an animal
+    poweredWorkbenchDivisor: 2,  // enchanting table divides craft time by this
+    alchemyFoodBonus: 2,         // extra food per cook_meal when alchemy researched
+    wealthPerWeapon: 10,         // wealth value added per weapon in stockpile (affects raid scaling)
+    penWanderRadius: 3,          // max tiles a tamed animal wanders from its pen
+    tamedMoveChance: 0.1,        // probability per tick a tamed animal moves
+};
+
+// Visual effects for combat, portals, and turret shots. Used by renderer, colonist, combat, waves, power.
+export const COMBAT_VISUALS = {
+    hitChar: '!',                // character shown on hit
+    hitColor: '#ffff00',         // color when colonist hits an enemy
+    hitTtl: 2,                   // ticks the hit effect persists
+    damageTakenColor: '#ff3333', // color when colonist takes damage
+    nexusDamageColor: '#9933ff', // color when void nexus takes damage
+    structureDamageColor: '#ff8800', // color when raiders/waves break structures
+    portalChar: 'Ø',             // character for wave portals
+    portalColor: '#ff55ff',      // portal foreground color
+    portalBg: '#440044',         // portal background color
+    portalPathColor: '#663388',  // path preview foreground
+    portalPathBg: '#1a001a',     // path preview background
+    shotColorArcane: '#ff4444',  // arcane sentinel shot color
+    shotColorVoid: '#cc00ff',    // void turret shot color
+};
+
+// Rendering engine settings. Used by renderer.js for canvas, night overlay, and lighting.
+// seasonDaylight: dawn/dusk as fraction of day (0-1). Dawn = transition to bright, dusk = transition to dark.
+export const RENDER_CONFIG = {
+    fontSize: 14,                // base font size in pixels
+    fontHeightMult: 1.15,        // line height multiplier for tile cell height
+    bgColor: '#111',             // canvas background (visible at map edges)
+    cursorBg: '#444',            // background highlight under cursor
+    selectionBgZone: '#2a3a2a',  // selection rectangle background in zone mode
+    selectionBgBuild: '#3a2a2a', // selection rectangle background in build mode
+    nightMaxDarkness: 0.55,      // maximum overlay opacity at full night (0-1)
+    nightDawnDuskOffset: { duskEnd: 0.12, dawnStart: 0.10 }, // transition duration as fraction of day
+    nightGradientSteps: 8,       // quantized darkness levels (higher = smoother, more fillRect calls)
+    nightOverlayColor: [0, 0, 20], // RGB of night overlay tint
+    lightSourceMargin: 8,        // extra tiles beyond viewport to check for light sources
+    fireLightRadius: 2,          // light radius of burning tiles
+    seasonDaylight: {
+        summer: { dawn: 0.15, dusk: 0.75 },   // 60% daylight
+        winter: { dawn: 0.25, dusk: 0.65 },   // 40% daylight
+        spring: { dawn: 0.18, dusk: 0.72 },   // 54% daylight
+        autumn: { dawn: 0.22, dusk: 0.68 },   // 46% daylight
+        default: { dawn: 0.20, dusk: 0.70 },  // 50% daylight (fallback)
+    },
+};
+
+// Pathfinding tuning. Used by pathfinding.js and combat.js.
+export const PATHFINDING_CONFIG = {
+    maxNodes: 1500,              // A* node limit for colonist pathfinding
+    raiderRepathInterval: 15,    // ticks before raiders recalculate their path
+    raiderSearchRadius: 50,      // how far raiders scan for colonists
+    breakableCostPenalty: 10,    // extra path cost for breakable structures (makes raiders prefer open routes)
 };

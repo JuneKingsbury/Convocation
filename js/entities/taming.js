@@ -1,4 +1,4 @@
-import { CONFIG, ANIMALS, TAMED_ANIMALS } from '../core/config.js';
+import { CONFIG, ANIMALS, TAMED_ANIMALS, WORK_CONFIG } from '../core/config.js';
 
 let nextTamedId = 1;
 
@@ -36,7 +36,7 @@ export function updateTamedAnimals(game) {
             animal.produceCooldown = def.produceRate;
         }
 
-        if (Math.random() < 0.1) {
+        if (Math.random() < WORK_CONFIG.tamedMoveChance) {
             const pen = findNearestPen(game, animal);
             if (pen) {
                 wanderInPen(animal, pen, game.map);
@@ -72,7 +72,7 @@ function wanderInPen(animal, pen, map) {
     const ny = animal.y + dir[1];
     if (nx < 0 || nx >= CONFIG.MAP_WIDTH || ny < 0 || ny >= CONFIG.MAP_HEIGHT) return;
     const dist = Math.abs(nx - pen.x) + Math.abs(ny - pen.y);
-    if (dist <= 3 && map[ny][nx].passable) {
+    if (dist <= WORK_CONFIG.penWanderRadius && map[ny][nx].passable) {
         animal.x = nx;
         animal.y = ny;
     }
@@ -100,7 +100,7 @@ export function designateTame(game, wildAnimalId) {
         skillRequired: 'animals',
         x: wildAnimal.x,
         y: wildAnimal.y,
-        workAmount: 20,
+        workAmount: WORK_CONFIG.tameWork,
         targetAnimalId: wildAnimalId,
     });
 

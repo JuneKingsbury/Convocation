@@ -1,4 +1,4 @@
-import { CONFIG, WAVE_CONFIG, BUILDINGS } from '../core/config.js';
+import { CONFIG, WAVE_CONFIG, BUILDINGS, COMBAT_VISUALS } from '../core/config.js';
 import { isPassableForEnemies, isBreakableByEnemies } from '../world/map.js';
 import { manhattanDist } from '../world/pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
@@ -118,10 +118,10 @@ export class WaveSystem {
             x: portal.x, y: portal.y,
             hp, maxHp: hp,
             damage,
-            speed: 0.45,
+            speed: WAVE_CONFIG.enemySpeed,
             moveCooldown: 0,
-            char: 'E',
-            color: '#ff2222',
+            char: WAVE_CONFIG.enemyChar,
+            color: WAVE_CONFIG.enemyColor,
         });
         this.enemiesSpawned++;
     }
@@ -151,11 +151,11 @@ export class WaveSystem {
         const dist = manhattanDist(enemy.x, enemy.y, this.nexusPosition.x, this.nexusPosition.y);
         if (dist <= 1) {
             this.nexusHp -= enemy.damage;
-            game.combatEffects.push({ x: this.nexusPosition.x, y: this.nexusPosition.y, char: '!', color: '#9933ff', ttl: 2 });
+            game.combatEffects.push({ x: this.nexusPosition.x, y: this.nexusPosition.y, char: COMBAT_VISUALS.hitChar, color: COMBAT_VISUALS.nexusDamageColor, ttl: COMBAT_VISUALS.hitTtl });
             return;
         }
 
-        if (!enemy.path || enemy.path.length === 0 || enemy.pathAge > 20) {
+        if (!enemy.path || enemy.path.length === 0 || enemy.pathAge > WAVE_CONFIG.repathInterval) {
             enemy.path = findEnemyPath(game.map, enemy.x, enemy.y, this.nexusPosition.x, this.nexusPosition.y);
             enemy.pathAge = 0;
         }
@@ -205,7 +205,7 @@ export class WaveSystem {
     endWave(game, victory) {
         if (victory) {
             this.highestWaveCompleted = this.currentWave;
-            const bonusEssence = this.currentWave * 2;
+            const bonusEssence = this.currentWave * WAVE_CONFIG.bonusEssencePerWave;
             game.resources.add({ void_essence: bonusEssence });
             game.notifications.push({ text: `Wave ${this.currentWave} complete! +${bonusEssence} bonus void essence. Colony cap: ${this.getColonistCap()}`, tick: game.tick, type: 'success' });
             game.eventLog.add(game, `Wave ${this.currentWave} defeated! Colony can now support ${this.getColonistCap()} colonists.`, 'success', null);
@@ -243,7 +243,7 @@ function moveTowardDirect(entity, target, map) {
 }
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-const ENEMY_MAX_NODES = 2000;
+const ENEMY_MAX_NODES = WAVE_CONFIG.maxPathNodes;
 
 class EnemyHeap {
     constructor() { this.data = []; }
@@ -357,7 +357,7 @@ function attackStructure(game, x, y, damage) {
     }
 
     tile.structureHp -= damage;
-    game.combatEffects.push({ x, y, char: '!', color: '#ff8800', ttl: 2 });
+    game.combatEffects.push({ x, y, char: COMBAT_VISUALS.hitChar, color: COMBAT_VISUALS.structureDamageColor, ttl: COMBAT_VISUALS.hitTtl });
 
     if (tile.structureHp <= 0) {
         const oldStructure = tile.structure;
@@ -374,11 +374,12 @@ function attackStructure(game, x, y, damage) {
 }
 
 function getWaveSpawnPosition(side, nexus) {
-    const offset = Math.floor(Math.random() * 10) - 5;
+    const { near, far, offsetRange } = WAVE_CONFIG.spawnDistance;
+    const offset = Math.floor(Math.random() * offsetRange) - Math.floor(offsetRange / 2);
     switch (side) {
-        case 0: return { x: Math.max(0, Math.min(CONFIG.MAP_WIDTH - 1, nexus.x + offset)), y: Math.max(0, nexus.y - 25) };
-        case 1: return { x: Math.min(CONFIG.MAP_WIDTH - 1, nexus.x + 50), y: Math.max(0, Math.min(CONFIG.MAP_HEIGHT - 1, nexus.y + offset)) };
-        case 2: return { x: Math.max(0, Math.min(CONFIG.MAP_WIDTH - 1, nexus.x + offset)), y: Math.min(CONFIG.MAP_HEIGHT - 1, nexus.y + 25) };
-        case 3: return { x: Math.max(0, nexus.x - 50), y: Math.max(0, Math.min(CONFIG.MAP_HEIGHT - 1, nexus.y + offset)) };
+        case 0: return { x: Math.max(0, Math.min(CONFIG.MAP_WIDTH - 1, nexus.x + offset)), y: Math.max(0, nexus.y - near) };
+        case 1: return { x: Math.min(CONFIG.MAP_WIDTH - 1, nexus.x + far), y: Math.max(0, Math.min(CONFIG.MAP_HEIGHT - 1, nexus.y + offset)) };
+        case 2: return { x: Math.max(0, Math.min(CONFIG.MAP_WIDTH - 1, nexus.x + offset)), y: Math.min(CONFIG.MAP_HEIGHT - 1, nexus.y + near) };
+        case 3: return { x: Math.max(0, nexus.x - far), y: Math.max(0, Math.min(CONFIG.MAP_HEIGHT - 1, nexus.y + offset)) };
     }
 }

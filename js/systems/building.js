@@ -1,4 +1,4 @@
-import { BUILDINGS, RESOURCES } from '../core/config.js';
+import { BUILDINGS, RESOURCES, WORK_CONFIG } from '../core/config.js';
 
 export function designateBuild(game, x, y, buildType) {
     const tile = game.map[y][x];
@@ -81,7 +81,7 @@ export function cancelDesignation(game, x, y) {
             type: 'deconstruct',
             skillRequired: 'building',
             x, y,
-            workAmount: 10,
+            workAmount: WORK_CONFIG.deconstructWork,
         });
     }
 }

@@ -1,4 +1,4 @@
-import { BUILDINGS } from '../core/config.js';
+import { BUILDINGS, COMBAT_VISUALS } from '../core/config.js';
 import { manhattanDist } from '../world/pathfinding.js';
 
 export class PowerSystem {
@@ -132,7 +132,7 @@ export class PowerSystem {
 
             if (target && manhattanDist(t.x, t.y, target.x, target.y) <= range) {
                 target.hp -= damage;
-                const color = t.type === 'void_turret' ? '#cc00ff' : '#ff4444';
+                const color = t.type === 'void_turret' ? COMBAT_VISUALS.shotColorVoid : COMBAT_VISUALS.shotColorArcane;
                 this.activeShots.push({ fromX: t.x, fromY: t.y, toX: target.x, toY: target.y, color, ttl: 2 });
             }
         }

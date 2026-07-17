@@ -1,4 +1,4 @@
-import { CONFIG, COLONIST_NAMES, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES } from '../core/config.js';
+import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG } from '../core/config.js';
 import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 import { isPassable, getMoveCost } from '../world/map.js';
 import { FOODSTUFFS } from '../systems/resources.js';
@@ -40,12 +40,12 @@ export function createColonist(x, y, skillBias, existingNames = []) {
 
     return {
         id, name, x, y, skills, traits,
-        nameColor: ['#ffff00', '#00ffff', '#00ff00'][(id - 1) % 3],
+        nameColor: COLONIST_CONFIG.nameColors[(id - 1) % COLONIST_CONFIG.nameColors.length],
         priorities: { ...Object.fromEntries(Object.keys(SKILLS).map(k => [k, 3])), hauling: 4 },
-        needs: { hunger: 80 + Math.random() * 20, rest: 80 + Math.random() * 20 },
-        mood: 60,
+        needs: { hunger: COLONIST_CONFIG.initialHunger[0] + Math.random() * (COLONIST_CONFIG.initialHunger[1] - COLONIST_CONFIG.initialHunger[0]), rest: COLONIST_CONFIG.initialRest[0] + Math.random() * (COLONIST_CONFIG.initialRest[1] - COLONIST_CONFIG.initialRest[0]) },
+        mood: COLONIST_CONFIG.initialMood,
         thoughts: [],
-        hp: 100, maxHp: 100,
+        hp: COLONIST_CONFIG.maxHp, maxHp: COLONIST_CONFIG.maxHp,
         state: 'idle',
         currentTaskId: null,
         path: [],
@@ -111,7 +111,7 @@ function updateThoughts(colonist, game) {
 
     if (colonist.traits.includes('socialite')) {
         const nearOthers = game.colonists.some(c => c.id !== colonist.id && c.hp > 0 &&
-            manhattanDist(colonist.x, colonist.y, c.x, c.y) <= 3);
+            manhattanDist(colonist.x, colonist.y, c.x, c.y) <= COLONIST_CONFIG.socialRange);
         if (nearOthers) {
             addThought(colonist, 'Enjoying company', TRAITS.socialite.nearOthersMoodBonus, 20, game.tick);
         } else {
@@ -120,7 +120,7 @@ function updateThoughts(colonist, game) {
     }
     if (colonist.traits.includes('loner')) {
         const nearOthers = game.colonists.some(c => c.id !== colonist.id && c.hp > 0 &&
-            manhattanDist(colonist.x, colonist.y, c.x, c.y) <= 3);
+            manhattanDist(colonist.x, colonist.y, c.x, c.y) <= COLONIST_CONFIG.socialRange);
         if (!nearOthers) {
             addThought(colonist, 'Peaceful solitude', TRAITS.loner.aloneMoodBonus, 20, game.tick);
         } else {
@@ -152,13 +152,13 @@ function applyThought(colonist, thoughtKey, tick) {
 }
 
 function computeMood(colonist) {
-    let mood = 50;
+    let mood = COLONIST_CONFIG.baseMood;
     for (const thought of colonist.thoughts) {
         mood += thought.moodEffect;
     }
-    if (colonist.needs.hunger < 20) mood -= 15;
-    if (colonist.needs.rest < 20) mood -= 10;
-    if (colonist.assignedBed) mood += 5;
+    if (colonist.needs.hunger < COLONIST_CONFIG.hungerMoodThreshold) mood += COLONIST_CONFIG.hungerMoodPenalty;
+    if (colonist.needs.rest < COLONIST_CONFIG.restMoodThreshold) mood += COLONIST_CONFIG.restMoodPenalty;
+    if (colonist.assignedBed) mood += COLONIST_CONFIG.bedMoodBonus;
     return Math.max(0, Math.min(100, mood));
 }
 
@@ -177,7 +177,8 @@ function getWorkSpeed(colonist, game) {
     if (colonist.traits.includes('hard_worker')) speed *= TRAITS.hard_worker.workSpeedMult;
     if (colonist.traits.includes('lazy')) speed *= TRAITS.lazy.workSpeedMult;
 
-    const isNight = game.timeOfDay > 70 || game.timeOfDay < 20;
+    const t = game.timeOfDay / CONFIG.TICKS_PER_DAY;
+    const isNight = t > 0.7 || t < 0.2;
     if (colonist.traits.includes('night_owl')) {
         speed *= isNight ? TRAITS.night_owl.nightSpeedMult : TRAITS.night_owl.daySpeedMult;
     }
@@ -196,7 +197,7 @@ function updateIdle(colonist, game) {
 
     if (getMoodLevel(colonist.mood) === 'breaking') {
         colonist.state = 'wandering';
-        colonist.stateTimer = 30 + Math.floor(Math.random() * 20);
+        colonist.stateTimer = COLONIST_CONFIG.breakingWanderDuration[0] + Math.floor(Math.random() * (COLONIST_CONFIG.breakingWanderDuration[1] - COLONIST_CONFIG.breakingWanderDuration[0]));
         return;
     }
 
@@ -204,18 +205,18 @@ function updateIdle(colonist, game) {
     const threat = findNearestHostile(colonist, game);
     if (threat) {
         const dist = manhattanDist(colonist.x, colonist.y, threat.x, threat.y);
-        if (waveActive || dist <= 8) {
+        if (waveActive || dist <= COLONIST_CONFIG.fightEngageDistance) {
             colonist.state = 'fighting';
             return;
         }
     }
 
-    if (colonist.needs.hunger < 20 &&
+    if (colonist.needs.hunger < COLONIST_CONFIG.hungerMoodThreshold &&
         (game.resources.stockpile.food > 0 || game.resources.getFoodstuffTotal() > 0)) {
         colonist.state = 'eating';
         return;
     }
-    if (colonist.needs.rest < 20) {
+    if (colonist.needs.rest < COLONIST_CONFIG.restMoodThreshold) {
         startSleeping(colonist, game);
         return;
     }
@@ -247,7 +248,7 @@ function updateIdle(colonist, game) {
     colonist.wanderCooldown--;
     if (colonist.wanderCooldown <= 0) {
         wander(colonist, game);
-        colonist.wanderCooldown = 5 + Math.floor(Math.random() * 10);
+        colonist.wanderCooldown = COLONIST_CONFIG.wanderCooldown[0] + Math.floor(Math.random() * (COLONIST_CONFIG.wanderCooldown[1] - COLONIST_CONFIG.wanderCooldown[0]));
     }
 }
 
@@ -282,7 +283,7 @@ function updateMoving(colonist, game) {
         if (colonist._sleepAfterMove) {
             delete colonist._sleepAfterMove;
             colonist.state = 'sleeping';
-            colonist.stateTimer = 25;
+            colonist.stateTimer = COLONIST_CONFIG.sleepAfterMoveDuration;
             return;
         }
         colonist.state = 'working';
@@ -343,7 +344,7 @@ function updateWorking(colonist, game) {
 
     let speed = getWorkSpeed(colonist, game);
     const skill = colonist.skills[task.skillRequired] || 1;
-    speed *= (1 + skill * 0.15);
+    speed *= (1 + skill * COLONIST_CONFIG.skillWorkBonus);
 
     if (task.skillRequired === 'farming' && colonist.traits.includes('green_thumb')) {
         speed *= TRAITS.green_thumb.farmingSpeedMult;
@@ -437,7 +438,7 @@ function completeTask(colonist, task, game) {
             if (task.recipe) {
                 const output = { ...task.recipe.output };
                 if (output.food && game.research.isResearched('alchemy')) {
-                    output.food += 2;
+                    output.food += WORK_CONFIG.alchemyFoodBonus;
                 }
                 game.resources.add(output);
                 applyThought(colonist, 'cooked', game.tick);
@@ -490,7 +491,7 @@ function completeTask(colonist, task, game) {
                 if (def) {
                     const partial = {};
                     for (const [res, amt] of Object.entries(def.cost)) {
-                        partial[res] = Math.ceil(amt * 0.5);
+                        partial[res] = Math.ceil(amt * COLONIST_CONFIG.deconstructRecovery);
                     }
                     game.resources.add(partial);
                 }
@@ -514,26 +515,26 @@ function completeTask(colonist, task, game) {
 function updateEating(colonist, game) {
     if (game.resources.stockpile.food > 0) {
         game.resources.stockpile.food--;
-        colonist.needs.hunger = 100;
+        colonist.needs.hunger = COLONIST_CONFIG.cookedFoodRestore;
         colonist.state = 'idle';
         if (colonist.traits.includes('gourmand')) {
-            addThought(colonist, 'Delicious meal', TRAITS.gourmand.cookedFoodMoodBonus, 200, game.tick);
+            addThought(colonist, 'Delicious meal', TRAITS.gourmand.cookedFoodMoodBonus, COLONIST_CONFIG.mealMoodDuration, game.tick);
         } else {
-            addThought(colonist, 'Ate a meal', 5, 150, game.tick);
+            addThought(colonist, 'Ate a meal', COLONIST_CONFIG.mealMoodBonus, COLONIST_CONFIG.mealMoodDuration, game.tick);
         }
     } else {
         const eaten = eatRawFoodstuff(game);
         if (eaten) {
-            colonist.needs.hunger = Math.min(100, colonist.needs.hunger + 35);
+            colonist.needs.hunger = Math.min(100, colonist.needs.hunger + COLONIST_CONFIG.rawFoodRestore);
             colonist.state = 'idle';
             if (colonist.traits.includes('gourmand')) {
-                addThought(colonist, 'Ate raw food', TRAITS.gourmand.rawFoodMoodPenalty, 200, game.tick);
+                addThought(colonist, 'Ate raw food', TRAITS.gourmand.rawFoodMoodPenalty, COLONIST_CONFIG.rawFoodMoodDuration, game.tick);
             } else {
-                addThought(colonist, 'Ate raw food', -4, 100, game.tick);
+                addThought(colonist, 'Ate raw food', COLONIST_CONFIG.rawFoodMoodPenalty, COLONIST_CONFIG.rawFoodMoodDuration, game.tick);
             }
         } else {
             colonist.state = 'idle';
-            addThought(colonist, 'Starving', -20, 100, game.tick);
+            addThought(colonist, 'Starving', COLONIST_CONFIG.starvingMoodPenalty, COLONIST_CONFIG.starvingMoodDuration, game.tick);
         }
     }
 }
@@ -560,12 +561,12 @@ function startSleeping(colonist, game) {
         }
     }
     colonist.state = 'sleeping';
-    colonist.stateTimer = 30;
+    colonist.stateTimer = COLONIST_CONFIG.sleepDuration;
 }
 
 function updateSleeping(colonist, game) {
     colonist.stateTimer--;
-    colonist.needs.rest = Math.min(100, colonist.needs.rest + 3);
+    colonist.needs.rest = Math.min(100, colonist.needs.rest + COLONIST_CONFIG.restPerTick);
     if (colonist.stateTimer <= 0 || colonist.needs.rest >= 100) {
         colonist.state = 'idle';
         const inBed = colonist.assignedBed &&
@@ -573,12 +574,12 @@ function updateSleeping(colonist, game) {
         if (inBed) {
             const roomId = game.map[colonist.y][colonist.x].roomId;
             if (roomId !== null) {
-                addThought(colonist, 'Slept in nice room', 10, 300, game.tick);
+                addThought(colonist, 'Slept in nice room', COLONIST_CONFIG.sleptInRoomMoodBonus, COLONIST_CONFIG.sleptInRoomMoodDuration, game.tick);
             } else {
-                addThought(colonist, 'Slept in bed', 5, 200, game.tick);
+                addThought(colonist, 'Slept in bed', COLONIST_CONFIG.sleptInBedMoodBonus, COLONIST_CONFIG.sleptInBedMoodDuration, game.tick);
             }
         } else {
-            addThought(colonist, 'Slept on the ground', -15, 400, game.tick);
+            addThought(colonist, 'Slept on the ground', COLONIST_CONFIG.sleptOnGroundMoodPenalty, COLONIST_CONFIG.sleptOnGroundMoodDuration, game.tick);
         }
     }
 }
@@ -592,12 +593,12 @@ function updateFighting(colonist, game) {
 
     const dist = manhattanDist(colonist.x, colonist.y, target.x, target.y);
     const waveActive = game.waves && game.waves.active && game.waves.enemies.length > 0;
-    if (dist > 8 && !waveActive) {
+    if (dist > COLONIST_CONFIG.fightEngageDistance && !waveActive) {
         colonist.state = 'idle';
         return;
     }
 
-    if (colonist.hp < 20) {
+    if (colonist.hp < COLONIST_CONFIG.fleeHpThreshold) {
         colonist.state = 'fleeing';
         return;
     }
@@ -614,19 +615,19 @@ function updateFighting(colonist, game) {
     }
 
     const weaponDmg = colonist.weapon ? colonist.weapon.damage : WEAPONS.fists.damage;
-    const dmg = weaponDmg + Math.floor(Math.random() * 3);
+    const dmg = weaponDmg + Math.floor(Math.random() * COLONIST_CONFIG.combatDamageVariance);
     target.hp -= dmg;
-    game.combatEffects.push({ x: target.x, y: target.y, char: '!', color: '#ffff00', ttl: 2 });
+    game.combatEffects.push({ x: target.x, y: target.y, char: COMBAT_VISUALS.hitChar, color: COMBAT_VISUALS.hitColor, ttl: COMBAT_VISUALS.hitTtl });
 
     if (target.hp <= 0) {
-        addThought(colonist, 'Won a fight', 5, 200, game.tick);
+        addThought(colonist, 'Won a fight', COLONIST_CONFIG.victoryMoodBonus, COLONIST_CONFIG.victoryMoodDuration, game.tick);
         colonist.state = 'idle';
     }
 }
 
 function updateFleeing(colonist, game) {
     const threat = findNearestHostile(colonist, game);
-    if (!threat || manhattanDist(colonist.x, colonist.y, threat.x, threat.y) > 8) {
+    if (!threat || manhattanDist(colonist.x, colonist.y, threat.x, threat.y) > COLONIST_CONFIG.fleeDisengageDistance) {
         colonist.state = 'idle';
         return;
     }
@@ -678,12 +679,12 @@ function updateWandering(colonist, game) {
         colonist.state = 'idle';
         return;
     }
-    if (Math.random() < 0.3) wander(colonist, game);
+    if (Math.random() < COLONIST_CONFIG.wanderChance) wander(colonist, game);
 }
 
 function findNearestHostile(colonist, game) {
     if (game.spatial) {
-        return game.spatial.hostiles.findNearest(colonist.x, colonist.y, 30, null);
+        return game.spatial.hostiles.findNearest(colonist.x, colonist.y, COLONIST_CONFIG.hostileSearchRadius, null);
     }
     let nearest = null;
     let minDist = Infinity;
@@ -711,7 +712,7 @@ export function colonistTakeDamage(colonist, damage, game) {
     if (colonist.armor) mult *= (1 - colonist.armor.damageReduction);
     const actualDmg = Math.floor(damage * mult);
     colonist.hp -= actualDmg;
-    game.combatEffects.push({ x: colonist.x, y: colonist.y, char: '!', color: '#ff3333', ttl: 2 });
+    game.combatEffects.push({ x: colonist.x, y: colonist.y, char: COMBAT_VISUALS.hitChar, color: COMBAT_VISUALS.damageTakenColor, ttl: COMBAT_VISUALS.hitTtl });
 
     if (colonist.state !== 'fighting' && colonist.state !== 'fleeing' && colonist.hp > 0) {
         game.eventLog.add(game, `${colonist.name} is under attack!`, 'danger', { type: 'colonist', id: colonist.id });
@@ -723,7 +724,7 @@ export function colonistTakeDamage(colonist, damage, game) {
         game.eventLog.add(game, `${colonist.name} has died!`, 'danger', { type: 'colonist', id: colonist.id });
         for (const other of game.colonists) {
             if (other.id !== colonist.id && other.hp > 0) {
-                addThought(other, `${colonist.name} died`, -40, 2000, game.tick);
+                addThought(other, `${colonist.name} died`, COLONIST_CONFIG.deathMoodPenalty, COLONIST_CONFIG.deathMoodDuration, game.tick);
             }
         }
     } else if (colonist.state !== 'fighting' && colonist.state !== 'fleeing') {
