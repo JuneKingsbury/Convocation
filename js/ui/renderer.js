@@ -1,4 +1,4 @@
-import { CONFIG, TILE_COLORS } from '../core/config.js';
+import { CONFIG, TILE_COLORS, BUILDINGS } from '../core/config.js';
 import { getTileChar, getTileColor, getTileBg } from '../world/map.js';
 
 export class Renderer {
@@ -41,6 +41,27 @@ export class Renderer {
         }
         this._lastViewportW = CONFIG.VIEWPORT_WIDTH;
         this._lastViewportH = CONFIG.VIEWPORT_HEIGHT;
+    }
+
+    getNightDarkness(timeOfDay, season) {
+        // Normalize to 0-1 fraction of day. Season shifts dawn/dusk:
+        // summer: bright 0.15-0.75 (60%), winter: bright 0.25-0.65 (40%)
+        const t = timeOfDay / CONFIG.TICKS_PER_DAY;
+        let dawn, dusk;
+        switch (season) {
+            case 'summer': dawn = 0.15; dusk = 0.75; break;
+            case 'winter': dawn = 0.25; dusk = 0.65; break;
+            case 'spring': dawn = 0.18; dusk = 0.72; break;
+            case 'autumn': dawn = 0.22; dusk = 0.68; break;
+            default: dawn = 0.20; dusk = 0.70;
+        }
+        const duskEnd = dusk + 0.12;
+        const dawnStart = dawn - 0.10;
+
+        if (t >= dawn && t <= dusk) return 0;
+        if (t > dusk && t <= duskEnd) return ((t - dusk) / (duskEnd - dusk)) * 0.55;
+        if (t >= dawnStart && t < dawn) return ((dawn - t) / (dawn - dawnStart)) * 0.55;
+        return 0.55;
     }
 
     render(game) {
@@ -189,6 +210,74 @@ export class Renderer {
                 }
             }
         }
+
+        // Night overlay pass
+        const darkness = this.getNightDarkness(game.timeOfDay, game.weather.season);
+        if (darkness > 0) {
+            const lightSources = this._getLightSources(game, camera);
+            const steps = 8;
+            const darkStyles = [];
+            for (let i = 1; i <= steps; i++) {
+                darkStyles.push(`rgba(0,0,20,${(darkness * i / steps).toFixed(3)})`);
+            }
+
+            let lastDarkStyle = '';
+            for (let sy = 0; sy < CONFIG.VIEWPORT_HEIGHT; sy++) {
+                for (let sx = 0; sx < CONFIG.VIEWPORT_WIDTH; sx++) {
+                    const wx = camera.x + sx;
+                    const wy = camera.y + sy;
+                    if (wx < 0 || wx >= CONFIG.MAP_WIDTH || wy < 0 || wy >= CONFIG.MAP_HEIGHT) continue;
+
+                    let lightLevel = 0;
+                    for (const src of lightSources) {
+                        const dist = Math.abs(wx - src.x) + Math.abs(wy - src.y);
+                        if (dist <= src.radius) {
+                            const falloff = 1 - (dist / (src.radius + 1));
+                            if (falloff > lightLevel) lightLevel = falloff;
+                        }
+                    }
+
+                    const shade = Math.round((1 - lightLevel) * steps);
+                    if (shade < 1) continue;
+                    const style = darkStyles[shade - 1];
+                    if (style !== lastDarkStyle) {
+                        ctx.fillStyle = style;
+                        lastDarkStyle = style;
+                    }
+                    ctx.fillRect(sx * cw, sy * ch, cw, ch);
+                }
+            }
+        }
+    }
+
+    _getLightSources(game, camera) {
+        const sources = [];
+        const margin = 8;
+        const x0 = camera.x - margin;
+        const y0 = camera.y - margin;
+        const x1 = camera.x + CONFIG.VIEWPORT_WIDTH + margin;
+        const y1 = camera.y + CONFIG.VIEWPORT_HEIGHT + margin;
+
+        const allStructures = game.mapIndex ? game.mapIndex.getAllStructurePositions() : [];
+        const noPower = game.power && !game.power.powered;
+
+        for (const { x, y, type } of allStructures) {
+            if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+            const bDef = BUILDINGS[type];
+            if (!bDef || !bDef.lightRadius) continue;
+            if (bDef.power && bDef.power.consumes && noPower) continue;
+            sources.push({ x, y, radius: bDef.lightRadius });
+        }
+
+        const firePositions = game.mapIndex ? game.mapIndex.getFirePositions() : null;
+        if (firePositions) {
+            for (const { x, y } of firePositions) {
+                if (x < x0 || x > x1 || y < y0 || y > y1) continue;
+                sources.push({ x, y, radius: 2 });
+            }
+        }
+
+        return sources;
     }
 }
 

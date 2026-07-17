@@ -1,8 +1,8 @@
-import { CONFIG, RAID_CONFIG, WEAPONS } from '../core/config.js';
+import { CONFIG, RAID_CONFIG, WEAPONS, BUILDINGS } from '../core/config.js';
 
 const RAIDER_WEAPONS = ['wooden_club', 'etched_axe', 'runic_blade'];
-import { isPassable } from '../world/map.js';
-import { manhattanDist } from '../world/pathfinding.js';
+import { isPassableForEnemies, isBreakableByEnemies } from '../world/map.js';
+import { findPathForEnemies, manhattanDist } from '../world/pathfinding.js';
 import { colonistTakeDamage } from './colonist.js';
 
 let nextRaiderId = 1;
@@ -113,6 +113,8 @@ function createRaider(x, y) {
         moveCooldown: 0,
         hostile: true,
         fleeing: false,
+        path: [],
+        pathAge: 0,
         weapon: { name: weapon.name, damage: weapon.damage },
         char: 'R',
         color: '#ff3333',
@@ -125,21 +127,49 @@ function updateRaider(raider, game) {
     raider.moveCooldown = 1;
 
     if (raider.fleeing) {
-        moveToEdge(raider, game.map);
+        moveToEdge(raider, game);
         return;
     }
 
     const nearest = findNearestColonist(raider, game);
     if (!nearest) {
-        moveToEdge(raider, game.map);
+        moveToEdge(raider, game);
         return;
     }
 
     const dist = manhattanDist(raider.x, raider.y, nearest.x, nearest.y);
     if (dist <= 1) {
         colonistTakeDamage(nearest, raider.damage, game);
-    } else {
-        moveToward(raider, nearest, game.map);
+        return;
+    }
+
+    // Break structure if standing next to one on our path
+    if (raider.path.length > 0) {
+        const next = raider.path[0];
+        if (isBreakableByEnemies(game.map, next.x, next.y)) {
+            attackStructure(game, next.x, next.y, raider.damage);
+            return;
+        }
+    }
+
+    // Repath every 15 ticks or if path is empty
+    raider.pathAge++;
+    if (raider.path.length === 0 || raider.pathAge > 15) {
+        raider.path = findPathForEnemies(game.map, raider.x, raider.y, nearest.x, nearest.y) || [];
+        raider.pathAge = 0;
+    }
+
+    if (raider.path.length > 0) {
+        const next = raider.path[0];
+        if (isPassableForEnemies(game.map, next.x, next.y)) {
+            raider.x = next.x;
+            raider.y = next.y;
+            raider.path.shift();
+        } else if (isBreakableByEnemies(game.map, next.x, next.y)) {
+            // Will break next tick
+        } else {
+            raider.path = [];
+        }
     }
 }
 
@@ -160,35 +190,46 @@ function findNearestColonist(raider, game) {
     return nearest;
 }
 
-function moveToward(entity, target, map) {
-    const dx = Math.sign(target.x - entity.x);
-    const dy = Math.sign(target.y - entity.y);
-    if (Math.random() < 0.5 && dx !== 0) {
-        const nx = entity.x + dx;
-        if (isPassable(map, nx, entity.y)) { entity.x = nx; return; }
-    }
-    if (dy !== 0) {
-        const ny = entity.y + dy;
-        if (isPassable(map, entity.x, ny)) { entity.y = ny; return; }
-    }
-    if (dx !== 0) {
-        const nx = entity.x + dx;
-        if (isPassable(map, nx, entity.y)) { entity.x = nx; }
+function moveToEdge(raider, game) {
+    const edges = [
+        { x: 0, y: raider.y },
+        { x: CONFIG.MAP_WIDTH - 1, y: raider.y },
+        { x: raider.x, y: 0 },
+        { x: raider.x, y: CONFIG.MAP_HEIGHT - 1 },
+    ];
+    edges.sort((a, b) =>
+        manhattanDist(raider.x, raider.y, a.x, a.y) -
+        manhattanDist(raider.x, raider.y, b.x, b.y)
+    );
+    const target = edges[0];
+    const dx = Math.sign(target.x - raider.x);
+    const dy = Math.sign(target.y - raider.y);
+    if (dx !== 0 && isPassableForEnemies(game.map, raider.x + dx, raider.y)) {
+        raider.x += dx;
+    } else if (dy !== 0 && isPassableForEnemies(game.map, raider.x, raider.y + dy)) {
+        raider.y += dy;
     }
 }
 
-function moveToEdge(entity, map) {
-    const edges = [
-        { x: 0, y: entity.y },
-        { x: CONFIG.MAP_WIDTH - 1, y: entity.y },
-        { x: entity.x, y: 0 },
-        { x: entity.x, y: CONFIG.MAP_HEIGHT - 1 },
-    ];
-    edges.sort((a, b) =>
-        manhattanDist(entity.x, entity.y, a.x, a.y) -
-        manhattanDist(entity.x, entity.y, b.x, b.y)
-    );
-    moveToward(entity, edges[0], map);
+function attackStructure(game, x, y, damage) {
+    const tile = game.map[y][x];
+    if (!tile.structure) return;
+
+    if (tile.structureHp === undefined) {
+        tile.structureHp = BUILDINGS[tile.structure]?.hp || 50;
+    }
+
+    tile.structureHp -= damage;
+    if (game.combatEffects) game.combatEffects.push({ x, y, char: '!', color: '#ff8800', ttl: 2 });
+
+    if (tile.structureHp <= 0) {
+        const oldStructure = tile.structure;
+        tile.structure = null;
+        tile.structureHp = undefined;
+        tile.passable = true;
+        if (game.mapIndex) game.mapIndex.removeStructure(x, y, oldStructure);
+        game.roomsDirty = true;
+    }
 }
 
 function getEdgePosition(side, offset) {

@@ -18,25 +18,38 @@ export class PowerSystem {
         this.totalConsumed = 0;
         this.heaters = [];
         this.lamps = [];
+        this.poweredLamps = [];
         this.turrets = [];
         this.voidTurrets = [];
 
         const allStructures = game.mapIndex.getAllStructurePositions();
         for (const { x, y, type } of allStructures) {
             const bDef = BUILDINGS[type];
-            if (!bDef || !bDef.power) continue;
-            const pwr = bDef.power;
+            if (!bDef) continue;
 
-            if (pwr.generates) this.totalGenerated += pwr.generates;
-            if (pwr.consumes) this.totalConsumed += pwr.consumes;
+            if (bDef.power) {
+                const pwr = bDef.power;
+                if (pwr.generates) this.totalGenerated += pwr.generates;
+                if (pwr.consumes) this.totalConsumed += pwr.consumes;
 
-            if (pwr.warmRadius) this.heaters.push({ x, y });
-            else if (pwr.radius) this.lamps.push({ x, y });
-            else if (pwr.damage && type === 'arcane_sentinel') this.turrets.push({ x, y });
-            else if (pwr.damage && type === 'void_turret') this.voidTurrets.push({ x, y });
+                if (pwr.warmRadius) this.heaters.push({ x, y, radius: pwr.warmRadius });
+                else if (pwr.damage && type === 'arcane_sentinel') this.turrets.push({ x, y });
+                else if (pwr.damage && type === 'void_turret') this.voidTurrets.push({ x, y });
+            }
+
+            if (bDef.lightRadius) {
+                if (bDef.power && bDef.power.consumes) {
+                    this.poweredLamps.push({ x, y, radius: bDef.lightRadius });
+                } else {
+                    this.lamps.push({ x, y, radius: bDef.lightRadius });
+                }
+            }
         }
 
         this.powered = this.totalGenerated >= this.totalConsumed;
+        if (this.powered) {
+            this.lamps.push(...this.poweredLamps);
+        }
     }
 
     hasPower() {
@@ -50,7 +63,7 @@ export class PowerSystem {
     isTileWarmed(game, x, y) {
         if (!this.powered) return false;
         for (const h of this.heaters) {
-            if (manhattanDist(x, y, h.x, h.y) <= BUILDINGS.ember_ward.power.warmRadius) {
+            if (manhattanDist(x, y, h.x, h.y) <= h.radius) {
                 return true;
             }
         }
@@ -58,9 +71,8 @@ export class PowerSystem {
     }
 
     isTileLit(game, x, y) {
-        if (!this.powered) return false;
         for (const l of this.lamps) {
-            if (manhattanDist(x, y, l.x, l.y) <= BUILDINGS.glowstone.power.radius) {
+            if (manhattanDist(x, y, l.x, l.y) <= l.radius) {
                 return true;
             }
         }

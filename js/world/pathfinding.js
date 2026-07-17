@@ -1,4 +1,5 @@
-import { isPassable, getMoveCost } from './map.js';
+import { isPassable, getMoveCost, isPassableForEnemies, isBreakableByEnemies } from './map.js';
+import { CONFIG } from '../core/config.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const MAX_NODES = 1500;
@@ -125,6 +126,66 @@ export function findPathAdjacent(map, startX, startY, targetX, targetY) {
         }
     }
     return bestPath;
+}
+
+export function findPathForEnemies(map, startX, startY, endX, endY) {
+    if (startX === endX && startY === endY) return [];
+
+    const open = new MinHeap();
+    const inOpen = new Set();
+    const closed = new Set();
+    const cameFrom = new Map();
+    const gScore = new Map();
+
+    const key = (x, y) => (y << 16) | x;
+    const start = key(startX, startY);
+    const end = key(endX, endY);
+
+    gScore.set(start, 0);
+    open.push({ x: startX, y: startY, f: heuristic(startX, startY, endX, endY) });
+    inOpen.add(start);
+
+    let iterations = 0;
+    while (open.length > 0 && iterations < MAX_NODES) {
+        iterations++;
+        const current = open.pop();
+        const currentKey = key(current.x, current.y);
+        inOpen.delete(currentKey);
+
+        if (currentKey === end) {
+            return reconstructPath(cameFrom, current.x, current.y, startX, startY);
+        }
+
+        closed.add(currentKey);
+
+        for (const [dx, dy] of DIRS) {
+            const nx = current.x + dx;
+            const ny = current.y + dy;
+            if (nx < 0 || nx >= CONFIG.MAP_WIDTH || ny < 0 || ny >= CONFIG.MAP_HEIGHT) continue;
+            const nKey = key(nx, ny);
+
+            if (closed.has(nKey)) continue;
+            if (!isPassableForEnemies(map, nx, ny) && !isBreakableByEnemies(map, nx, ny)) continue;
+
+            let cost = getMoveCost(map, nx, ny);
+            if (isBreakableByEnemies(map, nx, ny)) cost += 10;
+
+            const tentativeG = gScore.get(currentKey) + cost;
+            if (tentativeG < (gScore.get(nKey) ?? Infinity)) {
+                cameFrom.set(nKey, currentKey);
+                gScore.set(nKey, tentativeG);
+                const f = tentativeG + heuristic(nx, ny, endX, endY);
+                if (!inOpen.has(nKey)) {
+                    open.push({ x: nx, y: ny, f });
+                    inOpen.add(nKey);
+                } else {
+                    open.push({ x: nx, y: ny, f });
+                }
+            }
+        }
+    }
+
+    return null;
 }
 
 function heuristic(x1, y1, x2, y2) {
