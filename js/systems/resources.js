@@ -7,6 +7,9 @@ export class ResourceManager {
         this.stockpile = { ...CONFIG.START_RESOURCES };
         this.weapons = [];
         this.armors = [];
+        this.tools = [];
+        this.artifacts = [];
+        this.potions = [];
     }
 
     getFoodstuffTotal() {
@@ -73,6 +76,38 @@ export class ResourceManager {
         if (this.armors.length === 0) return null;
         this.armors.sort((a, b) => b.damageReduction - a.damageReduction);
         return this.armors.shift();
+    }
+
+    addTool(tool) {
+        this.tools.push(tool);
+    }
+
+    takeTool() {
+        if (this.tools.length === 0) return null;
+        return this.tools.shift();
+    }
+
+    addArtifact(artifact) {
+        this.artifacts.push(artifact);
+    }
+
+    takeArtifact() {
+        if (this.artifacts.length === 0) return null;
+        return this.artifacts.shift();
+    }
+
+    addPotion(potion) {
+        this.potions.push(potion);
+    }
+
+    takePotion(type) {
+        const idx = this.potions.findIndex(p => p.type === type);
+        if (idx < 0) return null;
+        return this.potions.splice(idx, 1)[0];
+    }
+
+    getPotionCount(type) {
+        return this.potions.filter(p => p.type === type).length;
     }
 
     getWealth() {

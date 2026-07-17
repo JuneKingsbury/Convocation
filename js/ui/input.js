@@ -1,4 +1,4 @@
-import { CONFIG, CROPS, BUILDINGS, DRAG_BUILD_TYPES, SINGLE_PLACE_TYPES } from '../core/config.js';
+import { CONFIG, CROPS, BUILDINGS, BUILD_CATEGORIES, DRAG_BUILD_TYPES, SINGLE_PLACE_TYPES } from '../core/config.js';
 import { designateBuild, designateChop, designateMine, cancelDesignation } from '../systems/building.js';
 import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from '../systems/farming.js';
 import { isPassable } from '../world/map.js';
@@ -16,7 +16,9 @@ export class InputHandler {
         this.keysDown = new Set();
         this.touchPanMode = false;
 
-        this.buildOptions = Object.keys(BUILDINGS);
+        this.buildCategories = BUILD_CATEGORIES;
+        this.buildCategory = BUILD_CATEGORIES[0];
+        this.buildOptions = Object.keys(BUILDINGS).filter(k => BUILDINGS[k].category === this.buildCategory);
         this.dragBuildTypes = DRAG_BUILD_TYPES;
         this.singlePlaceTypes = SINGLE_PLACE_TYPES;
         this.cropOptions = Object.keys(CROPS);
@@ -149,7 +151,9 @@ export class InputHandler {
                 break;
             case 'tab':
                 e.preventDefault();
-                if (this.mode === 'designate') {
+                if (this.mode === 'build') {
+                    this.cycleBuildCategory(e.shiftKey ? -1 : 1);
+                } else if (this.mode === 'designate') {
                     this.designateMode = this.designateMode === 'chop' ? 'mine' : 'chop';
                     this.game.ui.updateModeDisplay(this);
                 }
@@ -178,6 +182,21 @@ export class InputHandler {
                 this.game.ui.updateModeDisplay(this);
             }
         }
+    }
+
+    cycleBuildCategory(dir) {
+        const idx = this.buildCategories.indexOf(this.buildCategory);
+        const next = (idx + dir + this.buildCategories.length) % this.buildCategories.length;
+        this.setBuildCategory(this.buildCategories[next]);
+    }
+
+    setBuildCategory(cat) {
+        this.buildCategory = cat;
+        this.buildOptions = Object.keys(BUILDINGS).filter(k => BUILDINGS[k].category === cat);
+        if (this.buildOptions.length > 0 && !this.buildOptions.includes(this.buildType)) {
+            this.buildType = this.buildOptions[0];
+        }
+        this.game.ui.updateModeDisplay(this);
     }
 
     setMode(mode) {

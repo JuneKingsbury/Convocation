@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILDINGS, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, SKILLS } from '../core/config.js';
+import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS } from '../core/config.js';
 import { getAvailableRecipes } from '../systems/crafting.js';
 import { CROP_RESEARCH_REQS } from '../systems/farming.js';
 
@@ -55,6 +55,11 @@ export class UI {
         });
 
         this.elements.modeBar.addEventListener('click', (e) => {
+            const catOpt = e.target.closest('[data-build-cat]');
+            if (catOpt) {
+                this.game.input.setBuildCategory(catOpt.dataset.buildCat);
+                return;
+            }
             const opt = e.target.closest('[data-build-opt]');
             if (opt) {
                 const buildType = opt.dataset.buildOpt;
@@ -187,6 +192,12 @@ export class UI {
         let html = `<span class="mode-label">Mode: ${input.mode.toUpperCase()}</span>`;
         if (input.mode === 'build') {
             html += '<span class="mode-opt mode-back" data-mode-action="back">[Esc]Back</span>';
+            html += '<span class="build-categories">';
+            BUILD_CATEGORIES.forEach(cat => {
+                const catActive = cat === input.buildCategory ? ' active' : '';
+                html += `<span class="mode-opt build-cat${catActive}" data-build-cat="${cat}">${cat}</span>`;
+            });
+            html += '</span>';
             html += '<span class="mode-options">';
             input.buildOptions.forEach((opt, i) => {
                 const active = opt === input.buildType ? ' active' : '';
@@ -198,7 +209,7 @@ export class UI {
                 html += `<span class="mode-opt${active}" data-build-opt="${opt}"${locked ? ' style="opacity:0.4"' : ''}>${keyLabel ? `[${keyLabel}]` : ''}<span style="color:${def.color}">${def.char}</span> ${opt.replace(/_/g,' ')}(${costStr})${lockStr}</span>`;
             });
             html += '</span>';
-            html += '<span class="mode-hint">Click item to select | Left-click/drag to place | Right-click/drag to deconstruct</span>';
+            html += '<span class="mode-hint">[Tab]Cycle category | Click item to select | Left-click/drag to place | Right-click/drag to deconstruct</span>';
         } else if (input.mode === 'zone') {
             html += '<span class="mode-opt mode-back" data-mode-action="back">[Esc]Back</span>';
             html += '<span class="mode-options">';
@@ -295,25 +306,36 @@ export class UI {
             `<span class="${t.moodEffect >= 0 ? 'positive' : 'negative'}">${t.text} (${t.moodEffect > 0 ? '+' : ''}${t.moodEffect.toFixed(0)})</span>`
         ).join('<br>');
 
-        const weaponTip = colonist.weapon ? `${colonist.weapon.damage} damage` : 'No weapon equipped';
+        const weaponTip = colonist.weapon ? `${colonist.weapon.damage} damage${colonist.weapon.miningSpeed ? `, +${Math.round((colonist.weapon.miningSpeed-1)*100)}% mining` : ''}${colonist.weapon.choppingSpeed ? `, +${Math.round((colonist.weapon.choppingSpeed-1)*100)}% chopping` : ''}` : 'No weapon equipped';
         const armorTip = colonist.armor ? `${Math.round(colonist.armor.damageReduction * 100)}% damage reduction` : 'No armor equipped';
+        const toolTip = colonist.tool ? Object.entries(colonist.tool).filter(([k]) => k !== 'name' && k !== 'key').map(([k, v]) => `${k}: ${typeof v === 'number' ? (v > 1 ? `+${Math.round((v-1)*100)}%` : `${Math.round(v*100)}%`) : v}`).join(', ') : 'No tool equipped';
+        const artifactTip = colonist.artifact ? Object.entries(colonist.artifact).filter(([k]) => k !== 'name' && k !== 'key').map(([k, v]) => `${k}: ${typeof v === 'number' ? (v > 1 ? `+${Math.round((v-1)*100)}%` : `${Math.round(v*100)}%`) : v}`).join(', ') : 'No artifact equipped';
 
         const nc = colonist.nameColor || '#ffff00';
         let html = `<div class="info-header" style="cursor:pointer;color:${nc}" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}</div>`;
         html += `<div class="info-row">HP: ${colonist.hp}/${colonist.maxHp}</div>`;
         html += `<div class="info-row">Mood: <span class="mood-${moodLevel}">${colonist.mood.toFixed(0)} (${moodLevel})</span></div>`;
         html += `<div class="info-row">State: ${colonist.state}</div>`;
+        html += `<div class="info-row">Task: ${this.getColonistTaskDescription(colonist)}</div>`;
         html += `<div class="info-row">Traits: ${traitSpans}</div>`;
         html += `<div class="info-row">Hunger: ${bar(colonist.needs.hunger)} Rest: ${bar(colonist.needs.rest)}</div>`;
         html += `<div class="info-row">Skills: ${Object.entries(SKILLS).map(([k, def]) => `<span class="skill-tip" data-tip="${def.description}">${def.name}:${colonist.skills[k] || 1}</span>`).join(' ')}</div>`;
         html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${colonist.weapon?.name || 'Fists'}</span></div>`;
         html += `<div class="info-row">Armor: <span class="skill-tip" data-tip="${armorTip}">${colonist.armor?.name || 'None'}</span></div>`;
+        html += `<div class="info-row">Tool: <span class="skill-tip" data-tip="${toolTip}">${colonist.tool?.name || 'None'}</span></div>`;
+        html += `<div class="info-row">Artifact: <span class="skill-tip" data-tip="${artifactTip}">${colonist.artifact?.name || 'None'}</span></div>`;
+        if (colonist.activeEffects && colonist.activeEffects.length > 0) {
+            const effects = colonist.activeEffects.map(e => `<span style="color:#88ffaa">${e.type} (${e.expiresAt - this.game.tick}t)</span>`).join(', ');
+            html += `<div class="info-row">Effects: ${effects}</div>`;
+        }
         html += `<div class="info-row">Bed: ${colonist.assignedBed ? `(${colonist.assignedBed.x},${colonist.assignedBed.y})` : 'None'}</div>`;
         if (thoughts) html += `<div class="info-thoughts"><b>Thoughts:</b><br>${thoughts}</div>`;
         html += `<div class="info-actions">`;
         html += `<button onclick="window.game.toggleDraft(${colonist.id})">${colonist.drafted ? 'Undraft' : 'Draft'}</button>`;
         html += this.buildWeaponDropdown(colonist);
         html += this.buildArmorDropdown(colonist);
+        html += this.buildToolDropdown(colonist);
+        html += this.buildArtifactDropdown(colonist);
         html += `<button onclick="window.game.centerOnColonist(${colonist.id})">Center Camera</button>`;
         const isFollowing = this.game.followingColonist === colonist.id;
         html += `<button onclick="window.game.toggleFollow(${colonist.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
@@ -361,9 +383,76 @@ export class UI {
         return html;
     }
 
+    buildToolDropdown(colonist) {
+        const tools = this.game.resources.tools;
+        let html = `<select onchange="if(this.value==='unequip'){window.game.unequipTool(${colonist.id})}else if(this.value!==''){window.game.equipTool(${colonist.id},parseInt(this.value))}">`;
+        html += `<option value="">Tool: ${colonist.tool?.name || 'None'}</option>`;
+        if (colonist.tool) {
+            html += `<option value="unequip">Unequip ${colonist.tool.name}</option>`;
+        }
+        tools.forEach((t, i) => {
+            const stats = Object.entries(t).filter(([k]) => k !== 'name' && k !== 'key').map(([k, v]) => typeof v === 'number' ? `+${Math.round((v - 1) * 100)}%` : '').filter(Boolean).join('/');
+            html += `<option value="${i}">${t.name}${stats ? ` (${stats})` : ''}</option>`;
+        });
+        if (tools.length === 0 && !colonist.tool) {
+            html += `<option disabled>No tools available</option>`;
+        }
+        html += `</select>`;
+        return html;
+    }
+
+    buildArtifactDropdown(colonist) {
+        const artifacts = this.game.resources.artifacts;
+        let html = `<select onchange="if(this.value==='unequip'){window.game.unequipArtifact(${colonist.id})}else if(this.value!==''){window.game.equipArtifact(${colonist.id},parseInt(this.value))}">`;
+        html += `<option value="">Artifact: ${colonist.artifact?.name || 'None'}</option>`;
+        if (colonist.artifact) {
+            html += `<option value="unequip">Unequip ${colonist.artifact.name}</option>`;
+        }
+        artifacts.forEach((a, i) => {
+            const stats = Object.entries(a).filter(([k]) => k !== 'name' && k !== 'key').map(([k, v]) => typeof v === 'number' ? (v < 1 ? `${Math.round(v*100)}%` : `+${Math.round((v-1)*100)}%`) : '').filter(Boolean).join('/');
+            html += `<option value="${i}">${a.name}${stats ? ` (${stats})` : ''}</option>`;
+        });
+        if (artifacts.length === 0 && !colonist.artifact) {
+            html += `<option disabled>No artifacts available</option>`;
+        }
+        html += `</select>`;
+        return html;
+    }
+
     getCraftOutputTip(outputKey) {
-        if (WEAPONS[outputKey]) return `${WEAPONS[outputKey].damage} damage`;
+        if (WEAPONS[outputKey]) {
+            const w = WEAPONS[outputKey];
+            let tip = `${w.damage} damage`;
+            if (w.miningSpeed) tip += `, +${Math.round((w.miningSpeed-1)*100)}% mining`;
+            if (w.choppingSpeed) tip += `, +${Math.round((w.choppingSpeed-1)*100)}% chopping`;
+            return tip;
+        }
         if (ARMORS[outputKey]) return `${Math.round(ARMORS[outputKey].damageReduction * 100)}% damage reduction`;
+        if (TOOLS[outputKey]) {
+            const t = TOOLS[outputKey];
+            const stats = [];
+            if (t.miningSpeed) stats.push(`+${Math.round((t.miningSpeed-1)*100)}% mining`);
+            if (t.choppingSpeed) stats.push(`+${Math.round((t.choppingSpeed-1)*100)}% chopping`);
+            if (t.farmingSpeed) stats.push(`+${Math.round((t.farmingSpeed-1)*100)}% farming`);
+            if (t.moveSpeedBonus) stats.push(`+${Math.round(t.moveSpeedBonus*100)}% move speed`);
+            return stats.join(', ');
+        }
+        if (ARTIFACTS[outputKey]) {
+            const a = ARTIFACTS[outputKey];
+            const stats = [];
+            if (a.miningSpeed) stats.push(`+${Math.round((a.miningSpeed-1)*100)}% mining`);
+            if (a.choppingSpeed) stats.push(`+${Math.round((a.choppingSpeed-1)*100)}% chopping`);
+            if (a.farmingSpeed) stats.push(`+${Math.round((a.farmingSpeed-1)*100)}% farming`);
+            if (a.moveSpeedBonus) stats.push(`+${Math.round(a.moveSpeedBonus*100)}% move speed`);
+            if (a.damageReduction) stats.push(`-${Math.round(a.damageReduction*100)}% damage taken`);
+            return stats.join(', ');
+        }
+        if (POTIONS[outputKey]) {
+            const p = POTIONS[outputKey];
+            if (p.effect === 'heal') return `Heals ${p.healAmount} HP`;
+            if (p.effect === 'speed') return `+${Math.round((p.workSpeedBonus-1)*100)}% work, +${Math.round(p.moveSpeedBonus*100)}% move for ${p.duration} ticks`;
+            return p.name;
+        }
         return null;
     }
 
@@ -1075,6 +1164,46 @@ export class UI {
             });
         }
 
+        const tools = this.game.resources.tools;
+        if (tools.length > 0) {
+            html += '<div class="info-row" style="color:#88aacc;margin-top:8px;margin-bottom:4px;"><b>Tools in Storage:</b></div>';
+            tools.forEach((t, i) => {
+                const stats = [];
+                if (t.miningSpeed) stats.push(`+${Math.round((t.miningSpeed-1)*100)}% mine`);
+                if (t.choppingSpeed) stats.push(`+${Math.round((t.choppingSpeed-1)*100)}% chop`);
+                if (t.farmingSpeed) stats.push(`+${Math.round((t.farmingSpeed-1)*100)}% farm`);
+                if (t.moveSpeedBonus) stats.push(`+${Math.round(t.moveSpeedBonus*100)}% move`);
+                html += `<div class="inv-row"><span class="inv-name">${t.name}</span><span class="inv-amount">${stats.join(', ')}</span><button class="inv-delete" onclick="if(confirm('Discard ${t.name}?')){window.game.discardTool(${i})}">x</button></div>`;
+            });
+        }
+
+        const artifacts = this.game.resources.artifacts;
+        if (artifacts.length > 0) {
+            html += '<div class="info-row" style="color:#ccaa44;margin-top:8px;margin-bottom:4px;"><b>Artifacts in Storage:</b></div>';
+            artifacts.forEach((a, i) => {
+                const stats = [];
+                if (a.miningSpeed) stats.push(`+${Math.round((a.miningSpeed-1)*100)}% mine`);
+                if (a.choppingSpeed) stats.push(`+${Math.round((a.choppingSpeed-1)*100)}% chop`);
+                if (a.farmingSpeed) stats.push(`+${Math.round((a.farmingSpeed-1)*100)}% farm`);
+                if (a.moveSpeedBonus) stats.push(`+${Math.round(a.moveSpeedBonus*100)}% move`);
+                if (a.damageReduction) stats.push(`-${Math.round(a.damageReduction*100)}% dmg`);
+                html += `<div class="inv-row"><span class="inv-name">${a.name}</span><span class="inv-amount">${stats.join(', ')}</span><button class="inv-delete" onclick="if(confirm('Discard ${a.name}?')){window.game.discardArtifact(${i})}">x</button></div>`;
+            });
+        }
+
+        const potions = this.game.resources.potions;
+        if (potions.length > 0) {
+            html += '<div class="info-row" style="color:#cc88aa;margin-top:8px;margin-bottom:4px;"><b>Potions:</b></div>';
+            const potionCounts = {};
+            for (const p of potions) {
+                potionCounts[p.type] = (potionCounts[p.type] || 0) + 1;
+            }
+            for (const [type, count] of Object.entries(potionCounts)) {
+                const def = POTIONS[type];
+                html += `<div class="inv-row"><span class="inv-name">${def ? def.name : type}</span><span class="inv-amount">x${count}</span></div>`;
+            }
+        }
+
         const tamed = this.game.tamedAnimals;
         if (tamed.length > 0) {
             html += '<div class="info-row" style="color:#aacc88;margin-top:8px;margin-bottom:4px;"><b>Tamed Animals:</b></div>';
@@ -1177,6 +1306,25 @@ export class UI {
         html += `<button onclick="window.game.cheatResources()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant 999 of All Resources + Research</button>`;
         html += `</div>`;
         this.elements.settingsPanel.innerHTML = html;
+    }
+
+    getColonistTaskDescription(colonist) {
+        if (!colonist.currentTaskId) return `<span style="color:#666;cursor:pointer" onclick="window.game.camera.centerOn(${colonist.x},${colonist.y})">None</span>`;
+        const task = this.game.taskQueue.getAll().find(t => t.id === colonist.currentTaskId);
+        if (!task) return `<span style="color:#666;cursor:pointer" onclick="window.game.camera.centerOn(${colonist.x},${colonist.y})">None</span>`;
+        let label;
+        switch (task.type) {
+            case 'build': label = `Building ${(task.buildType || '').replace(/_/g, ' ')}`; break;
+            case 'mine': label = 'Mining'; break;
+            case 'chop': label = 'Chopping tree'; break;
+            case 'deconstruct': label = 'Deconstructing'; break;
+            case 'plant': label = 'Planting'; break;
+            case 'harvest': label = 'Harvesting'; break;
+            case 'craft': label = `Crafting ${task.recipe?.name || 'item'}`; break;
+            case 'cook': label = `Cooking ${task.recipe?.name || 'food'}`; break;
+            default: label = task.type; break;
+        }
+        return `<span style="cursor:pointer;text-decoration:underline" onclick="window.game.camera.centerOn(${task.x},${task.y})">${label} at (${task.x},${task.y})</span>`;
     }
 
     isBuildingLocked(buildType) {

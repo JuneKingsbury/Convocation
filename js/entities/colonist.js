@@ -1,4 +1,4 @@
-import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG, TASK_CONFIG } from '../core/config.js';
+import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG, TASK_CONFIG } from '../core/config.js';
 import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 import { isPassable, getMoveCost } from '../world/map.js';
 import { FOODSTUFFS } from '../systems/resources.js';
@@ -52,6 +52,9 @@ export function createColonist(x, y, skillBias, existingNames = []) {
         workProgress: 0,
         assignedBed: null,
         weapon: null,
+        armor: null,
+        tool: null,
+        artifact: null,
         drafted: false,
         draftTarget: null,
         stateTimer: 0,
@@ -66,6 +69,9 @@ export function updateColonist(colonist, game) {
     colonist.mood = computeMood(colonist);
 
     if (colonist.hp <= 0) return;
+
+    tryUsePotions(colonist, game);
+    tickPotionEffects(colonist, game);
 
     if (!CONFIG.PEACEFUL_MODE && colonist.traits.includes('pyromaniac') && Math.random() < TRAITS.pyromaniac.fireChance) {
         const tile = game.map[colonist.y][colonist.x];
@@ -189,6 +195,70 @@ function getWorkSpeed(colonist, game) {
     return speed;
 }
 
+function getMoveSpeedBonus(colonist) {
+    let bonus = 0;
+    if (colonist.tool && colonist.tool.moveSpeedBonus) bonus += colonist.tool.moveSpeedBonus;
+    if (colonist.artifact && colonist.artifact.moveSpeedBonus) bonus += colonist.artifact.moveSpeedBonus;
+    if (colonist.activeEffects) {
+        for (const e of colonist.activeEffects) {
+            if (e.type === 'speed' && e.moveSpeedBonus) bonus += e.moveSpeedBonus;
+        }
+    }
+    return Math.min(bonus, 0.8);
+}
+
+function getEquipmentWorkBonus(colonist, task) {
+    let mult = 1.0;
+    const items = [colonist.weapon, colonist.tool, colonist.artifact];
+    for (const item of items) {
+        if (!item) continue;
+        if (task.type === 'mine' && item.miningSpeed) mult *= item.miningSpeed;
+        if (task.type === 'chop' && item.choppingSpeed) mult *= item.choppingSpeed;
+        if ((task.type === 'plant' || task.type === 'harvest') && item.farmingSpeed) mult *= item.farmingSpeed;
+    }
+    return mult;
+}
+
+function tryUsePotions(colonist, game) {
+    if (!colonist._potionCooldowns) colonist._potionCooldowns = {};
+
+    for (const [key, potion] of Object.entries(POTIONS)) {
+        if (colonist._potionCooldowns[key] && game.tick - colonist._potionCooldowns[key] < potion.cooldown) continue;
+        if (game.resources.getPotionCount(key) <= 0) continue;
+
+        let shouldUse = false;
+        if (potion.trigger === 'lowHealth') {
+            shouldUse = colonist.hp < colonist.maxHp * potion.hpThreshold;
+        } else if (potion.trigger === 'hasTask') {
+            shouldUse = colonist.currentTaskId !== null && (colonist.state === 'moving' || colonist.state === 'working');
+        }
+
+        if (shouldUse) {
+            game.resources.takePotion(key);
+            colonist._potionCooldowns[key] = game.tick;
+
+            if (potion.effect === 'heal') {
+                colonist.hp = Math.min(colonist.maxHp, colonist.hp + potion.healAmount);
+            } else if (potion.effect === 'speed') {
+                if (!colonist.activeEffects) colonist.activeEffects = [];
+                colonist.activeEffects.push({
+                    type: 'speed',
+                    moveSpeedBonus: potion.moveSpeedBonus,
+                    workSpeedBonus: potion.workSpeedBonus,
+                    expiresAt: game.tick + potion.duration,
+                });
+            }
+
+            game.notifications.push({ text: `${colonist.name} used ${potion.name}`, tick: game.tick, type: 'success' });
+        }
+    }
+}
+
+function tickPotionEffects(colonist, game) {
+    if (!colonist.activeEffects) return;
+    colonist.activeEffects = colonist.activeEffects.filter(e => game.tick < e.expiresAt);
+}
+
 function updateIdle(colonist, game) {
     if (colonist.drafted) {
         colonist.state = 'drafted';
@@ -306,7 +376,10 @@ function updateMoving(colonist, game) {
         colonist.path.shift();
         const cost = getMoveCost(game.map, next.x, next.y);
         if (cost > 1) {
-            colonist.moveCooldown = cost - 1;
+            let moveCost = cost - 1;
+            const moveBonus = getMoveSpeedBonus(colonist);
+            if (moveBonus > 0) moveCost = Math.max(0, Math.round(moveCost * (1 - moveBonus)));
+            colonist.moveCooldown = moveCost;
         }
     } else {
         const task = game.taskQueue.getAll().find(t => t.id === colonist.currentTaskId);
@@ -357,6 +430,14 @@ function updateWorking(colonist, game) {
 
     if (task.skillRequired === 'farming' && colonist.traits.includes('green_thumb')) {
         speed *= TRAITS.green_thumb.farmingSpeedMult;
+    }
+
+    speed *= getEquipmentWorkBonus(colonist, task);
+
+    if (colonist.activeEffects) {
+        for (const e of colonist.activeEffects) {
+            if (e.type === 'speed' && e.workSpeedBonus) speed *= e.workSpeedBonus;
+        }
     }
 
     task.workDone += speed;
@@ -434,6 +515,15 @@ function completeTask(colonist, task, game) {
                     } else if (ARMORS[key]) {
                         game.resources.addArmor({ ...ARMORS[key] });
                         handled = true;
+                    } else if (TOOLS[key]) {
+                        game.resources.addTool({ ...TOOLS[key], key });
+                        handled = true;
+                    } else if (ARTIFACTS[key]) {
+                        game.resources.addArtifact({ ...ARTIFACTS[key], key });
+                        handled = true;
+                    } else if (POTIONS[key]) {
+                        game.resources.addPotion({ ...POTIONS[key], type: key });
+                        handled = true;
                     }
                 }
                 if (!handled) {
@@ -446,10 +536,19 @@ function completeTask(colonist, task, game) {
         case 'cook': {
             if (task.recipe) {
                 const output = { ...task.recipe.output };
-                if (output.food && game.research.isResearched('alchemy')) {
-                    output.food += WORK_CONFIG.alchemyFoodBonus;
+                let handled = false;
+                for (const key of Object.keys(output)) {
+                    if (POTIONS[key]) {
+                        game.resources.addPotion({ ...POTIONS[key], type: key });
+                        handled = true;
+                    }
                 }
-                game.resources.add(output);
+                if (!handled) {
+                    if (output.food && game.research.isResearched('alchemy')) {
+                        output.food += WORK_CONFIG.alchemyFoodBonus;
+                    }
+                    game.resources.add(output);
+                }
                 applyThought(colonist, 'cooked', game.tick);
             }
             break;
@@ -672,7 +771,10 @@ function updateDrafted(colonist, game) {
                 colonist.y = next.y;
                 const cost = getMoveCost(game.map, next.x, next.y);
                 if (cost > 1) {
-                    colonist.moveCooldown = cost - 1;
+                    let moveCost = cost - 1;
+                    const moveBonus = getMoveSpeedBonus(colonist);
+                    if (moveBonus > 0) moveCost = Math.max(0, Math.round(moveCost * (1 - moveBonus)));
+                    colonist.moveCooldown = moveCost;
                 }
             }
         }

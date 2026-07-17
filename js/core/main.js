@@ -441,6 +441,60 @@ class Game {
         this.ui.updateInventoryPanel();
     }
 
+    equipTool(colonistId, index) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c) return;
+        if (index === undefined || index < 0 || index >= this.resources.tools.length) return;
+        const tool = this.resources.tools.splice(index, 1)[0];
+        if (c.tool) this.resources.addTool(c.tool);
+        c.tool = tool;
+        this.notifications.push({ text: `${c.name} equipped ${tool.name}`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    unequipTool(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c || !c.tool) return;
+        this.resources.addTool(c.tool);
+        c.tool = null;
+        this.notifications.push({ text: `${c.name} unequipped tool`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    discardTool(index) {
+        if (index < 0 || index >= this.resources.tools.length) return;
+        const t = this.resources.tools.splice(index, 1)[0];
+        this.notifications.push({ text: `Discarded ${t.name}`, tick: this.tick, type: 'event' });
+        this.ui.updateInventoryPanel();
+    }
+
+    equipArtifact(colonistId, index) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c) return;
+        if (index === undefined || index < 0 || index >= this.resources.artifacts.length) return;
+        const artifact = this.resources.artifacts.splice(index, 1)[0];
+        if (c.artifact) this.resources.addArtifact(c.artifact);
+        c.artifact = artifact;
+        this.notifications.push({ text: `${c.name} equipped ${artifact.name}`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    unequipArtifact(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c || !c.artifact) return;
+        this.resources.addArtifact(c.artifact);
+        c.artifact = null;
+        this.notifications.push({ text: `${c.name} unequipped artifact`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    discardArtifact(index) {
+        if (index < 0 || index >= this.resources.artifacts.length) return;
+        const a = this.resources.artifacts.splice(index, 1)[0];
+        this.notifications.push({ text: `Discarded ${a.name}`, tick: this.tick, type: 'event' });
+        this.ui.updateInventoryPanel();
+    }
+
     tameWildAnimal(animalId) {
         designateTame(this, animalId);
     }

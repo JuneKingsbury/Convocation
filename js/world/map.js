@@ -256,8 +256,7 @@ function generateRuins(map, params) {
             tile.resource = null;
 
             if (BUILDINGS[piece.type] && BUILDINGS[piece.type].hp) {
-                const maxHp = BUILDINGS[piece.type].hp;
-                tile.structureHp = Math.floor(maxHp * (0.3 + Math.random() * 0.7));
+                tile.structureHp = BUILDINGS[piece.type].hp;
             }
         }
     }

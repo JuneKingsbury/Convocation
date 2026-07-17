@@ -26,6 +26,9 @@ export function saveGame(game) {
             stockpile: game.resources.stockpile,
             weapons: game.resources.weapons,
             armors: game.resources.armors,
+            tools: game.resources.tools,
+            artifacts: game.resources.artifacts,
+            potions: game.resources.potions,
         },
 
         weather: {
@@ -108,6 +111,9 @@ export function loadGame(game) {
     game.resources.stockpile = data.resources.stockpile;
     game.resources.weapons = data.resources.weapons;
     game.resources.armors = data.resources.armors || [];
+    game.resources.tools = data.resources.tools || [];
+    game.resources.artifacts = data.resources.artifacts || [];
+    game.resources.potions = data.resources.potions || [];
 
     game.weather.season = data.weather.season;
     game.weather.seasonIndex = data.weather.seasonIndex;
