@@ -364,6 +364,17 @@ class Game {
         }
     }
 
+    craftMultiple(recipeKey, count) {
+        let queued = 0;
+        for (let i = 0; i < count; i++) {
+            if (queueCraftingOrder(this, recipeKey)) queued++;
+            else break;
+        }
+        if (queued > 0) {
+            this.notifications.push({ text: `Queued ${queued}x: ${recipeKey.replace(/_/g, ' ')}`, tick: this.tick, type: 'success' });
+        }
+    }
+
     resolveEvent(choice) {
         const evt = this.events.pendingEvent;
         if (!evt) return;
@@ -493,6 +504,68 @@ class Game {
         const a = this.resources.artifacts.splice(index, 1)[0];
         this.notifications.push({ text: `Discarded ${a.name}`, tick: this.tick, type: 'event' });
         this.ui.updateInventoryPanel();
+    }
+
+    cycleColonist(dir) {
+        const alive = this.colonists.filter(c => c.hp > 0);
+        if (alive.length === 0) return;
+        const currentIdx = this.selectedColonist ? alive.indexOf(this.selectedColonist) : -1;
+        const next = (currentIdx + dir + alive.length) % alive.length;
+        this.selectColonistById(alive[next].id);
+    }
+
+    draftAll() {
+        for (const c of this.colonists) {
+            if (c.hp > 0 && !c.drafted) this.toggleDraft(c.id);
+        }
+    }
+
+    undraftAll() {
+        for (const c of this.colonists) {
+            if (c.hp > 0 && c.drafted) this.toggleDraft(c.id);
+        }
+    }
+
+    copyPriorities(toId, fromId) {
+        const to = this.colonists.find(c => c.id === toId);
+        const from = this.colonists.find(c => c.id === fromId);
+        if (!to || !from) return;
+        to.priorities = { ...from.priorities };
+        this.notifications.push({ text: `${to.name} copied priorities from ${from.name}`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(to);
+    }
+
+    rallyDrafted(x, y) {
+        for (const c of this.colonists) {
+            if (c.hp > 0 && c.drafted) {
+                c.draftTarget = { x, y };
+            }
+        }
+        this.notifications.push({ text: `Rally point set at (${x},${y})`, tick: this.tick, type: 'success' });
+    }
+
+    autoEquipBest(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c) return;
+        if (this.resources.weapons.length > 0) {
+            this.resources.weapons.sort((a, b) => b.damage - a.damage);
+            if (!c.weapon || this.resources.weapons[0].damage > c.weapon.damage) {
+                this.equipWeapon(colonistId, 0);
+            }
+        }
+        if (this.resources.armors.length > 0) {
+            this.resources.armors.sort((a, b) => b.damageReduction - a.damageReduction);
+            if (!c.armor || this.resources.armors[0].damageReduction > c.armor.damageReduction) {
+                this.equipArmor(colonistId, 0);
+            }
+        }
+        if (this.resources.tools.length > 0 && !c.tool) {
+            this.equipTool(colonistId, 0);
+        }
+        if (this.resources.artifacts.length > 0 && !c.artifact) {
+            this.equipArtifact(colonistId, 0);
+        }
+        this.ui.showColonistInfo(c);
     }
 
     tameWildAnimal(animalId) {

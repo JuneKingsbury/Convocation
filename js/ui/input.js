@@ -146,6 +146,8 @@ export class InputHandler {
             case '>': this.game.speedUp(); break;
             case '<': this.game.speedDown(); break;
             case '/': window.resetMinimapSize?.(); break;
+            case '[': this.game.cycleColonist(-1); break;
+            case ']': this.game.cycleColonist(1); break;
             case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
                 this.handleNumberKey(e.key === '0' ? 10 : parseInt(e.key));
                 break;
@@ -275,6 +277,9 @@ export class InputHandler {
             if (this.dragging) {
                 this.dragEnd = pos;
             }
+            this.game.ui.updateTileTooltip(pos.x, pos.y, e);
+        } else {
+            this.game.ui.hideTileTooltip();
         }
     }
 

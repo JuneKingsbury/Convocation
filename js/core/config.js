@@ -15,6 +15,7 @@ export const CONFIG = {
     START_RESOURCES: { wood: 25, stone: 15, planks: 5, food: 20, meat: 0, wheat: 0, berries: 0, corn: 0, potatoes: 0, bricks: 0, runite: 0, eggs: 0, milk: 0, wool: 0, void_essence: 0 },
     PEACEFUL_MODE: false,       // disables raids and hostile animals
     GAME_SPEED: 1,              // default simulation speed multiplier
+    STOCKPILE_ALERTS: { wood: 5, stone: 5, food: 5 },
 };
 
 // Characters and colors for non-building tiles (farms, snow, entities, designations).

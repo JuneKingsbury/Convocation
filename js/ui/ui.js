@@ -169,10 +169,12 @@ export class UI {
         const voidEssence = r.void_essence || 0;
         const waveStr = waves.active ? `Wave:${waves.currentWave}` : '';
 
+        const alerts = CONFIG.STOCKPILE_ALERTS || {};
+        const resStyle = (key, val) => (alerts[key] && val <= alerts[key]) ? ' style="color:#ff4444;font-weight:bold"' : '';
         this.elements.statusBar.innerHTML =
-            `<span class="res">Wood:${r.wood}</span>` +
-            `<span class="res">Stone:${r.stone}</span>` +
-            `<span class="res">Food:${r.food}</span>` +
+            `<span class="res"${resStyle('wood', r.wood)}>Wood:${r.wood}</span>` +
+            `<span class="res"${resStyle('stone', r.stone)}>Stone:${r.stone}</span>` +
+            `<span class="res"${resStyle('food', r.food)}>Food:${r.food}</span>` +
             (voidEssence > 0 ? `<span class="res" style="color:#9933ff">Void:${voidEssence}</span>` : '') +
             (manaStr ? `<span class="res" style="color:${power.hasPower() ? '#aa44ff' : '#ff6666'}">${manaStr}</span>` : '') +
             `<span class="sep">|</span>` +
@@ -332,10 +334,19 @@ export class UI {
         if (thoughts) html += `<div class="info-thoughts"><b>Thoughts:</b><br>${thoughts}</div>`;
         html += `<div class="info-actions">`;
         html += `<button onclick="window.game.toggleDraft(${colonist.id})">${colonist.drafted ? 'Undraft' : 'Draft'}</button>`;
+        html += `<button onclick="window.game.draftAll()">Draft All</button>`;
+        html += `<button onclick="window.game.undraftAll()">Undraft All</button>`;
         html += this.buildWeaponDropdown(colonist);
         html += this.buildArmorDropdown(colonist);
         html += this.buildToolDropdown(colonist);
         html += this.buildArtifactDropdown(colonist);
+        html += `<button onclick="window.game.autoEquipBest(${colonist.id})">Auto-equip Best</button>`;
+        const others = this.game.colonists.filter(c => c.hp > 0 && c.id !== colonist.id);
+        if (others.length > 0) {
+            html += `<select onchange="if(this.value)window.game.copyPriorities(${colonist.id},parseInt(this.value))"><option value="">Copy Priorities From...</option>`;
+            for (const o of others) html += `<option value="${o.id}">${o.name}</option>`;
+            html += `</select>`;
+        }
         html += `<button onclick="window.game.centerOnColonist(${colonist.id})">Center Camera</button>`;
         const isFollowing = this.game.followingColonist === colonist.id;
         html += `<button onclick="window.game.toggleFollow(${colonist.id})">${isFollowing ? 'Unfollow' : 'Follow'}</button>`;
@@ -788,6 +799,7 @@ export class UI {
             const cls = canCraft ? 'craft-available' : 'craft-unavailable';
             html += `<div class="craft-row ${cls}">`;
             html += `<button ${canCraft ? '' : 'disabled'} onclick="window.game.craft('${key}')">${key.replace(/_/g, ' ')}</button>`;
+            html += `<button ${canCraft ? '' : 'disabled'} onclick="window.game.craftMultiple('${key}',5)" class="craft-multi">x5</button>`;
             html += `<span>${inputStr} → ${outputStr}</span>`;
             html += `</div>`;
         }
@@ -824,7 +836,8 @@ export class UI {
             const hpColor = statColor(c.maxHp > 0 ? (c.hp / c.maxHp) * 100 : 100);
             const weapon = c.weapon?.name || 'Fists';
             html += `<div class="hud-colonist" data-colonist-id="${c.id}">`;
-            html += `<span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
+            const needsDots = `<span class="hud-dots"><span style="color:${moodColor}">●</span><span style="color:${hungerColor}">●</span><span style="color:${restColor}">●</span><span style="color:${hpColor}">●</span></span>`;
+            html += `<span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> ${needsDots} <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
             html += `<div class="hud-bars">Mood: <span style="color:${moodColor}">${c.mood.toFixed(0)} (${moodLevel})</span> | Hunger: <span style="color:${hungerColor}">${c.needs.hunger.toFixed(0)}</span> | Rest: <span style="color:${restColor}">${c.needs.rest.toFixed(0)}</span> | HP: <span style="color:${hpColor}">${c.hp}/${c.maxHp}</span></div>`;
             html += `</div>`;
         }
@@ -1325,6 +1338,24 @@ export class UI {
             default: label = task.type; break;
         }
         return `<span style="cursor:pointer;text-decoration:underline" onclick="window.game.camera.centerOn(${task.x},${task.y})">${label} at (${task.x},${task.y})</span>`;
+    }
+
+    updateTileTooltip(x, y, e) {
+        const tooltip = document.getElementById('tile-tooltip');
+        const tile = this.game.map[y][x];
+        const parts = [`(${x},${y}) ${tile.terrain}`];
+        if (tile.structure) parts.push(`Structure: ${tile.structure.replace(/_/g, ' ')}`);
+        if (tile.resource) parts.push(`Resource: ${tile.resource.type}${tile.resource.amount > 1 ? ' x' + tile.resource.amount : ''}`);
+        if (tile.designation) parts.push(`[${tile.designation.type}]`);
+        if (tile.zone) parts.push(`Farm: ${tile.zone.crop}`);
+        tooltip.textContent = parts.join(' | ');
+        tooltip.style.display = 'block';
+        tooltip.style.left = (e.offsetX + 12) + 'px';
+        tooltip.style.top = (e.offsetY - 24) + 'px';
+    }
+
+    hideTileTooltip() {
+        document.getElementById('tile-tooltip').style.display = 'none';
     }
 
     isBuildingLocked(buildType) {

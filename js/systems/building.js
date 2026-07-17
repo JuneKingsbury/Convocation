@@ -2,8 +2,19 @@ import { BUILDINGS, RESOURCES, WORK_CONFIG } from '../core/config.js';
 
 export function designateBuild(game, x, y, buildType) {
     const tile = game.map[y][x];
-    if (tile.structure || !tile.passable || tile.resource) return false;
+    if (tile.resource) return false;
     if (tile.terrain === 'water' || tile.terrain === 'rock' || tile.terrain === 'tall_rock') return false;
+
+    const existingDef = tile.structure ? BUILDINGS[tile.structure] : null;
+    if (tile.structure) {
+        if (existingDef && existingDef.structureType === 'floor') {
+            tile.structure = null;
+            tile.structureHp = undefined;
+        } else {
+            return false;
+        }
+    }
+    if (!tile.passable) return false;
 
     const def = BUILDINGS[buildType];
     if (!def) return false;

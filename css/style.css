@@ -602,6 +602,20 @@ body {
     margin-left: 8px;
 }
 
+#tile-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(10, 10, 20, 0.92);
+    border: 1px solid #555;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: #ccc;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 100;
+    display: none;
+}
+
 .build-categories {
     display: flex;
     gap: 2px;
@@ -800,6 +814,16 @@ body {
 .hud-colonist.dead {
     opacity: 0.4;
     cursor: default;
+}
+
+.hud-dots {
+    font-size: 0.8em;
+    letter-spacing: 1px;
+}
+
+.craft-multi {
+    font-size: 0.85em;
+    padding: 2px 5px;
 }
 
 #priority-panel table {

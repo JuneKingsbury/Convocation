@@ -7,7 +7,7 @@ Convocation is a browser-based ASCII colony management game inspired by Rimworld
 
 ## Glossary
 ### Colonists
-Priorities - Each colonist has skill priorities (1-5, 0=disabled). Lower number = higher priority. Colonists pick tasks based on their priority settings.
+Priorities - Each colonist has skill priorities (1-5, 0=disabled). Lower number = higher priority. Colonists pick tasks based on their priority settings. Use "Copy Priorities From..." to quickly match another colonist's setup.
 
 Needs - Hunger and Rest decay over time. When critical (<20), colonists interrupt work to eat or sleep.
 
@@ -17,28 +17,57 @@ Thoughts - Temporary mood modifiers from events (good meals, nice rooms, deaths,
 
 Traits - Permanent modifiers assigned at spawn: Hard Worker, Lazy, Night Owl, Early Bird, Green Thumb, Iron Stomach, Socialite, Loner, Optimist, Pessimist, Tough, Pyromaniac, Gourmand.
 
-Drafting - Manually control colonists. Drafted colonists ignore AI and move where you right-click. Select multiple with click-drag, then Draft All.
+Drafting - Manually control colonists. Drafted colonists ignore AI and move where you right-click. Select multiple with click-drag. Use Draft All/Undraft All buttons for quick combat response. Drafted colonists pulse red on the map.
+
+Rally Point - Right-click with drafted colonists to send them all to a location (with spread positioning). A red flag (⚑) marks the destination.
+
+Fleeing - Colonists automatically flee combat when HP drops below 20. They disengage once the threat is 8+ tiles away.
 
 Skills - Building, Farming, Crafting, Cooking, Hauling. Higher skill = faster work completion for that task type.
 
-### Building
-Wall (&#x2588;) - Blocks movement (50 HP). Forms rooms when enclosing an area with doors. Auto-repairs when damaged.
+Equipment Slots - Colonists have 4 equipment slots: Weapon, Armor, Tool, and Artifact. Use "Auto-equip Best" to quickly gear up a colonist with the best available items.
 
-Floor (&#xB7;) - Cosmetic. Makes rooms nicer.
+Active Effects - Temporary buffs from potions (speed, healing). Shown in colonist info with remaining duration.
+
+### Equipment
+
+Weapons - Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22), Runic Pick (12, +40% mining speed), Void Blade (30). Weapons can provide task-specific speed bonuses in addition to damage.
+
+Armor - Void Armor (-30% damage taken). Craft at workbench with void essence.
+
+Tools - Equippable items that boost work speed. Stone Pickaxe (+20% mining), Runic Pickaxe (+50% mining), Woodcutter's Axe (+30% chopping), Harvesting Sickle (+25% farming).
+
+Artifacts - Magical items in a dedicated slot. Boots of Haste (+30% movement speed). More artifacts planned for future updates.
+
+### Potions
+Health Potion - Auto-consumed when colonist HP drops below 50%. Heals 50 HP. 200 tick cooldown between uses.
+
+Speed Potion - Auto-consumed when a colonist has active tasks. +50% move speed, +30% work speed for 100 ticks. 400 tick cooldown.
+
+Potions are brewed at the cauldron and stored in the colony stockpile. Colonists consume them automatically when trigger conditions are met.
+
+### Building
+Build Menu Categories - Buildings are organized into 5 tabs: Walls & Floors, Furniture, Production, Defense, Arcane. Press Tab/Shift+Tab to cycle categories.
+
+Floor Replacement - You can build walls or furniture directly on top of floors without deconstructing first.
+
+Wall (█) - Blocks movement (50-90 HP depending on material). Forms rooms when enclosing an area with doors. Auto-repairs when damaged.
+
+Floor (·) - Cosmetic. Makes rooms nicer. Available in wood, stone, and brick.
 
 Door (+) - Allows colonist passage (30 HP). Blocks enemies. Acts as a room boundary.
+
+Fence (|) - Blocks movement (20 HP) like a wall but lighter to build.
 
 Bed (B) - Colonists sleep here. Assign beds for mood bonus ("slept in bed").
 
 Workbench (C) - Required for crafting recipes (planks, weapons, bricks).
 
-Cauldron (F) - Required for brewing recipes (meals from raw food/crops).
+Cauldron (F) - Required for cooking and brewing recipes (meals, potions).
 
 Storage Chest (S) - Increases colony storage sense.
 
-Torch (i) - Light source. Provides warmth in winter.
-
-Fence (|) - Blocks movement (20 HP) like a wall but lighter to build.
+Torch (i) - Light source. Provides warmth in winter. Drag-placeable.
 
 Arcanum (R) - Required for researching new magic. Colonists study here to unlock the tech tree.
 
@@ -77,16 +106,26 @@ Bricks - 2 stone -> 3 bricks.
 
 Weapons - Wooden Club (3 wood), Etched Axe (2 stone + 1 wood, needs Runecraft), Runic Blade (3 runite, needs Runeforging), Runic Pick (2 runite + 1 wood, needs Runeforging), Void Blade (5 void essence + 2 runite, needs Void Forging). Equip from colonist info panel dropdown.
 
-Void Armor - 4 void essence + 2 planks (needs Void Forging). -30% damage taken. Equip from colonist info panel dropdown.
+Tools - Stone Pickaxe (2 stone + 1 wood), Runic Pickaxe (2 runite + 1 stone, needs Runeforging), Woodcutter's Axe (3 wood + 1 stone), Harvesting Sickle (2 wood + 1 stone).
+
+Artifacts - Boots of Haste (3 runite + 2 planks, needs Runeforging).
+
+Potions - Health Potion (3 berries + 2 wheat), Speed Potion (2 corn + 2 potatoes + 1 berries).
+
+Void Armor - 4 void essence + 2 planks (needs Void Forging). -30% damage taken.
 
 Cooking - Converts raw crops/meat into food at the cauldron. Cooked meals give mood bonus. Raw food gives mood penalty (especially for Gourmand trait). Alchemy research adds +2 bonus food per meal.
+
+Bulk Crafting - Use the x5 button to queue 5 of the same recipe at once (stops early if resources run out).
+
+Auto-Cook - Set a food target in the Food & Potions craft tab. Automatically queues cooking when food drops below target.
 
 ### Resources
 Wood - Chop trees (T on map). Used in most buildings.
 
 Stone - Mine stone deposits (o on map). Used in structures and crafting.
 
-Runite - Rare magical ore found in rock clusters. Used for runic weapons.
+Runite - Rare magical ore found in rock clusters. Used for runic weapons and artifacts.
 
 Food - Consumed by colonists when hungry. Produced by cooking.
 
@@ -96,6 +135,8 @@ Void Essence - Dropped by wave enemies at the Void Nexus. Used for void-tier wea
 
 Global Stockpile - All resources are colony-wide. No physical hauling required.
 
+Stockpile Alerts - Resources flash red in the status bar when they drop below a threshold (default: wood/stone/food ≤ 5). Configure in CONFIG.STOCKPILE_ALERTS.
+
 ### Terrain
 Grass (.) - Standard terrain. Normal movement speed.
 
@@ -103,7 +144,24 @@ Dirt (,) - Standard terrain. Normal movement speed.
 
 Rock (#) - Slow terrain (4x move cost). Colonists can traverse but it takes much longer. Cannot build on rock. Animals and enemies cannot cross rock.
 
+Tall Rock (▲) - Impassable terrain. Nothing can cross. Generated as part of mountain ranges.
+
 Water (~) - Slow terrain (3x move cost). Cannot build on water. Animals and enemies cannot cross water.
+
+### Map Generation
+Generator Pipeline - Map generation uses a configurable pipeline of generator functions. Each generator can be enabled/disabled and tuned independently.
+
+Dirt Patches - Random patches of dirt terrain scattered across the grass base.
+
+Rock Formations - Clusters of rock terrain with stone and runite deposits.
+
+Mountain Ranges - Linear spines of tall rock (impassable) surrounded by regular rock. Creates natural chokepoints and barriers.
+
+Trees - Forests of varying density across the map.
+
+River - A winding river cutting across the map.
+
+Ruins - Pre-built structures (temples, watchtowers) placed during generation. Each block has a chance to decay (not be placed), creating an aged/ruined appearance. Ruins spawn at full HP.
 
 ### Seasons & Weather
 Year - 4 seasons, each ~600 ticks (~2 min real-time at 1x speed).
@@ -157,13 +215,20 @@ Colony Cap - Your colony can support 3 + (waves completed) colonists, max 12. Co
 
 Void Essence - Rare material dropped by wave enemies. Used to craft Void Blade, Void Armor, Void Wall, Void Turret, and Void Door.
 
-Void Wall (&#x2593;) - Reinforced wall (120 HP). Blocks movement. Requires Void Forging research.
+Void Wall (▓) - Reinforced wall (120 HP). Blocks movement. Requires Void Forging research.
 
-Void Door (&#x2592;) - Reinforced door (80 HP). Colonists pass through, enemies must break it. Requires Void Forging research.
+Void Door (▒) - Reinforced door (80 HP). Colonists pass through, enemies must break it. Requires Void Forging research.
 
 Void Turret (Y) - Upgraded sentinel. 20 damage, range 5. Consumes 5 mana. Requires Void Forging research.
 
 Tower Defense Strategy - Build walls/doors to funnel enemies, place turrets along the path, station drafted colonists at chokepoints. Turret beams show as * traveling to targets. During waves, colonists prioritize combat over other tasks.
+
+### Task System
+Task Types - Build, Mine, Chop, Deconstruct, Plant, Harvest, Craft, Cook. Each requires a specific skill.
+
+Unreachable Tasks - When multiple colonists fail to path to a task (e.g., surrounded by impassable terrain), the task is automatically cancelled after 3 failures.
+
+Task Display - The colonist info panel shows their current task with a clickable link to jump the camera to that location.
 
 ### Events
 Wanderer - A new colonist wants to join. More likely when colony is happy. Accept or reject.
@@ -193,7 +258,7 @@ Ley Channeling -> Mana Crystal, unlocks Luminance/Ember Magic/Arcane Infusion
 
 Alchemy -> +2 bonus food per cooked meal
 
-Runeforging -> Runic Blade, Runic Pick
+Runeforging -> Runic Blade, Runic Pick, Runic Pickaxe, Boots of Haste
 
 Warding -> Arcane Sentinel
 
@@ -210,6 +275,87 @@ Void Forging (requires Void Summoning + Runeforging) -> Void Blade, Void Armor, 
 ### Mana (Leylines)
 Net Mana - Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels, void turrets). If negative, all mana-powered buildings stop working.
 
+### Controls & Hotkeys
+
+#### Camera
+W / Arrow Up - Pan camera up.
+
+S / Arrow Down - Pan camera down.
+
+A / Arrow Left - Pan camera left.
+
+D / Arrow Right - Pan camera right.
+
++/= - Zoom in.
+
+\- - Zoom out.
+
+/ - Reset minimap size.
+
+#### Game Speed
+Space - Pause/Unpause.
+
+\> (Shift+.) - Speed up (max 5x).
+
+< (Shift+,) - Speed down (min 1x).
+
+#### Modes
+B - Toggle Build mode.
+
+Z - Toggle Farm Zone mode.
+
+G - Toggle Gather/Designate mode.
+
+Escape - Close open panel, or exit current mode back to normal.
+
+#### Mode-Specific
+Tab (Build mode) - Cycle to next build category.
+
+Shift+Tab (Build mode) - Cycle to previous build category.
+
+1-9, 0 (Build mode) - Select item by position within current category.
+
+Tab (Designate mode) - Switch between Chop and Mine.
+
+1-9 (Zone mode) - Select crop type.
+
+#### Panels
+P - Toggle Priority panel.
+
+C - Toggle Craft panel.
+
+R - Toggle Research panel.
+
+T - Toggle Taming panel.
+
+I - Toggle Inventory panel.
+
+, (comma) - Toggle Settings panel.
+
+#### Colonist Selection
+[ - Select previous colonist (centers camera).
+
+] - Select next colonist (centers camera).
+
+#### Mouse
+Left-click (normal mode) - Select colonist, animal, or tile. Drag to box-select multiple colonists.
+
+Right-click (normal mode) - Move drafted colonists to location / rally point (spreads formation if multiple).
+
+Left-click/drag (build mode) - Place structures in a line or area.
+
+Right-click/drag (build mode) - Deconstruct structures in an area.
+
+Left-click/drag (zone mode) - Designate farm zone.
+
+Right-click (zone mode) - Remove farm zone at tile.
+
+Left-click/drag (designate mode) - Mark trees for chopping or rocks for mining.
+
+Mouse hover - Shows tile tooltip with terrain, structure, resource, and designation info.
+
+Middle-click drag - Pan camera.
+
 ### Map Symbols
 . Grass
 
@@ -217,13 +363,15 @@ Net Mana - Generation (mana crystals) minus consumption (glowstones, enchanting 
 
 \# Rock (slow to cross)
 
+▲ Tall Rock (impassable)
+
 ~ Water (slow to cross)
 
 T Tree
 
 o Stone/Runite deposit
 
-@ Colonist
+@ Colonist (pulses red when drafted)
 
 R Raider
 
@@ -231,11 +379,13 @@ E Void Enemy (wave)
 
 V Void Nexus
 
-&#x2593; Void Wall
+▓ Void Wall
 
-&#x2592; Void Door
+▒ Void Door
 
 Y Void Turret
+
+⚑ Rally point (drafted colonist destination)
 
 \* Turret beam / combat effect
 

@@ -88,8 +88,21 @@ export class Renderer {
         for (const r of raiders) {
             if (r.hp > 0) entityMap.set(r.y * CONFIG.MAP_WIDTH + r.x, { char: 'R', color: TILE_COLORS.raider });
         }
+        const rallySet = new Map();
         for (const c of colonists) {
-            if (c.hp > 0) entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: c.nameColor || TILE_COLORS.colonist });
+            if (c.hp > 0) {
+                const drafted = c.drafted;
+                const pulse = drafted && (game.tick % 20 < 10);
+                entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: drafted ? (pulse ? '#ff4444' : '#ff8888') : (c.nameColor || TILE_COLORS.colonist) });
+                if (drafted && c.draftTarget) {
+                    rallySet.set(c.draftTarget.y * CONFIG.MAP_WIDTH + c.draftTarget.x, true);
+                }
+            }
+        }
+        for (const [key] of rallySet) {
+            if (!entityMap.has(key)) {
+                entityMap.set(key, { char: '⚑', color: '#ff4444' });
+            }
         }
 
         const portalMap = new Map();
