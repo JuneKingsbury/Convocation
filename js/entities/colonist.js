@@ -312,7 +312,7 @@ function updateIdle(colonist, game) {
             if (!colonist._failedTasks) colonist._failedTasks = {};
             colonist._failedTasks[task.id] = game.tick;
 
-            if (!task._unreachableFailers) task._unreachableFailers = new Set();
+            /*if (!task._unreachableFailers) task._unreachableFailers = new Set();
             task._unreachableFailers.add(colonist.id);
 
             if (task._unreachableFailers.size >= TASK_CONFIG.unreachableFailThreshold) {
@@ -323,7 +323,7 @@ function updateIdle(colonist, game) {
             } else if (!colonist._lastPathFailNotify || game.tick - colonist._lastPathFailNotify > TASK_CONFIG.unreachableCheckInterval) {
                 colonist._lastPathFailNotify = game.tick;
                 game.notifications.push({ text: `${colonist.name} can't reach ${task.type} task`, tick: game.tick, type: 'danger' });
-            }
+            }*/
         }
         return;
     }
