@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS } from '../core/config.js';
+import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, FOODSTUFFS } from '../core/config.js';
 import { getAvailableRecipes } from '../systems/crafting.js';
 import { CROP_RESEARCH_REQS } from '../systems/farming.js';
 
@@ -108,6 +108,16 @@ export class UI {
             }
         });
 
+        this.elements.inventoryPanel.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-reserve-food]');
+            if (btn) {
+                const food = btn.dataset.reserveFood;
+                const res = this.game.resources.reservedFoodstuffs;
+                res[food] = !res[food];
+                this.updateInventoryPanel();
+            }
+        });
+
         document.addEventListener('mousedown', (e) => {
             const closeBtn = e.target.closest('[data-panel-close]');
             if (!closeBtn) return;
@@ -136,6 +146,7 @@ export class UI {
         this.updateEventLog();
         if (this.inventoryVisible) this.updateInventoryPanel();
         if (this.tamingPanelVisible) this.updateTamingPanel();
+        if (this._viewingRiftGate) this._refreshRiftGateInfo();
     }
 
     updateMinimapControls() {
@@ -258,6 +269,61 @@ export class UI {
         return `${enemies} enemies, ${hp} HP each`;
     }
 
+    _refreshRiftGateInfo() {
+        if (!this.game.exploration || this.game.exploration.expeditions.length === 0) return;
+        const riftSection = this.elements.infoPanel.querySelector('[data-rift-info]');
+        if (!riftSection) return;
+        const html = this._buildRiftGateInnerHtml();
+        if (html !== riftSection.innerHTML) {
+            riftSection.innerHTML = html;
+        }
+    }
+
+    _buildRiftGateHtml() {
+        return `<div data-rift-info="1">${this._buildRiftGateInnerHtml()}</div>`;
+    }
+
+    _buildRiftGateInnerHtml() {
+        const expl = this.game.exploration;
+        let html = `<div class="info-row" style="color:#33ccff;font-weight:bold;">Rift Gate</div>`;
+
+        if (expl.expeditions.length > 0) {
+            for (const exp of expl.expeditions) {
+                if (exp.status === 'gathering') {
+                    const names = exp.partyIds.map(id => {
+                        const c = this.game.colonists.find(col => col.id === id);
+                        return c ? c.name : '?';
+                    }).join(', ');
+                    html += `<div class="info-row" style="color:#aaddff;">${exp.dimensionName} — assembling</div>`;
+                    html += `<div class="info-row" style="color:#888;">Party: ${names}</div>`;
+                } else {
+                    const elapsed = this.game.tick - exp.startTick;
+                    const totalDur = Math.floor(exp.duration * 1.2);
+                    const pct = Math.min(100, Math.floor((elapsed / totalDur) * 100));
+                    html += `<div class="info-row" style="color:#aaddff;">${exp.dimensionName} — ${exp.status} (${pct}%)</div>`;
+                    html += `<div class="info-row" style="color:#888;">Party: ${exp.partySnapshot.map(p => p.name).join(', ')}</div>`;
+                }
+            }
+        }
+
+        const dims = expl.getAvailableDimensions(this.game);
+        if (dims.length > 0 && this.game.power.powered) {
+            html += `<div class="info-row" style="margin-top:6px;"><b>Send Expedition:</b></div>`;
+            for (const dim of dims) {
+                html += `<div class="info-actions"><button onclick="window.game.showExpeditionSetup('${dim.key}')" style="background:#1a4466;color:#88ddff;">${dim.name} (Diff ${dim.difficulty})</button></div>`;
+            }
+        } else if (!this.game.power.powered) {
+            html += `<div class="info-row" style="color:#ff4444;">No mana — cannot send expeditions</div>`;
+        }
+
+        if (expl.completedExpeditions.length > 0) {
+            const last = expl.completedExpeditions[expl.completedExpeditions.length - 1];
+            html += `<div class="info-row" style="margin-top:6px;color:#666;">Last: ${last.dimensionName} — ${last.log[last.log.length - 1] || ''}</div>`;
+        }
+
+        return html;
+    }
+
     getStructureDescription(structure) {
         const def = BUILDINGS[structure];
         if (!def) return '';
@@ -357,6 +423,7 @@ export class UI {
 
     showColonistInfo(colonist) {
         this._switchToInfoTab();
+        this._viewingRiftGate = false;
         this.elements.infoPanel.innerHTML = this.buildColonistInfoHtml(colonist);
     }
 
@@ -482,6 +549,7 @@ export class UI {
 
     showTileInfo(tile, x, y) {
         this._switchToInfoTab();
+        this._viewingRiftGate = (tile.structure === 'rift_gate');
         let html = `<div class="info-header">Tile (${x},${y})</div>`;
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
         if (tile.structure) {
@@ -538,11 +606,16 @@ export class UI {
             }
         }
 
+        if (tile.structure === 'rift_gate') {
+            html += this._buildRiftGateHtml();
+        }
+
         this.elements.infoPanel.innerHTML = html;
     }
 
     showTileEntities(tile, x, y, colonists, animals, raiders = [], tamedAnimals = []) {
         this._switchToInfoTab();
+        this._viewingRiftGate = (tile.structure === 'rift_gate');
         let html = '';
 
         for (const r of raiders) {
@@ -652,6 +725,10 @@ export class UI {
                 html += `<div class="info-row">Next: Wave ${nextWave} (${this.getWavePreview(nextWave)})</div>`;
                 html += `<div class="info-actions"><button onclick="window.game.startWave()" style="background:#6622aa;color:white;">Start Wave ${nextWave}</button></div>`;
             }
+        }
+
+        if (tile.structure === 'rift_gate') {
+            html += this._buildRiftGateHtml();
         }
 
         this.elements.infoPanel.innerHTML = html;
@@ -827,6 +904,10 @@ export class UI {
         for (const c of this.game.colonists) {
             if (c.hp <= 0) {
                 html += `<div class="hud-colonist dead"><span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> <span style="color:#cc4444">DEAD</span></div>`;
+                continue;
+            }
+            if (c.onExpedition) {
+                html += `<div class="hud-colonist" data-colonist-id="${c.id}"><span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> <span style="color:#33ccff">EXPLORING</span></div>`;
                 continue;
             }
             const moodLevel = getMoodLabel(c.mood);
@@ -1157,9 +1238,30 @@ export class UI {
         let html = '<div class="panel-close" data-panel-close="inventory">&times;</div><h3>Inventory</h3>';
 
         html += '<div class="info-row" style="color:#88cc88;margin-bottom:4px;"><b>Resources:</b></div>';
+
+        const foodChestCount = this.game.mapIndex ? this.game.mapIndex.getStructurePositions('food_chest').size : 0;
+        const iceBoxCount = this.game.mapIndex ? this.game.mapIndex.getStructurePositions('ice_box').size : 0;
+        const noPower = this.game.power && !this.game.power.powered;
+        if (foodChestCount > 0 || iceBoxCount > 0) {
+            let reduction = Math.min(0.6, foodChestCount * 0.15);
+            if (!noPower) reduction += iceBoxCount * 0.4;
+            reduction = Math.min(0.9, reduction);
+            const pct = Math.round(reduction * 100);
+            const seasonLabel = this.game.weather.season === 'summer' ? ' (summer +50% rot)' : this.game.weather.season === 'winter' ? ' (winter -50% rot)' : '';
+            html += `<div class="info-row" style="color:#aa8844;font-size:0.9em;">Food preservation: -${pct}% spoilage${seasonLabel}</div>`;
+        }
+
+        const reserved = this.game.resources.reservedFoodstuffs;
         for (const [key, amount] of Object.entries(r)) {
             if (amount <= 0) continue;
-            html += `<div class="inv-row"><span class="inv-name">${key.replace(/_/g, ' ')}</span><span class="inv-amount">${amount}</span></div>`;
+            const isFood = FOODSTUFFS.includes(key);
+            const isReserved = reserved[key];
+            let extra = '';
+            if (isFood) {
+                const cls = isReserved ? 'inv-reserve active' : 'inv-reserve';
+                extra = `<button class="${cls}" data-reserve-food="${key}" title="${isReserved ? 'Unreserve — allow cooking' : 'Reserve — protect from cooking'}">${isReserved ? '🔒' : '🔓'}</button>`;
+            }
+            html += `<div class="inv-row"><span class="inv-name">${key.replace(/_/g, ' ')}</span>${extra}<span class="inv-amount">${amount}</span></div>`;
         }
 
         if (weapons.length > 0) {
@@ -1230,7 +1332,10 @@ export class UI {
             }
         }
 
-        this.elements.inventoryPanel.innerHTML = html;
+        if (html !== this._lastInvHtml) {
+            this._lastInvHtml = html;
+            this.elements.inventoryPanel.innerHTML = html;
+        }
     }
 
     toggleTamingPanel() {

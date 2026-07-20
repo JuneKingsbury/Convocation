@@ -428,6 +428,7 @@ body {
     overflow: hidden;
     transition: filter 0.2s;
     min-width: 0;
+    position: relative;
 }
 
 #game.paused {
@@ -1198,6 +1199,19 @@ body {
     line-height: 1.4;
 }
 .inv-delete:hover { background: #442222; border-color: #cc4444; }
+
+.inv-reserve {
+    background: transparent;
+    border: 1px solid #444;
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 0 4px;
+    margin-left: 6px;
+    font-size: 0.85em;
+    line-height: 1.4;
+}
+.inv-reserve.active { border-color: #cc8844; }
+.inv-reserve:hover { background: #333; }
 
 
 #inventory-panel {

@@ -29,6 +29,8 @@ export function saveGame(game) {
             tools: game.resources.tools,
             artifacts: game.resources.artifacts,
             potions: game.resources.potions,
+            _decayAccumulators: game.resources._decayAccumulators,
+            reservedFoodstuffs: game.resources.reservedFoodstuffs,
         },
 
         weather: {
@@ -63,6 +65,11 @@ export function saveGame(game) {
 
         events: {
             cooldowns: game.events.cooldowns,
+        },
+
+        exploration: {
+            expeditions: game.exploration.expeditions,
+            completedExpeditions: game.exploration.completedExpeditions,
         },
 
         research: {
@@ -114,6 +121,8 @@ export function loadGame(game) {
     game.resources.tools = data.resources.tools || [];
     game.resources.artifacts = data.resources.artifacts || [];
     game.resources.potions = data.resources.potions || [];
+    game.resources._decayAccumulators = data.resources._decayAccumulators || {};
+    game.resources.reservedFoodstuffs = data.resources.reservedFoodstuffs || {};
 
     game.weather.season = data.weather.season;
     game.weather.seasonIndex = data.weather.seasonIndex;
@@ -145,6 +154,11 @@ export function loadGame(game) {
 
     game.research.completed = new Set(data.research.completed);
     game.research.studyPoints = data.research.studyPoints || 0;
+
+    if (data.exploration) {
+        game.exploration.expeditions = data.exploration.expeditions || [];
+        game.exploration.completedExpeditions = data.exploration.completedExpeditions || [];
+    }
 
     game.taskQueue.tasks = data.tasks;
     game.taskQueue.syncIdCounter();
@@ -235,7 +249,7 @@ function deserializeMap(map, data) {
             const tile = map[y][x];
             tile.terrain = t.t;
             tile.passable = t.p === 1;
-            tile.structure = t.s || null;
+            tile.structure = t.s === 'storage_chest' ? 'food_chest' : (t.s || null);
             tile.structureHp = t.shp !== undefined ? t.shp : undefined;
             tile.resource = t.r || null;
             tile.designation = t.d || null;

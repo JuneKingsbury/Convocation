@@ -1,6 +1,10 @@
-import { CONFIG, FOODSTUFFS, WORK_CONFIG } from '../core/config.js';
+import { CONFIG, FOODSTUFFS, FOOD_DECAY_CONFIG, WORK_CONFIG } from '../core/config.js';
 
 export { FOODSTUFFS };
+
+const FOODSTUFFS_BY_DECAY = [...FOODSTUFFS].sort(
+    (a, b) => (FOOD_DECAY_CONFIG.decayMultipliers[b] || 1) - (FOOD_DECAY_CONFIG.decayMultipliers[a] || 1)
+);
 
 export class ResourceManager {
     constructor() {
@@ -10,6 +14,8 @@ export class ResourceManager {
         this.tools = [];
         this.artifacts = [];
         this.potions = [];
+        this._decayAccumulators = {};
+        this.reservedFoodstuffs = {};
     }
 
     getFoodstuffTotal() {
@@ -43,12 +49,22 @@ export class ResourceManager {
 
     deductFoodstuffs(amount) {
         let remaining = amount;
-        for (const item of FOODSTUFFS) {
+        for (const item of FOODSTUFFS_BY_DECAY) {
             if (remaining <= 0) break;
+            if (this.reservedFoodstuffs[item]) continue;
             const available = this.stockpile[item] || 0;
             const take = Math.min(available, remaining);
             this.stockpile[item] -= take;
             remaining -= take;
+        }
+        if (remaining > 0) {
+            for (const item of FOODSTUFFS_BY_DECAY) {
+                if (remaining <= 0) break;
+                const available = this.stockpile[item] || 0;
+                const take = Math.min(available, remaining);
+                this.stockpile[item] -= take;
+                remaining -= take;
+            }
         }
     }
 
@@ -117,5 +133,45 @@ export class ResourceManager {
         }
         wealth += this.weapons.length * WORK_CONFIG.wealthPerWeapon;
         return wealth;
+    }
+
+    decayFood(game) {
+        const season = game.weather.season;
+        const seasonMult = FOOD_DECAY_CONFIG.seasonDecayMult[season] || 1.0;
+
+        const foodChestCount = game.mapIndex ? game.mapIndex.getStructurePositions('food_chest').size : 0;
+        const iceBoxCount = game.mapIndex ? game.mapIndex.getStructurePositions('ice_box').size : 0;
+        const noPower = game.power && !game.power.powered;
+
+        let reduction = Math.min(FOOD_DECAY_CONFIG.foodChestMaxReduction, foodChestCount * FOOD_DECAY_CONFIG.foodChestReduction);
+        if (!noPower) {
+            reduction += iceBoxCount * FOOD_DECAY_CONFIG.iceBoxReduction;
+        }
+        reduction = Math.min(FOOD_DECAY_CONFIG.maxTotalReduction, reduction);
+        const storageMult = 1.0 - reduction;
+
+        const decayableItems = [...FOODSTUFFS, 'food'];
+        let totalLost = 0;
+
+        for (const item of decayableItems) {
+            const qty = this.stockpile[item] || 0;
+            if (qty <= 0) continue;
+
+            const itemMult = FOOD_DECAY_CONFIG.decayMultipliers[item] || 1.0;
+            const decayRate = FOOD_DECAY_CONFIG.baseDecayRate * itemMult * seasonMult * storageMult;
+            const decayAmount = qty * decayRate;
+
+            if (!this._decayAccumulators[item]) this._decayAccumulators[item] = 0;
+            this._decayAccumulators[item] += decayAmount;
+
+            const toRemove = Math.floor(this._decayAccumulators[item]);
+            if (toRemove > 0) {
+                this.stockpile[item] = Math.max(0, qty - toRemove);
+                this._decayAccumulators[item] -= toRemove;
+                totalLost += toRemove;
+            }
+        }
+
+        return totalLost;
     }
 }

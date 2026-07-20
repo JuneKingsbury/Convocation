@@ -134,6 +134,10 @@ export class PowerSystem {
                 target.hp -= damage;
                 const color = t.type === 'void_turret' ? COMBAT_VISUALS.shotColorVoid : COMBAT_VISUALS.shotColorArcane;
                 this.activeShots.push({ fromX: t.x, fromY: t.y, toX: target.x, toY: target.y, color, ttl: 2 });
+                game.overlays.push({
+                    type: 'beam', fromX: t.x, fromY: t.y, toX: target.x, toY: target.y,
+                    color, width: t.type === 'void_turret' ? 2 : 1.5, alpha: 0.8, ttl: 2,
+                });
             }
         }
     }

@@ -50,9 +50,9 @@ export const TERRAIN = {
     dirt:   { char: ',', color: '#bb8850', bg: '#2a1e14', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
     sand:   { char: '∙', color: '#e0c878', bg: '#2a2618', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
     gravel: { char: ':', color: '#a09888', bg: '#1e1c1a', moveCost: 1, passable: { colonist: true, animal: true, enemy: true } },
-    rock:      { char: '#', color: '#999', bg: '#222', moveCost: 4, passable: { colonist: true, animal: false, enemy: false } },
+    rock:      { char: '#', color: '#999', bg: '#222', moveCost: 4, passable: { colonist: true, animal: false, enemy: true } },
     tall_rock: { char: '▲', color: '#777', bg: '#1a1a1a', moveCost: Infinity, passable: { colonist: false, animal: false, enemy: false } },
-    water:     { char: '~', color: '#55aaff', bg: '#0a1a2e', moveCost: 3, passable: { colonist: true, animal: false, enemy: false } },
+    water:     { char: '~', color: '#55aaff', bg: '#0a1a2e', moveCost: 3, passable: { colonist: true, animal: false, enemy: true } },
 };
 
 // To add a harvestable resource: add entry here. Rendering, gathering, and yields handled automatically.
@@ -124,6 +124,7 @@ export const THOUGHTS = {
     crops_died:        { text: 'Crops died', moodEffect: -15, duration: 300 },
     cold_snap:         { text: 'Freezing cold snap', moodEffect: -12, duration: 300 },
     inspired:          { text: 'Feeling inspired!', moodEffect: 25, duration: 300 },
+    food_spoiled:      { text: 'Food is rotting', moodEffect: -5, duration: 150 },
 };
 
 // To add a crop: add entry here, it auto-appears in zone mode. Set 'research' to gate behind tech.
@@ -153,7 +154,7 @@ export const BUILDINGS = {
     brick_floor:       { char: '·', color: '#b2463c', bg: '#3a1a18', cost: { bricks: 1 }, work: 6, structureType: 'floor', category: 'Walls & Floors', description: 'Cosmetic flooring. Makes rooms nicer.' },
     torch:             { char: 'i', color: '#ffcc00', cost: { wood: 1 }, work: 4, structureType: 'furniture', category: 'Furniture', dragPlace: true, lightRadius: 5, description: 'Light source. Provides warmth in winter.' },
     bed:               { char: 'B', color: '#8855aa', cost: { wood: 5 }, work: 25, structureType: 'furniture', category: 'Furniture', description: 'Colonists sleep here. Assign for a mood bonus.' },
-    storage_chest:     { char: 'S', color: '#997744', cost: { wood: 4 }, work: 20, structureType: 'furniture', category: 'Furniture', description: 'Increases colony storage capacity.' },
+    food_chest:        { char: 'S', color: '#997744', cost: { planks: 4, stone: 2 }, work: 25, structureType: 'furniture', category: 'Furniture', description: 'Preserves food — reduces spoilage by 15% per chest (stacks up to 60%).' },
     workbench:         { char: 'C', color: '#bb8833', cost: { wood: 5, stone: 2 }, work: 30, structureType: 'furniture', category: 'Production', description: 'Required for crafting recipes (planks, weapons, bricks).' },
     cauldron:          { char: 'F', color: '#ff6633', cost: { stone: 3, wood: 1 }, work: 18, structureType: 'furniture', category: 'Production', description: 'Required for cooking meals from raw food and crops.' },
     arcanum:           { char: 'R', color: '#44aaff', cost: { wood: 5, stone: 3, planks: 2 }, work: 40, structureType: 'furniture', category: 'Production', description: 'Colonists study here to generate research points.' },
@@ -167,6 +168,8 @@ export const BUILDINGS = {
     glowstone:         { char: 'L', color: '#ffff88', cost: { planks: 2, stone: 1 }, work: 14, structureType: 'furniture', category: 'Arcane', lightRadius: 10, research: 'luminance', power: { consumes: 2, radius: 5 }, description: 'Mana-powered light, radius 5. Consumes 2 mana.' },
     enchanting_table:  { char: 'P', color: '#bb88ff', cost: { planks: 4, stone: 3 }, work: 35, structureType: 'furniture', category: 'Arcane', research: 'arcane_infusion', power: { consumes: 4, speedMult: 2.0 }, description: '2x crafting speed. Consumes 4 mana.' },
     ember_ward:        { char: 'H', color: '#ff8844', cost: { stone: 4, planks: 2 }, work: 28, structureType: 'furniture', category: 'Arcane', research: 'ember_magic', power: { consumes: 3, warmRadius: 4 }, description: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.' },
+    ice_box:           { char: 'I', color: '#88ccff', cost: { runite: 2, stone: 4, planks: 2, void_essence: 2 }, work: 40, structureType: 'furniture', category: 'Arcane', research: 'alchemy', power: { consumes: 1 }, description: 'Magically chills food — reduces spoilage by 40%. Consumes 1 mana.' },
+    rift_gate:         { char: 'Ω', color: '#33ccff', cost: { runite: 4, stone: 6, planks: 4, void_essence: 6 }, work: 60, structureType: 'furniture', category: 'Arcane', passable: { colonist: false, animal: false, enemy: false }, research: 'planar_rift', power: { consumes: 6 }, description: 'Send exploration parties to alternate dimensions. Consumes 6 mana.' },
 };
 
 // Auto-derived from BUILDINGS (terrain chars/colors + building chars/colors merged)
@@ -505,6 +508,8 @@ export const RESEARCH = {
     masterwork: { name: 'Masterwork', cost: 220, requires: ['runeforging', 'arcane_infusion'], description: 'Forge legendary enchanted weapons' },
     void_summoning: { name: 'Void Summoning', cost: 150, requires: ['ley_channeling', 'warding'], description: 'Open portals to summon waves of enemies' },
     void_forging: { name: 'Void Forging', cost: 180, requires: ['void_summoning', 'runeforging'], description: 'Forge void essence into powerful gear' },
+    planar_rift: { name: 'Planar Rift', cost: 200, requires: ['void_summoning', 'ley_channeling'], description: 'Open stable rifts for exploration expeditions' },
+    deep_delving: { name: 'Deep Delving', cost: 250, requires: ['planar_rift'], description: 'Access deeper, more dangerous dimensions' },
 };
 
 // Auto-derive unlocks from the 'research' field on buildings, recipes, and crops.
@@ -529,6 +534,73 @@ export const TAMED_ANIMALS = Object.fromEntries(
 
 // Raw food ingredients usable in cooking. Add new ones here rather than in resources.js.
 export const FOODSTUFFS = ['wheat', 'berries', 'corn', 'potatoes', 'meat', 'eggs', 'milk'];
+
+// Food spoilage system. Percentage of stockpile lost per decay interval, modulated by item type,
+// season, and storage buildings. Cooking uses fast-rotting food first (sorted by decayMultipliers).
+export const FOOD_DECAY_CONFIG = {
+    decayInterval: 50,
+    baseDecayRate: 0.02,
+    decayMultipliers: {
+        milk: 2.5,
+        berries: 2.0,
+        meat: 1.8,
+        eggs: 1.5,
+        potatoes: 0.7,
+        corn: 0.6,
+        wheat: 0.5,
+        food: 0.3,
+    },
+    seasonDecayMult: {
+        spring: 1.0,
+        summer: 1.5,
+        autumn: 1.0,
+        winter: 0.5,
+    },
+    foodChestReduction: 0.15,
+    foodChestMaxReduction: 0.6,
+    iceBoxReduction: 0.4,
+    maxTotalReduction: 0.9,
+};
+
+// Exploration / alternate dimensions. Used by exploration.js.
+export const DIMENSIONS = {
+    crystal_caves: {
+        name: 'Crystal Caves', difficulty: 1,
+        duration: [150, 250], encounters: 3,
+        loot: [
+            { resource: 'stone', weight: 40, amount: [5, 12] },
+            { resource: 'runite', weight: 30, amount: [2, 5] },
+            { resource: 'void_essence', weight: 10, amount: [1, 3] },
+        ],
+        enemies: { hp: [40, 60], damage: [5, 8], count: [2, 4] },
+    },
+    verdant_depths: {
+        name: 'Verdant Depths', difficulty: 1,
+        duration: [100, 180], encounters: 2,
+        loot: [
+            { resource: 'wood', weight: 50, amount: [8, 15] },
+            { resource: 'wheat', weight: 20, amount: [5, 10] },
+            { resource: 'berries', weight: 20, amount: [4, 8] },
+        ],
+        enemies: { hp: [30, 50], damage: [4, 6], count: [1, 3] },
+    },
+    shadow_realm: {
+        name: 'Shadow Realm', difficulty: 2,
+        duration: [250, 400], encounters: 5,
+        loot: [
+            { resource: 'void_essence', weight: 40, amount: [3, 7] },
+            { resource: 'runite', weight: 25, amount: [3, 6] },
+        ],
+        enemies: { hp: [80, 120], damage: [8, 14], count: [3, 6] },
+        research: 'deep_delving',
+    },
+};
+
+export const EXPLORATION_CONFIG = {
+    returnTimeMult: 1.2,
+    encounterSpacing: 0.2,
+    baseFistDamage: 5,
+};
 
 // Wave defense (void nexus) tuning. Used by waves.js.
 export const WAVE_CONFIG = {
@@ -623,7 +695,7 @@ export const RENDER_CONFIG = {
 export const PATHFINDING_CONFIG = {
     maxNodes: 1500,              // A* node limit for colonist pathfinding
     raiderRepathInterval: 15,    // ticks before raiders recalculate their path
-    raiderSearchRadius: 50,      // how far raiders scan for colonists
+    raiderSearchRadius: 100,     // how far raiders scan for colonists
     breakableCostPenalty: 10,    // extra path cost for breakable structures (makes raiders prefer open routes)
 };
 

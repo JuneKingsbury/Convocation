@@ -1,5 +1,6 @@
 import { CONFIG, TILE_COLORS, BUILDINGS, RENDER_CONFIG, COMBAT_VISUALS } from '../core/config.js';
 import { getTileChar, getTileColor, getTileBg } from '../world/map.js';
+import { OverlayRenderer } from './overlay-renderer.js';
 
 export class Renderer {
     constructor(container) {
@@ -10,6 +11,7 @@ export class Renderer {
         container.innerHTML = '';
         container.appendChild(this.canvas);
         this.ctx = this.canvas.getContext('2d', { alpha: false });
+        this.overlayRenderer = new OverlayRenderer(container);
 
         this.charWidth = 0;
         this.charHeight = 0;
@@ -39,6 +41,7 @@ export class Renderer {
             this.ctx.font = `${this.fontSize}px 'Courier New', monospace`;
             this.ctx.textBaseline = 'top';
         }
+        this.overlayRenderer.resize(w, h);
         this._lastViewportW = CONFIG.VIEWPORT_WIDTH;
         this._lastViewportH = CONFIG.VIEWPORT_HEIGHT;
     }
@@ -90,7 +93,7 @@ export class Renderer {
         }
         const rallySet = new Map();
         for (const c of colonists) {
-            if (c.hp > 0) {
+            if (c.hp > 0 && !c.onExpedition) {
                 const drafted = c.drafted;
                 const pulse = drafted && (game.tick % 20 < 10);
                 entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: drafted ? (pulse ? '#ff4444' : '#ff8888') : (c.nameColor || TILE_COLORS.colonist) });
@@ -154,6 +157,10 @@ export class Renderer {
 
                 if (tile.designation) {
                     color = TILE_COLORS[`designation_${tile.designation.type}`] || '#ffff00';
+                }
+
+                if (tile.structure === 'rift_gate' && game.exploration && game.exploration.expeditions.length > 0) {
+                    color = game.tick % 20 < 10 ? '#33ccff' : '#1a6688';
                 }
 
                 const tileKey = wy * CONFIG.MAP_WIDTH + wx;
@@ -255,6 +262,8 @@ export class Renderer {
                 }
             }
         }
+
+        this.overlayRenderer.render(game, cw, ch, game.camera);
     }
 
     _getLightSources(game, camera) {

@@ -64,6 +64,8 @@ export function createColonist(x, y, skillBias, existingNames = []) {
 }
 
 export function updateColonist(colonist, game) {
+    if (colonist.onExpedition) return;
+
     updateNeeds(colonist, game);
     updateThoughts(colonist, game);
     colonist.mood = computeMood(colonist);
@@ -260,6 +262,8 @@ function tickPotionEffects(colonist, game) {
 }
 
 function updateIdle(colonist, game) {
+    if (colonist.expeditionPending) return;
+
     if (colonist.drafted) {
         colonist.state = 'drafted';
         return;
@@ -359,6 +363,10 @@ function updateMoving(colonist, game) {
         return;
     }
     if (colonist.path.length === 0) {
+        if (colonist._expeditionMove) {
+            colonist.state = 'idle';
+            return;
+        }
         if (colonist._sleepAfterMove) {
             delete colonist._sleepAfterMove;
             colonist.state = 'sleeping';

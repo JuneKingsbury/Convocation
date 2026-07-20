@@ -1,4 +1,4 @@
-import { CONFIG, RESEARCH, BUILDINGS } from './config.js';
+import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG } from './config.js';
 import { generateMap } from '../world/map.js';
 import { Camera } from '../ui/camera.js';
 import { Renderer } from '../ui/renderer.js';
@@ -18,6 +18,7 @@ import { Minimap } from '../ui/minimap.js';
 import { ResearchSystem, updateResearch } from '../systems/research.js';
 import { updateTamedAnimals, designateTame } from '../entities/taming.js';
 import { PowerSystem } from '../systems/power.js';
+import { ExplorationSystem } from '../systems/exploration.js';
 import { WaveSystem } from '../entities/waves.js';
 import { EventLog } from '../ui/eventlog.js';
 import { saveGame, loadGame, hasSave, exportSave, importSave } from './save.js';
@@ -50,6 +51,7 @@ class Game {
         this.research = new ResearchSystem();
         this.power = new PowerSystem();
         this.waves = new WaveSystem();
+        this.exploration = new ExplorationSystem();
         this.eventLog = new EventLog();
 
         this.colonists = [];
@@ -57,6 +59,7 @@ class Game {
         this.raiders = [];
         this.tamedAnimals = [];
         this.combatEffects = [];
+        this.overlays = [];
         this.notifications = [];
         this.cursor = null;
         this.selectedColonist = null;
@@ -165,6 +168,13 @@ class Game {
             this.weather.applySnow(this.map);
         }
 
+        if (this.tick % FOOD_DECAY_CONFIG.decayInterval === 0) {
+            const lost = this.resources.decayFood(this);
+            if (lost >= 5) {
+                this.eventLog.add(this, `${lost} food spoiled`, 'warning', null);
+            }
+        }
+
         if (this.roomsDirty) {
             detectRooms(this.map);
             this.mapIndex.rebuild(this.map);
@@ -194,10 +204,21 @@ class Game {
         }
 
         this.combatEffects = this.combatEffects.filter(e => e.ttl-- > 0);
+        this.overlays = this.overlays.filter(o => o.ttl !== undefined && o.ttl-- > 0);
+
+        for (const c of this.colonists) {
+            if (c.hp > 0 && c.state === 'working' && c.workProgress > 0) {
+                this.overlays.push({
+                    type: 'progress_bar', x: c.x, y: c.y,
+                    progress: c.workProgress, color: '#44cc44', bgColor: '#222222',
+                });
+            }
+        }
 
         updateWildlife(this);
         this.combat.update(this);
         this.waves.update(this);
+        this.exploration.update(this);
         this.events.update(this);
         updateFires(this);
 
@@ -415,6 +436,37 @@ class Game {
             this.notifications.push({ text: 'A wave is already in progress!', tick: this.tick, type: 'danger' });
         } else {
             this.notifications.push({ text: 'Build a Void Nexus first!', tick: this.tick, type: 'danger' });
+        }
+    }
+
+    showExpeditionSetup(dimensionKey) {
+        const available = this.colonists.filter(c => c.hp > 0 && !c.onExpedition && !c.drafted);
+        if (available.length === 0) {
+            this.notifications.push({ text: 'No colonists available for expedition', tick: this.tick, type: 'danger' });
+            return;
+        }
+        let html = `<div class="info-row" style="color:#33ccff;font-weight:bold;">Select Party</div>`;
+        html += `<div class="info-row" style="color:#888;">Choose colonists to send:</div>`;
+        for (const c of available) {
+            const weaponInfo = c.weapon ? ` (${c.weapon.name})` : ' (unarmed)';
+            html += `<div class="info-row"><label><input type="checkbox" class="exp-check" value="${c.id}"> ${c.name}${weaponInfo} HP:${c.hp}/${c.maxHp}</label></div>`;
+        }
+        html += `<div class="info-actions"><button onclick="window.game.launchExpedition('${dimensionKey}')" style="background:#1a4466;color:#88ddff;">Launch</button></div>`;
+        this.ui.elements.infoPanel.innerHTML = html;
+    }
+
+    launchExpedition(dimensionKey) {
+        const checks = this.ui.elements.infoPanel.querySelectorAll('.exp-check:checked');
+        const ids = Array.from(checks).map(cb => parseInt(cb.value));
+        if (ids.length === 0) {
+            this.notifications.push({ text: 'Select at least one colonist', tick: this.tick, type: 'danger' });
+            return;
+        }
+        const result = this.exploration.sendExpedition(this, dimensionKey, ids);
+        if (result) {
+            this.notifications.push({ text: `Expedition launched to ${result.dimensionName}!`, tick: this.tick, type: 'success' });
+        } else {
+            this.notifications.push({ text: 'Cannot launch expedition', tick: this.tick, type: 'danger' });
         }
     }
 

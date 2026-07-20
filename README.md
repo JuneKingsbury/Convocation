@@ -3,7 +3,7 @@ A Rimworld-like Arcane Colony Management Sim
 
 ## About
 
-Convocation is a browser-based ASCII colony management game inspired by Rimworld and Dwarf Fortress. Manage colonists, build defenses, research arcane technologies, and defend your settlement against waves of void creatures. Features include a full crafting system, beast taming, weather/seasons, mood/needs simulation, and tower defense mechanics.
+Convocation is a browser-based ASCII colony management game inspired by Rimworld and Dwarf Fortress. Manage colonists, build defenses, research arcane technologies, and defend your settlement against waves of void creatures. Features include a full crafting system, beast taming, weather/seasons, mood/needs simulation, tower defense mechanics, food spoilage, and interdimensional exploration.
 
 ## Glossary
 ### Colonists
@@ -22,6 +22,8 @@ Drafting - Manually control colonists. Drafted colonists ignore AI and move wher
 Rally Point - Right-click with drafted colonists to send them all to a location (with spread positioning). A red flag (⚑) marks the destination.
 
 Fleeing - Colonists automatically flee combat when HP drops below 20. They disengage once the threat is 8+ tiles away.
+
+Exploring - Colonists sent on expeditions via the Rift Gate disappear from the map and show "EXPLORING" in the HUD. They return automatically when the expedition concludes.
 
 Skills - Building, Farming, Crafting, Cooking, Hauling. Higher skill = faster work completion for that task type.
 
@@ -65,7 +67,7 @@ Workbench (C) - Required for crafting recipes (planks, weapons, bricks).
 
 Cauldron (F) - Required for cooking and brewing recipes (meals, potions).
 
-Storage Chest (S) - Increases colony storage sense.
+Food Chest (S) - Preserves food. Each reduces spoilage by 15% (stacks up to 60%).
 
 Torch (i) - Light source. Provides warmth in winter. Drag-placeable.
 
@@ -82,6 +84,10 @@ Enchanting Table (P) - 2x crafting speed. Consumes 4 mana.
 Ember Ward (H) - Warms nearby tiles (radius 4) in winter. Consumes 3 mana.
 
 Arcane Sentinel (X) - Auto-attacks hostile enemies in range 4, 12 dmg. Consumes 3 mana.
+
+Ice Box (I) - Magical preservation. Reduces food spoilage by 40% (stacks with Food Chests, max 90% combined). Consumes 1 mana.
+
+Rift Gate (Ω) - Opens portals to alternate dimensions for exploration. Consumes 6 mana. Requires Planar Rift research.
 
 ### Rooms
 Enclosed Room - An area fully surrounded by walls/fences with doors. Detected automatically. Colonists get mood bonuses for sleeping in rooms. Room size max: 100 tiles.
@@ -118,7 +124,7 @@ Cooking - Converts raw crops/meat into food at the cauldron. Cooked meals give m
 
 Bulk Crafting - Use the x5 button to queue 5 of the same recipe at once (stops early if resources run out).
 
-Auto-Cook - Set a food target in the Food & Potions craft tab. Automatically queues cooking when food drops below target.
+Auto-Cook - Set a food target in the Food & Potions craft tab. Automatically queues cooking when food drops below target. Uses the fastest-rotting food first (milk, berries before wheat).
 
 ### Resources
 Wood - Chop trees (T on map). Used in most buildings.
@@ -137,16 +143,27 @@ Global Stockpile - All resources are colony-wide. No physical hauling required.
 
 Stockpile Alerts - Resources flash red in the status bar when they drop below a threshold (default: wood/stone/food ≤ 5). Configure in CONFIG.STOCKPILE_ALERTS.
 
+### Food Spoilage
+Food Decay - All foodstuffs rot over time. Base decay rate: 2% per 50 ticks. Each food type has a decay multiplier: milk (2.5x), berries (2.0x), meat (1.8x), wheat (0.5x), cooked food (0.3x).
+
+Season Effects - Summer accelerates rot (1.5x). Winter slows it (0.5x).
+
+Storage Buildings - Food Chests (S) reduce decay by 15% each (max 60% from chests). Arcane Ice Boxes (I) reduce decay by 40% each (max 90% combined reduction). Ice Boxes consume 1 mana.
+
+Cooking Priority - When colonists cook, faster-rotting food is consumed first (milk/berries before wheat).
+
+Reserved Foodstuffs - Toggle the lock icon next to food items in the Inventory panel to reserve them. Reserved food won't be used for cooking (preserving it for alchemy or other specific recipes). Starving colonists override reservations as a last resort.
+
 ### Terrain
 Grass (.) - Standard terrain. Normal movement speed.
 
 Dirt (,) - Standard terrain. Normal movement speed.
 
-Rock (#) - Slow terrain (4x move cost). Colonists can traverse but it takes much longer. Cannot build on rock. Animals and enemies cannot cross rock.
+Rock (#) - Slow terrain (4x move cost). Colonists and enemies can traverse but it takes much longer. Cannot build on rock. Animals cannot cross rock.
 
 Tall Rock (▲) - Impassable terrain. Nothing can cross. Generated as part of mountain ranges.
 
-Water (~) - Slow terrain (3x move cost). Cannot build on water. Animals and enemies cannot cross water.
+Water (~) - Slow terrain (3x move cost). Cannot build on water. Animals cannot cross water. Colonists and enemies traverse slowly.
 
 ### Map Generation
 Generator Pipeline - Map generation uses a configurable pipeline of generator functions. Each generator can be enabled/disabled and tuned independently.
@@ -198,7 +215,7 @@ Weapons - Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22), Ru
 
 Armor - Void Armor (-30% damage taken). Craft at workbench with void essence. Equip from colonist info panel.
 
-Raids - Raiders attack periodically (disabled in Peaceful Mode). They scale with colony wealth. Raiders flee when reduced to 40% strength or after a timeout.
+Raids - Raiders attack periodically (disabled in Peaceful Mode). They scale with colony wealth. Raiders march toward the colony center, breaking through structures if needed. They flee when reduced to 40% strength or after a timeout.
 
 Peaceful Mode - Disables raids, wolves, and pyromaniac fires. Wave defense at the Void Nexus still functions.
 
@@ -222,6 +239,22 @@ Void Door (▒) - Reinforced door (80 HP). Colonists pass through, enemies must 
 Void Turret (Y) - Upgraded sentinel. 20 damage, range 5. Consumes 5 mana. Requires Void Forging research.
 
 Tower Defense Strategy - Build walls/doors to funnel enemies, place turrets along the path, station drafted colonists at chokepoints. Turret beams show as * traveling to targets. During waves, colonists prioritize combat over other tasks.
+
+### Exploration (Alternate Dimensions)
+Rift Gate (Ω) - Build after researching Planar Rift. Click it to open the expedition panel. Consumes 6 mana. Colonists physically walk to the gate before departing.
+
+Expeditions - Select colonists and a dimension, then launch. The party walks to the Rift Gate, enters the dimension, auto-explores, and returns with loot. Colonists are removed from the workforce and map while exploring.
+
+No Permadeath - Defeated colonists return at 1 HP. If the entire party is defeated, they return empty-handed. Returned low-HP colonists need rest and food to recover.
+
+Dimensions:
+- Crystal Caves (difficulty 1) - 150-250 ticks. Yields stone, runite. Available by default with Rift Gate.
+- Verdant Depths (difficulty 1) - 100-180 ticks. Yields wood, wheat, berries. Available by default.
+- Shadow Realm (difficulty 2) - 250-400 ticks. Yields void_essence, runite. Requires Deep Delving research.
+
+Auto-Combat - Encounters resolve automatically. Party damage is based on equipped weapons; armor reduces incoming damage. Surviving encounters earns loot.
+
+Live Status - The Rift Gate info panel updates in real-time showing expedition progress, combat log, and party status.
 
 ### Task System
 Task Types - Build, Mine, Chop, Deconstruct, Plant, Harvest, Craft, Cook. Each requires a specific skill.
@@ -272,8 +305,17 @@ Void Summoning (requires Ley Channeling + Warding) -> Void Nexus
 
 Void Forging (requires Void Summoning + Runeforging) -> Void Blade, Void Armor, Void Wall, Void Turret, Void Door
 
+Planar Rift (requires Void Summoning + Ley Channeling) -> Rift Gate
+
+Deep Delving (requires Planar Rift) -> Shadow Realm dimension
+
 ### Mana (Leylines)
-Net Mana - Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels, void turrets). If negative, all mana-powered buildings stop working.
+Net Mana - Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels, void turrets, rift gates, ice boxes). If negative, all mana-powered buildings stop working.
+
+### Visual Overlays
+Progress Bars - Colonists display small progress bars at the bottom of their tile while working (crafting, building, mining, etc.).
+
+Beam Effects - Turrets render actual line beams to targets on a transparent overlay canvas, without replacing the underlying tile characters.
 
 ### Controls & Hotkeys
 
@@ -384,6 +426,12 @@ V Void Nexus
 ▒ Void Door
 
 Y Void Turret
+
+Ω Rift Gate (exploration portal)
+
+S Food Chest
+
+I Ice Box
 
 ⚑ Rally point (drafted colonist destination)
 

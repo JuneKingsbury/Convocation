@@ -133,7 +133,7 @@ function updateRaider(raider, game) {
 
     const nearest = findNearestColonist(raider, game);
     if (!nearest) {
-        moveToEdge(raider, game);
+        moveTowardCenter(raider, game);
         return;
     }
 
@@ -188,6 +188,21 @@ function findNearestColonist(raider, game) {
         }
     }
     return nearest;
+}
+
+function moveTowardCenter(raider, game) {
+    const cx = Math.floor(CONFIG.MAP_WIDTH / 2);
+    const cy = Math.floor(CONFIG.MAP_HEIGHT / 2);
+    const dx = Math.sign(cx - raider.x);
+    const dy = Math.sign(cy - raider.y);
+    if (dx !== 0 && isPassableForEnemies(game.map, raider.x + dx, raider.y)) {
+        raider.x += dx;
+    } else if (dy !== 0 && isPassableForEnemies(game.map, raider.x, raider.y + dy)) {
+        raider.y += dy;
+    } else if (dy !== 0 && isPassableForEnemies(game.map, raider.x + dx, raider.y + dy)) {
+        raider.x += dx;
+        raider.y += dy;
+    }
 }
 
 function moveToEdge(raider, game) {
