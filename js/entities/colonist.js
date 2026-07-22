@@ -580,7 +580,7 @@ function completeTask(colonist, task, game) {
             break;
         }
         case 'research': {
-            game.research.addProgress(colonist.skills.crafting + 2);
+            game.research.addProgress(colonist.skills.research + 2);
             break;
         }
         case 'tame': {

@@ -71,6 +71,7 @@ export const SKILLS = {
     crafting: { name: 'Crafting', baseLevel: [2, 5], biasBonus: 3, description: 'Crafting items at workbenches' },
     cooking:  { name: 'Cooking', baseLevel: [2, 5], biasBonus: 3, description: 'Cooking meals at cauldrons' },
     animals:  { name: 'Animals', baseLevel: [1, 4], biasBonus: 3, description: 'Taming and handling animals' },
+    research: { name: 'Research', baseLevel: [1, 3], biasBonus: 3, description: 'Studying and discovering new knowledge' },
 };
 
 // To add weather: add entry here. Seasons reference weather types by key.
@@ -157,8 +158,8 @@ export const BUILDINGS = {
     food_chest:        { char: 'S', color: '#997744', cost: { planks: 4, stone: 2 }, work: 25, structureType: 'furniture', category: 'Furniture', description: 'Preserves food — reduces spoilage by 15% per chest (stacks up to 60%).' },
     workbench:         { char: 'C', color: '#bb8833', cost: { wood: 5, stone: 2 }, work: 30, structureType: 'furniture', category: 'Production', description: 'Required for crafting recipes (planks, weapons, bricks).' },
     cauldron:          { char: 'F', color: '#ff6633', cost: { stone: 3, wood: 1 }, work: 18, structureType: 'furniture', category: 'Production', description: 'Required for cooking meals from raw food and crops.' },
-    arcanum:           { char: 'R', color: '#44aaff', cost: { wood: 5, stone: 3, planks: 2 }, work: 40, structureType: 'furniture', category: 'Production', description: 'Colonists study here to generate research points.' },
-    beast_circle:      { char: 'A', color: '#77aa44', cost: { wood: 6 }, work: 28, structureType: 'furniture', category: 'Production', research: 'beast_binding', description: 'Required for binding creatures. Bound animals produce resources.' },
+    research_desk:     { char: 'R', color: '#44aaff', cost: { wood: 5, stone: 3, planks: 2 }, work: 40, structureType: 'furniture', category: 'Production', description: 'Colonists study here to generate research points.' },
+    beast_circle:      { char: 'A', color: '#9cf642', cost: { wood: 6 }, work: 28, structureType: 'furniture', category: 'Production', research: 'beast_binding', description: 'Required for binding creatures. Bound animals produce resources.' },
     arcane_sentinel:   { char: 'X', color: '#ff4444', cost: { stone: 5, planks: 3 }, work: 50, structureType: 'furniture', category: 'Defense', passable: { colonist: false, animal: false, enemy: false }, research: 'warding', power: { consumes: 3, damage: 12, range: 4 }, description: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.' },
     void_nexus:        { char: 'V', color: '#9933ff', cost: { runite: 5, stone: 6, planks: 4 }, work: 60, structureType: 'furniture', category: 'Defense', passable: { colonist: false, animal: false, enemy: false }, research: 'void_summoning', description: 'Start wave defense here. Defend it from enemies to earn void essence.' },
     void_wall:         { char: '▓', color: '#6622aa', cost: { stone: 3, void_essence: 2 }, work: 15, hp: 120, structureType: 'wall', category: 'Defense', passable: { colonist: false, animal: false, enemy: false }, breakable: true, research: 'void_forging', description: 'Reinforced wall (120 HP). Blocks enemies.' },
@@ -216,7 +217,6 @@ export const RECIPES = {
     craft_wooden_club: { input: { wood: 2, planks: 1 }, output: { wooden_club: 1 }, skill: 'crafting', ticks: 15, station: 'workbench', category: 'Equipment' },
     craft_etched_axe: { input: { stone: 2, planks: 1 }, output: { etched_axe: 1 }, skill: 'crafting', ticks: 18, station: 'workbench', research: 'runecraft', category: 'Equipment' },
     craft_runic_blade: { input: { runite: 2, planks: 1 }, output: { runic_blade: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'runeforging', category: 'Equipment' },
-    craft_runic_pick: { input: { runite: 2, planks: 1 }, output: { runic_pick: 1 }, skill: 'crafting', ticks: 20, station: 'workbench', research: 'runeforging', category: 'Equipment' },
     craft_void_blade: { input: { void_essence: 4, runite: 2, planks: 1 }, output: { void_blade: 1 }, skill: 'crafting', ticks: 30, station: 'workbench', research: 'void_forging', category: 'Equipment' },
     craft_void_armor: { input: { void_essence: 3, bricks: 2, planks: 1 }, output: { void_armor: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'void_forging', category: 'Equipment' },
     craft_stone_pickaxe: { input: { stone: 2, planks: 1 }, output: { stone_pickaxe: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', category: 'Tools' },
@@ -265,7 +265,7 @@ export const WEAPONS = {
     wooden_club: { name: 'Wooden Club', damage: 10 },
     etched_axe: { name: 'Etched Axe', damage: 15 },
     runic_blade: { name: 'Runic Blade', damage: 22 },
-    runic_pick: { name: 'Runic Pick', damage: 12, miningSpeed: 1.4 },
+    //runic_pick: { name: 'Runic Pick', damage: 12, miningSpeed: 1.4 }, // kept as an example of a weapon with non-combat stat bonuses
     void_blade: { name: 'Void Blade', damage: 30 },
 };
 
@@ -640,7 +640,7 @@ export const WILDLIFE_CONFIG = {
 export const WORK_CONFIG = {
     plantWork: 5,                // ticks to plant a crop
     harvestWork: 8,              // ticks to harvest a crop
-    researchWork: 20,            // ticks per research task cycle at arcanum
+    researchWork: 20,            // ticks per research task cycle at research desk
     deconstructWork: 10,         // ticks to deconstruct a building
     tameWork: 20,                // ticks to tame an animal
     poweredWorkbenchDivisor: 2,  // enchanting table divides craft time by this

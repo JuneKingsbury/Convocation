@@ -36,29 +36,32 @@ export class ResearchSystem {
     }
 }
 
-export function findResearchBench(game) {
+export function findResearchDesks(game) {
+    const desks = [];
     for (let y = 0; y < game.map.length; y++) {
         for (let x = 0; x < game.map[y].length; x++) {
-            if (game.map[y][x].structure === 'arcanum') {
-                return { x, y };
+            if (game.map[y][x].structure === 'research_desk') {
+                desks.push({ x, y });
             }
         }
     }
-    return null;
+    return desks;
 }
 
 export function updateResearch(game) {
-    const bench = findResearchBench(game);
-    if (!bench) return;
+    const desks = findResearchDesks(game);
+    if (!desks.length) return;
 
-    const existingTask = game.taskQueue.getAll().find(t => t.type === 'research');
-    if (!existingTask) {
-        game.taskQueue.add({
-            type: 'research',
-            skillRequired: 'crafting',
-            x: bench.x,
-            y: bench.y,
-            workAmount: WORK_CONFIG.researchWork,
-        });
+    for (const desk of desks) {
+        const task = game.taskQueue.getAll().find(t => t.type === 'research' && t.x === desk.x && t.y === desk.y);
+        if (!task) {
+            game.taskQueue.add({
+                type: 'research',
+                skillRequired: 'research',
+                x: desk.x,
+                y: desk.y,
+                workAmount: WORK_CONFIG.researchWork,
+            });
+        }
     }
 }

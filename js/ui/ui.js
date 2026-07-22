@@ -942,7 +942,7 @@ export class UI {
         const research = this.game.research;
         let html = '<div class="panel-close" data-panel-close="research">&times;</div><h3>Research</h3>';
         html += `<div class="info-row" style="color:#aa88ff; font-weight:bold; margin-bottom:6px;">Study Points: ${Math.floor(research.studyPoints)}</div>`;
-        html += `<div class="info-row" style="color:#888; margin-bottom:8px;">Colonists generate study points at the Arcanum. Spend them to unlock new knowledge.</div>`;
+        html += `<div class="info-row" style="color:#888; margin-bottom:8px;">Colonists generate study points at a Research Desk. Spend them to unlock new knowledge.</div>`;
 
         const layers = this._buildResearchLayers();
         html += `<div class="research-tree">`;
