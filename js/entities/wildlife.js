@@ -65,6 +65,8 @@ function pickAnimalType(game) {
     if (roll < w.chicken) return 'chicken';
     if (roll < w.sheep) return 'sheep';
     if (roll < w.cow) return 'cow';
+    if (roll < w.okapi) return 'okapi';
+    if (roll < w.tapir) return 'tapir';
     if (!CONFIG.PEACEFUL_MODE && (game.weather.season === 'winter' || game.timeOfDay / CONFIG.TICKS_PER_DAY > WILDLIFE_CONFIG.wolfNightThreshold)) return 'wolf';
     return 'rabbit';
 }
