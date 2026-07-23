@@ -531,6 +531,48 @@ export const POTIONS = {
     },
 };
 
+// Raw food ingredients usable in cooking. Add new ones here rather than in resources.js.
+export const FOODSTUFFS = ['wheat', 'berries', 'corn', 'potatoes', 'meat', 'eggs', 'milk'];
+
+// Food spoilage system. Percentage of stockpile lost per decay interval, modulated by item type,
+// season, and storage buildings. Cooking uses fast-rotting food first (sorted by decayMultipliers).
+export const FOOD_DECAY_CONFIG = {
+    decayInterval: 50,
+    baseDecayRate: 0.02,
+    decayMultipliers: {
+        milk: 2.5,
+        berries: 2.0,
+        meat: 1.8,
+        eggs: 1.5,
+        potatoes: 0.7,
+        corn: 0.6,
+        wheat: 0.5,
+        food: 0.3,
+    },
+    seasonDecayMult: {
+        spring: 1.0,
+        summer: 1.5,
+        autumn: 1.0,
+        winter: 0.5,
+    },
+    foodChestReduction: 0.15,
+    foodChestMaxReduction: 0.6,
+    iceBoxReduction: 0.4,
+    maxTotalReduction: 0.9,
+};
+
+// To add a crop: add entry here, it auto-appears in zone mode. Set 'research' to gate behind tech.
+export const CROPS = {
+    wheat: { growthTicks: 200, harvestYield: 3, seasons: ['spring', 'summer', 'autumn'], char: '%', readyChar: '*', color: '#ccaa00' },
+    berries: { growthTicks: 150, harvestYield: 2, seasons: ['spring', 'summer', 'autumn'], char: '%', readyChar: '*', color: '#cc44aa' },
+    corn: { growthTicks: 250, harvestYield: 4, seasons: ['summer'], char: '%', readyChar: '*', color: '#ffcc00', research: 'druidcraft' },
+    potatoes: { growthTicks: 180, harvestYield: 3, seasons: ['spring', 'autumn', 'winter'], char: '%', readyChar: '*', color: '#aa7744', research: 'druidcraft' },
+};
+
+// ----------------------------------------------------------------------------
+// Spells & Research config
+// ----------------------------------------------------------------------------
+
 // To add a spell: add entry here. castType determines auto vs player-targeted behavior.
 // Triggers (for auto-cast): 'inCombat', 'hasTask', 'lowHealth', 'allyLowHealth', 'always'.
 // castType: 'auto' = colonist decides when to cast. 'targeted' = player clicks map tile.
@@ -803,48 +845,6 @@ export const SPELL_TOMES = {
     tome_ward_of_calamity: { name: 'Tome: Ward of Calamity', spell: 'ward_of_calamity', learningWork: 220, minSchoolLevel: 3 },
     tome_fortunate_discovery: { name: 'Tome: Fortunate Discovery', spell: 'fortunate_discovery', learningWork: 280, minSchoolLevel: 4 },
 };
-
-// Raw food ingredients usable in cooking. Add new ones here rather than in resources.js.
-export const FOODSTUFFS = ['wheat', 'berries', 'corn', 'potatoes', 'meat', 'eggs', 'milk'];
-
-// Food spoilage system. Percentage of stockpile lost per decay interval, modulated by item type,
-// season, and storage buildings. Cooking uses fast-rotting food first (sorted by decayMultipliers).
-export const FOOD_DECAY_CONFIG = {
-    decayInterval: 50,
-    baseDecayRate: 0.02,
-    decayMultipliers: {
-        milk: 2.5,
-        berries: 2.0,
-        meat: 1.8,
-        eggs: 1.5,
-        potatoes: 0.7,
-        corn: 0.6,
-        wheat: 0.5,
-        food: 0.3,
-    },
-    seasonDecayMult: {
-        spring: 1.0,
-        summer: 1.5,
-        autumn: 1.0,
-        winter: 0.5,
-    },
-    foodChestReduction: 0.15,
-    foodChestMaxReduction: 0.6,
-    iceBoxReduction: 0.4,
-    maxTotalReduction: 0.9,
-};
-
-// To add a crop: add entry here, it auto-appears in zone mode. Set 'research' to gate behind tech.
-export const CROPS = {
-    wheat: { growthTicks: 200, harvestYield: 3, seasons: ['spring', 'summer', 'autumn'], char: '%', readyChar: '*', color: '#ccaa00' },
-    berries: { growthTicks: 150, harvestYield: 2, seasons: ['spring', 'summer', 'autumn'], char: '%', readyChar: '*', color: '#cc44aa' },
-    corn: { growthTicks: 250, harvestYield: 4, seasons: ['summer'], char: '%', readyChar: '*', color: '#ffcc00', research: 'druidcraft' },
-    potatoes: { growthTicks: 180, harvestYield: 3, seasons: ['spring', 'autumn', 'winter'], char: '%', readyChar: '*', color: '#aa7744', research: 'druidcraft' },
-};
-
-// ----------------------------------------------------------------------------
-// Research config
-// ----------------------------------------------------------------------------
 
 // To add research: add entry here with requires:[] for prerequisites.
 // Buildings, recipes, and crops gate themselves via their own 'research' field — no need to list them here.
