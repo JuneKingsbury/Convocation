@@ -9,6 +9,8 @@
 // ----------------------------------------------------------------------------
 
 // Initial game attributes like map size, tick rate, and starting items.
+export const GAME_VERSION = '0.1.0';
+
 export const CONFIG = {
     MAP_WIDTH: 256,             // world size in tiles
     MAP_HEIGHT: 256,

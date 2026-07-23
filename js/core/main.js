@@ -1,4 +1,4 @@
-import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS, GOLEM_TYPES } from './config.js';
+import { CONFIG, GAME_VERSION, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS, GOLEM_TYPES } from './config.js';
 import { generateMap } from '../world/map.js';
 import { Camera } from '../ui/camera.js';
 import { Renderer } from '../ui/renderer.js';
@@ -26,6 +26,7 @@ import { initResizeHandles } from '../ui/resize.js';
 import { SpatialHash } from '../world/spatial.js';
 import { MapIndex } from '../world/mapindex.js';
 import { renderGlossaryHTML, initGlossaryInteraction } from '../ui/glossary.js';
+import { renderChangelogHTML, initChangelogInteraction, renderCreditsHTML } from '../ui/changelog.js';
 import { checkComplexStructures } from '../systems/complexBuildings.js';
 
 class Game {
@@ -39,9 +40,20 @@ class Game {
         this.settings = {
             autoPauseHostile: true,
             autoPauseEvent: true,
+            pauseOnDeath: false,
             uiFontSize: 12,
             autoCookTarget: 0,
+            showOverlays: true,
+            showNightLighting: true,
+            showWeatherParticles: true,
+            showColonistNames: 'hover',
+            showMinimap: true,
+            showFps: false,
+            autoSaveInterval: 60,
         };
+        this._fpsFrames = 0;
+        this._fpsLastTime = 0;
+        this._fpsDisplay = 0;
 
         this.map = generateMap();
         this.camera = new Camera();
@@ -134,6 +146,16 @@ class Game {
                 this.simulationTick();
                 this.accumulator -= CONFIG.TICK_RATE;
             }
+
+            if (this.settings.autoSaveInterval > 0) {
+                if (!this._lastAutoSaveTime) this._lastAutoSaveTime = timestamp;
+                if (timestamp - this._lastAutoSaveTime >= this.settings.autoSaveInterval * 1000) {
+                    this._lastAutoSaveTime = timestamp;
+                    if (saveGame(this)) {
+                        this.notifications.push({ text: 'Auto-saved', tick: this.tick, type: 'success' });
+                    }
+                }
+            }
         }
 
         if (this.followingColonist) {
@@ -146,7 +168,16 @@ class Game {
         }
 
         this.renderer.render(this);
-        this.minimap.render();
+        if (this.settings.showFps) {
+            this._fpsFrames++;
+            if (timestamp - this._fpsLastTime >= 1000) {
+                this._fpsDisplay = this._fpsFrames;
+                this._fpsFrames = 0;
+                this._fpsLastTime = timestamp;
+            }
+            this.renderer.renderFps(this._fpsDisplay);
+        }
+        if (this.settings.showMinimap) this.minimap.render();
         this.ui.update();
         requestAnimationFrame(this.gameLoop);
     }
@@ -1128,22 +1159,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadBtn = document.getElementById('load-game');
     const exportBtn = document.getElementById('export-game');
 
+    const versionLabel = document.getElementById('version-label');
+    if (versionLabel) versionLabel.textContent = `v${GAME_VERSION}`;
+
     if (hasSave()) {
         loadBtn.disabled = false;
         exportBtn.disabled = false;
     }
 
     const glossaryPanel = document.getElementById('glossary-panel');
+    const creditsPanel = document.getElementById('credits-panel');
+    const changelogPanel = document.getElementById('changelog-panel');
     const modalBackdrop = document.getElementById('modal-backdrop');
     const glossaryBody = document.getElementById('glossary-body');
     if (glossaryBody) {
         glossaryBody.innerHTML = renderGlossaryHTML();
         initGlossaryInteraction();
     }
+    const creditsBody = document.getElementById('credits-body');
+    if (creditsBody) {
+        creditsBody.innerHTML = renderCreditsHTML();
+    }
+    const changelogBody = document.getElementById('changelog-body');
+    if (changelogBody) {
+        changelogBody.innerHTML = renderChangelogHTML();
+        initChangelogInteraction();
+    }
 
     function closeModals() {
         settingsPanel.style.display = 'none';
         glossaryPanel.style.display = 'none';
+        creditsPanel.style.display = 'none';
+        changelogPanel.style.display = 'none';
         modalBackdrop.style.display = 'none';
     }
 
@@ -1165,13 +1212,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.getElementById('start-credits').addEventListener('click', () => {
+        const opening = creditsPanel.style.display === 'none';
+        closeModals();
+        if (opening) {
+            creditsPanel.style.display = 'block';
+            modalBackdrop.style.display = 'block';
+        }
+    });
+
+    document.getElementById('start-changelog').addEventListener('click', () => {
+        const opening = changelogPanel.style.display === 'none';
+        closeModals();
+        if (opening) {
+            changelogPanel.style.display = 'block';
+            modalBackdrop.style.display = 'block';
+        }
+    });
+
     modalBackdrop.addEventListener('click', closeModals);
 
     document.getElementById('start-game').addEventListener('click', () => {
         CONFIG.PEACEFUL_MODE = document.getElementById('start-peaceful-check').checked;
-        const autoPauseHostile = document.getElementById('start-autopause-hostile').checked;
-        const autoPauseEvent = document.getElementById('start-autopause-event').checked;
-        const uiFontSize = parseInt(document.getElementById('start-ui-font-size').value) || 12;
+        const startSettings = {
+            autoPauseHostile: document.getElementById('start-autopause-hostile').checked,
+            autoPauseEvent: document.getElementById('start-autopause-event').checked,
+            pauseOnDeath: document.getElementById('start-pause-death').checked,
+            autoCookTarget: parseInt(document.getElementById('start-autocook').value) || 0,
+            autoSaveInterval: parseInt(document.getElementById('start-autosave').value) || 0,
+            showOverlays: document.getElementById('start-overlays').checked,
+            showNightLighting: document.getElementById('start-night').checked,
+            showWeatherParticles: document.getElementById('start-weather').checked,
+            showMinimap: document.getElementById('start-minimap').checked,
+            showFps: document.getElementById('start-fps').checked,
+            showColonistNames: document.getElementById('start-names').value,
+            uiFontSize: parseInt(document.getElementById('start-ui-font-size').value) || 12,
+        };
 
         startScreen.style.display = 'none';
         gameContainer.style.display = 'grid';
@@ -1179,13 +1255,11 @@ document.addEventListener('DOMContentLoaded', () => {
         initPanelOverlay();
         initResizeHandles(fitGameFont);
         if (window.innerWidth <= 768) setFooterMode(true);
-        setUIFontSize(uiFontSize);
+        setUIFontSize(startSettings.uiFontSize);
         requestAnimationFrame(() => {
             fitGameFont();
             const game = new Game();
-            game.settings.autoPauseHostile = autoPauseHostile;
-            game.settings.autoPauseEvent = autoPauseEvent;
-            game.settings.uiFontSize = uiFontSize;
+            Object.assign(game.settings, startSettings);
             fitGameFont();
             game.start();
         });

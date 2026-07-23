@@ -1738,36 +1738,70 @@ export class UI {
     updateSettingsPanel() {
         const s = this.game.settings;
         let html = '<div class="panel-close" data-panel-close="settings">&times;</div><h3>Settings</h3>';
+
+        html += `<div class="settings-section"><div class="settings-section-title">Gameplay</div>`;
+        html += this._settingsCheck('set-pause-hostile', s.autoPauseHostile, 'window.game.settings.autoPauseHostile=this.checked', 'Auto-pause on hostile event (raids)');
+        html += this._settingsCheck('set-pause-event', s.autoPauseEvent, 'window.game.settings.autoPauseEvent=this.checked', 'Auto-pause on choice events (wanderers, caravans)');
+        html += this._settingsCheck('set-pause-death', s.pauseOnDeath, 'window.game.settings.pauseOnDeath=this.checked', 'Auto-pause on colonist death');
+        html += this._settingsCheck('set-peaceful', CONFIG.PEACEFUL_MODE, 'window.game.togglePeaceful()', 'Peaceful mode (no raids/hostile animals)');
         html += `<div class="settings-row">`;
-        html += `<input type="checkbox" id="set-pause-hostile" ${s.autoPauseHostile ? 'checked' : ''} onchange="window.game.settings.autoPauseHostile=this.checked">`;
-        html += `<label for="set-pause-hostile">Auto-pause on hostile event (raids)</label>`;
-        html += `</div>`;
+        html += `<label for="set-autocook">Auto-cook meal target:</label>`;
+        html += `<select id="set-autocook" onchange="window.game.settings.autoCookTarget=parseInt(this.value)" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;">`;
+        for (const val of [0, 5, 10, 20, 50]) {
+            html += `<option value="${val}" ${s.autoCookTarget === val ? 'selected' : ''}>${val === 0 ? 'Off' : val + ' meals'}</option>`;
+        }
+        html += `</select></div>`;
         html += `<div class="settings-row">`;
-        html += `<input type="checkbox" id="set-pause-event" ${s.autoPauseEvent ? 'checked' : ''} onchange="window.game.settings.autoPauseEvent=this.checked">`;
-        html += `<label for="set-pause-event">Auto-pause on choice events (wanderers, caravans)</label>`;
+        html += `<label for="set-autosave">Auto-save interval:</label>`;
+        html += `<select id="set-autosave" onchange="window.game.settings.autoSaveInterval=parseInt(this.value)" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;">`;
+        for (const [val, label] of [[0, 'Off'], [30, '30s'], [60, '1 min'], [120, '2 min'], [300, '5 min']]) {
+            html += `<option value="${val}" ${s.autoSaveInterval === val ? 'selected' : ''}>${label}</option>`;
+        }
+        html += `</select></div>`;
         html += `</div>`;
+
+        html += `<div class="settings-section"><div class="settings-section-title">Performance</div>`;
+        html += this._settingsCheck('set-overlays', s.showOverlays, 'window.game.settings.showOverlays=this.checked', 'Show overlay effects (progress bars, combat)');
+        html += this._settingsCheck('set-night', s.showNightLighting, 'window.game.settings.showNightLighting=this.checked', 'Show night lighting/darkness');
+        html += this._settingsCheck('set-weather', s.showWeatherParticles, 'window.game.settings.showWeatherParticles=this.checked', 'Show weather particles (future feature)');
+        html += this._settingsCheck('set-minimap', s.showMinimap, 'window.game.settings.showMinimap=this.checked;document.getElementById("minimap-container").style.display=this.checked?"":"none"', 'Show minimap');
+        html += this._settingsCheck('set-fps', s.showFps, 'window.game.settings.showFps=this.checked', 'Show FPS counter (top-right of game grid)');
+        html += `</div>`;
+
+        html += `<div class="settings-section"><div class="settings-section-title">Visual</div>`;
         html += `<div class="settings-row">`;
-        html += `<input type="checkbox" id="set-peaceful" ${CONFIG.PEACEFUL_MODE ? 'checked' : ''} onchange="window.game.togglePeaceful()">`;
-        html += `<label for="set-peaceful">Peaceful mode (no raids/hostile animals)</label>`;
-        html += `</div>`;
+        html += `<label for="set-names">Colonist names:</label>`;
+        html += `<select id="set-names" onchange="window.game.settings.showColonistNames=this.value" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;">`;
+        for (const val of ['off', 'hover', 'always']) {
+            html += `<option value="${val}" ${s.showColonistNames === val ? 'selected' : ''}>${val.charAt(0).toUpperCase() + val.slice(1)}</option>`;
+        }
+        html += `</select></div>`;
         const uiSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--ui-font-size')) || 12;
         html += `<div class="settings-row">`;
         html += `<label for="set-ui-font-size">UI Font Size: <span id="ui-font-size-val">${uiSize}px</span></label>`;
-        html += `<input type="range" id="set-ui-font-size" min="8" max="20" value="${uiSize}" oninput="window.setUIFontSize(this.value)">`;
+        html += `<input type="range" id="set-ui-font-size" min="8" max="20" value="${uiSize}" style="width:80px" oninput="document.getElementById('ui-font-size-val').textContent=this.value+'px';window.setUIFontSize(this.value)">`;
         html += `</div>`;
-        html += `<div class="settings-row" style="margin-top:12px; border-top:1px solid #444; padding-top:8px; gap:8px;">`;
-        html += `<button onclick="window.game.save()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a4a2a;border:1px solid #4a4;color:#8c8;cursor:pointer;border-radius:3px;">Save Game</button>`;
-        html += `<button onclick="window.game.exportSave()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a2a4a;border:1px solid #55a;color:#aaf;cursor:pointer;border-radius:3px;">Export Save</button>`;
         html += `</div>`;
-        html += `<div class="settings-row" style="margin-top:12px; border-top:1px solid #444; padding-top:8px;">`;
-        html += `<button onclick="window.game.showGlossary()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a2a3a;border:1px solid #66a;color:#aaccff;cursor:pointer;border-radius:3px;">View Glossary</button>`;
+
+        html += `<div class="settings-section"><div class="settings-section-title">Save / Load</div>`;
+        html += `<div class="settings-row" style="gap:8px;">`;
+        html += `<button onclick="window.game.save()" class="settings-btn settings-btn-green">Save Game</button>`;
+        html += `<button onclick="window.game.exportSave()" class="settings-btn settings-btn-blue">Export Save</button>`;
+        html += `</div></div>`;
+
+        html += `<div class="settings-section">`;
+        html += `<button onclick="window.game.showGlossary()" class="settings-btn settings-btn-purple">View Glossary</button>`;
         html += `</div>`;
-        html += `<div class="settings-row" style="margin-top:16px; border-top:1px solid #633; padding-top:10px; flex-direction:column; align-items:flex-start; gap:6px;">`;
-        html += `<div style="color:#ff6666; font-size:10px; font-weight:bold; margin-bottom:4px;">⚠ DEBUG / TESTING ONLY ⚠</div>`;
-        html += `<button onclick="if(confirm('Grant 999 of all resources and complete all research? This cannot be undone.'))window.game.cheatResources()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant 999 of All Resources + Research</button>`;
-        html += `<button onclick="if(confirm('Grant all starter spells (level 0) to every colonist and set magic skills to 1? This cannot be undone.'))window.game.cheatGrantStarterSpells()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant All Starter Spells + Magic Lvl 1</button>`;
+
+        html += `<div class="settings-section settings-debug"><div class="settings-section-title" style="color:#ff6666;">Debug / Testing</div>`;
+        html += `<button onclick="if(confirm('Grant 999 of all resources and complete all research? This cannot be undone.'))window.game.cheatResources()" class="settings-btn settings-btn-danger">Grant 999 Resources + Research</button>`;
+        html += `<button onclick="if(confirm('Grant all starter spells (level 0) to every colonist and set magic skills to 1? This cannot be undone.'))window.game.cheatGrantStarterSpells()" class="settings-btn settings-btn-danger">Grant All Starter Spells + Magic Lvl 1</button>`;
         html += `</div>`;
         this.elements.settingsPanel.innerHTML = html;
+    }
+
+    _settingsCheck(id, checked, onchange, label) {
+        return `<div class="settings-row"><input type="checkbox" id="${id}" ${checked ? 'checked' : ''} onchange="${onchange}"><label for="${id}">${label}</label></div>`;
     }
 
     getColonistTaskDescription(colonist) {
@@ -1797,6 +1831,11 @@ export class UI {
         if (tile.resource) parts.push(`Resource: ${tile.resource.type}${tile.resource.amount > 1 ? ' x' + tile.resource.amount : ''}`);
         if (tile.designation) parts.push(`[${tile.designation.type}]`);
         if (tile.zone) parts.push(`Farm: ${tile.zone.crop}`);
+        const nameMode = this.game.settings.showColonistNames;
+        if (nameMode === 'hover' || nameMode === 'always') {
+            const colHere = this.game.colonists.find(c => c.x === x && c.y === y && c.hp > 0 && !c.onExpedition);
+            if (colHere) parts.push(colHere.name);
+        }
         tooltip.textContent = parts.join(' | ');
         tooltip.style.display = 'block';
         tooltip.style.left = (e.offsetX + 12) + 'px';

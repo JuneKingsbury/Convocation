@@ -21,7 +21,7 @@
         </p>
         <div class="start-btn-grid">
             <div class="start-btn-row">
-                <button id="start-game">Start Game</button>
+                <button id="start-game">New Game</button>
                 <button id="load-game" disabled>Load Game</button>
             </div>
             <div class="start-btn-row">
@@ -32,26 +32,68 @@
                 <button id="start-settings">Settings</button>
                 <button id="start-glossary">Glossary</button>
             </div>
+            <div class="start-btn-row">
+                <button id="start-credits">Credits</button>
+                <button id="start-changelog">Changelog</button>
+            </div>
         </div>
+        <div id="version-label"></div>
         <input type="file" id="import-file" accept=".json" style="display:none">
-        <div id="start-settings-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px; border:1px solid #555; border-radius:8px; background:#2a2a4a; text-align:left; width:360px; max-width:90vw; z-index:1000; box-shadow:0 8px 32px rgba(0,0,0,0.7);">
+        <div id="start-settings-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px; border:1px solid #555; border-radius:8px; background:#1e1e32; text-align:left; width:360px; max-width:90vw; max-height:80vh; overflow-y:auto; z-index:1000; box-shadow:0 8px 32px rgba(0,0,0,0.7);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                 <div style="color:#ffcc00; font-weight:bold;">Game Settings</div>
                 <button onclick="document.getElementById('start-settings-panel').style.display='none';document.getElementById('modal-backdrop').style.display='none'" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">&times;</button>
             </div>
-            <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
-                <input type="checkbox" id="start-peaceful-check"> Peaceful Mode (no raids/hostiles)
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
-                <input type="checkbox" id="start-autopause-hostile" checked> Auto-pause on hostile events
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
-                <input type="checkbox" id="start-autopause-event" checked> Auto-pause on trade/wanderer events
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; margin:6px 0; cursor:pointer; color:#ccc;">
-                UI Font Size: <span id="start-ui-font-val">12px</span>
-                <input type="range" id="start-ui-font-size" min="8" max="20" value="12" style="flex:1" oninput="document.getElementById('start-ui-font-val').textContent=this.value+'px'">
-            </label>
+            <div class="settings-section">
+                <div class="settings-section-title">Gameplay</div>
+                <div class="settings-row"><input type="checkbox" id="start-autopause-hostile" checked><label for="start-autopause-hostile">Auto-pause on hostile event (raids)</label></div>
+                <div class="settings-row"><input type="checkbox" id="start-autopause-event" checked><label for="start-autopause-event">Auto-pause on choice events (wanderers, caravans)</label></div>
+                <div class="settings-row"><input type="checkbox" id="start-pause-death"><label for="start-pause-death">Auto-pause on colonist death</label></div>
+                <div class="settings-row"><input type="checkbox" id="start-peaceful-check"><label for="start-peaceful-check">Peaceful mode (no raids/hostile animals)</label></div>
+                <div class="settings-row">
+                    <label for="start-autocook">Auto-cook meal target:</label>
+                    <select id="start-autocook" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;font-family:inherit;font-size:11px;border-radius:3px;">
+                        <option value="0" selected>Off</option>
+                        <option value="5">5 meals</option>
+                        <option value="10">10 meals</option>
+                        <option value="20">20 meals</option>
+                        <option value="50">50 meals</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label for="start-autosave">Auto-save interval:</label>
+                    <select id="start-autosave" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;font-family:inherit;font-size:11px;border-radius:3px;">
+                        <option value="0">Off</option>
+                        <option value="30">30s</option>
+                        <option value="60" selected>1 min</option>
+                        <option value="120">2 min</option>
+                        <option value="300">5 min</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Performance</div>
+                <div class="settings-row"><input type="checkbox" id="start-overlays" checked><label for="start-overlays">Show overlay effects (progress bars, combat)</label></div>
+                <div class="settings-row"><input type="checkbox" id="start-night" checked><label for="start-night">Show night lighting/darkness</label></div>
+                <div class="settings-row"><input type="checkbox" id="start-weather" checked><label for="start-weather">Show weather particles (future feature)</label></div>
+                <div class="settings-row"><input type="checkbox" id="start-minimap" checked><label for="start-minimap">Show minimap</label></div>
+                <div class="settings-row"><input type="checkbox" id="start-fps"><label for="start-fps">Show FPS counter (top-right of game grid)</label></div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-section-title">Visual</div>
+                <div class="settings-row">
+                    <label for="start-names">Colonist names:</label>
+                    <select id="start-names" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;font-family:inherit;font-size:11px;border-radius:3px;">
+                        <option value="off">Off</option>
+                        <option value="hover" selected>Hover</option>
+                        <option value="always">Always</option>
+                    </select>
+                </div>
+                <div class="settings-row">
+                    <label for="start-ui-font-size">UI Font Size: <span id="start-ui-font-val">12px</span></label>
+                    <input type="range" id="start-ui-font-size" min="8" max="20" value="12" style="width:80px" oninput="document.getElementById('start-ui-font-val').textContent=this.value+'px'">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -62,6 +104,22 @@
             <button onclick="document.getElementById('glossary-panel').style.display='none';document.getElementById('modal-backdrop').style.display='none'" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">&times;</button>
         </div>
         <div id="glossary-body"></div>
+    </div>
+
+    <div id="credits-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:24px; border:1px solid #555; border-radius:8px; background:#1e1e32; text-align:left; width:400px; max-width:90vw; max-height:80vh; overflow-y:auto; font-size:12px; line-height:1.6; color:#ccc; z-index:1000; box-shadow:0 8px 32px rgba(0,0,0,0.7);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="color:#ffcc00; font-weight:bold; font-size:14px;">Credits</div>
+            <button onclick="document.getElementById('credits-panel').style.display='none';document.getElementById('modal-backdrop').style.display='none'" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">&times;</button>
+        </div>
+        <div id="credits-body"></div>
+    </div>
+
+    <div id="changelog-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:24px; border:1px solid #555; border-radius:8px; background:#1e1e32; text-align:left; width:640px; max-width:90vw; max-height:80vh; overflow-y:auto; font-size:12px; line-height:1.6; color:#ccc; z-index:1000; box-shadow:0 8px 32px rgba(0,0,0,0.7);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="color:#ffcc00; font-weight:bold; font-size:14px;">Changelog</div>
+            <button onclick="document.getElementById('changelog-panel').style.display='none';document.getElementById('modal-backdrop').style.display='none'" style="background:none; border:none; color:#aaa; font-size:18px; cursor:pointer;">&times;</button>
+        </div>
+        <div id="changelog-body"></div>
     </div>
 
     <div id="game-container">

@@ -1178,6 +1178,10 @@ export function colonistTakeDamage(colonist, damage, game) {
         colonist.hp = 0;
         colonist.state = 'dead';
         game.eventLog.add(game, `${colonist.name} has died!`, 'danger', { type: 'colonist', id: colonist.id });
+        if (game.settings.pauseOnDeath && !game.paused) {
+            game.paused = true;
+            game.notifications.push({ text: `${colonist.name} has died! (auto-paused)`, tick: game.tick, type: 'danger' });
+        }
         for (const other of game.colonists) {
             if (other.id !== colonist.id && other.hp > 0) {
                 addThought(other, `${colonist.name} died`, COLONIST_CONFIG.deathMoodPenalty, COLONIST_CONFIG.deathMoodDuration, game.tick);

@@ -255,8 +255,24 @@ export class Renderer {
             }
         }
 
+        if (game.settings.showColonistNames === 'always') {
+            ctx.save();
+            ctx.font = `${Math.max(8, this.fontSize * 0.6)}px monospace`;
+            ctx.textBaseline = 'bottom';
+            ctx.globalAlpha = 0.8;
+            for (const c of colonists) {
+                if (c.hp <= 0 || c.onExpedition) continue;
+                const sx = c.x - camera.x;
+                const sy = c.y - camera.y;
+                if (sx < 0 || sx >= CONFIG.VIEWPORT_WIDTH || sy < 0 || sy >= CONFIG.VIEWPORT_HEIGHT) continue;
+                ctx.fillStyle = c.nameColor || '#ffff00';
+                ctx.fillText(c.name, sx * cw, sy * ch - 1);
+            }
+            ctx.restore();
+        }
+
         // Night overlay pass
-        const darkness = this.getNightDarkness(game.timeOfDay, game.weather.season);
+        const darkness = game.settings.showNightLighting ? this.getNightDarkness(game.timeOfDay, game.weather.season) : 0;
         if (darkness > 0) {
             const lightSources = this._getLightSources(game, camera);
             const steps = RENDER_CONFIG.nightGradientSteps;
@@ -294,7 +310,20 @@ export class Renderer {
             }
         }
 
-        this.overlayRenderer.render(game, cw, ch, game.camera);
+        if (game.settings.showOverlays) {
+            this.overlayRenderer.render(game, cw, ch, game.camera);
+        }
+    }
+
+    renderFps(fps) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.font = 'bold 12px monospace';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#ff3333';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${fps} FPS`, 4, 4);
+        ctx.restore();
     }
 
     _getLightSources(game, camera) {

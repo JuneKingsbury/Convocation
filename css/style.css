@@ -100,6 +100,13 @@ body {
     border-color: #888;
 }
 
+#version-label {
+    margin-top: 16px;
+    font-size: 10px;
+    color: #555;
+    text-align: center;
+}
+
 /* === GAME LAYOUT === */
 
 #game-container {
@@ -1316,28 +1323,74 @@ body {
 }
 
 #settings-panel {
-    min-width: min(250px, 85vw);
+    min-width: min(280px, 85vw);
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.settings-section {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+}
+
+.settings-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.settings-section-title {
+    color: #aaccff;
+    font-weight: bold;
+    font-size: 11px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.settings-debug .settings-section-title {
+    color: #ff6666;
 }
 
 .settings-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 4px;
-    border-bottom: 1px solid #222;
+    padding: 4px 4px;
 }
 
 .settings-row label {
     color: #ccc;
     cursor: pointer;
     user-select: none;
+    font-size: 11px;
 }
 
 .settings-row input[type="checkbox"] {
     cursor: pointer;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
 }
+
+.settings-row select {
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+}
+
+.settings-btn {
+    padding: 5px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 3px;
+    border: 1px solid #555;
+}
+
+.settings-btn-green { background: #2a4a2a; border-color: #4a4; color: #8c8; }
+.settings-btn-blue { background: #2a2a4a; border-color: #55a; color: #aaf; }
+.settings-btn-purple { background: #2a2a3a; border-color: #66a; color: #aaccff; }
+.settings-btn-danger { background: #4a1a1a; border-color: #a33; color: #f99; margin-bottom: 4px; }
 
 .info-actions label {
     color: #aaa;
