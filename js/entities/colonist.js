@@ -3,6 +3,7 @@ import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.
 import { isPassable, getMoveCost } from '../world/map.js';
 import { FOODSTUFFS } from '../systems/resources.js';
 import { completeTame, attemptDangerousTame } from './taming.js';
+import { getPedestalEffect } from '../systems/artifacts.js';
 
 let nextColonistId = 1;
 
@@ -328,6 +329,10 @@ function getEquipmentWorkBonus(colonist, task) {
         if (task.type === 'chop' && item.choppingSpeed) mult *= item.choppingSpeed;
         if ((task.type === 'plant' || task.type === 'harvest') && item.farmingSpeed) mult *= item.farmingSpeed;
     }
+    if (colonist.artifact && !colonist.artifactBroken) {
+        if (colonist.artifact.workSpeedBonus) mult *= (1 + colonist.artifact.workSpeedBonus);
+    }
+    if (colonist.pedestalWorkBonus) mult *= (1 + colonist.pedestalWorkBonus);
     return mult;
 }
 
@@ -877,6 +882,8 @@ function completeTask(colonist, task, game) {
                     if (output.food && game.research.isResearched('alchemy')) {
                         output.food += WORK_CONFIG.alchemyFoodBonus;
                     }
+                    const cookBonus = getPedestalEffect(game, 'cookingBonusFood');
+                    if (output.food && cookBonus > 0) output.food += cookBonus;
                     game.resources.add(output);
                 }
                 applyThought(colonist, 'cooked', game.tick);
@@ -929,6 +936,22 @@ function completeTask(colonist, task, game) {
                 tile.structureHp = undefined;
                 applyThought(colonist, 'repaired', game.tick);
             }
+            break;
+        }
+        case 'repair_artifact': {
+            if (task.colonistId) {
+                const target = game.getColonist(task.colonistId);
+                if (target && target.artifactBroken) {
+                    target.artifactBroken = false;
+                    target._repairQueued = false;
+                    const artName = target.artifact?.name || 'artifact';
+                    game.eventLog.add(game, `${artName} repaired at the anvil`, 'success', null);
+                }
+            }
+            if (game.resources.stockpile.runite >= 1) {
+                game.resources.stockpile.runite -= 1;
+            }
+            applyThought(colonist, 'crafted', game.tick);
             break;
         }
         case 'deconstruct': {
@@ -1161,6 +1184,9 @@ export function colonistTakeDamage(colonist, damage, game) {
     let mult = 1;
     if (colonist.traits.includes('tough')) mult = TRAITS.tough.damageTakenMult;
     if (colonist.armor) mult *= (1 - colonist.armor.damageReduction);
+    if (colonist.artifact && !colonist.artifactBroken) {
+        if (colonist.artifact.combat?.damageReduction) mult *= (1 - colonist.artifact.combat.damageReduction);
+    }
     if (colonist.activeEffects) {
         for (const e of colonist.activeEffects) {
             if (e.type === 'shield' && e.damageReduction) mult *= (1 - e.damageReduction);
@@ -1175,16 +1201,24 @@ export function colonistTakeDamage(colonist, damage, game) {
     }
 
     if (colonist.hp <= 0) {
-        colonist.hp = 0;
-        colonist.state = 'dead';
-        game.eventLog.add(game, `${colonist.name} has died!`, 'danger', { type: 'colonist', id: colonist.id });
-        if (game.settings.pauseOnDeath && !game.paused) {
-            game.paused = true;
-            game.notifications.push({ text: `${colonist.name} has died! (auto-paused)`, tick: game.tick, type: 'danger' });
-        }
-        for (const other of game.colonists) {
-            if (other.id !== colonist.id && other.hp > 0) {
-                addThought(other, `${colonist.name} died`, COLONIST_CONFIG.deathMoodPenalty, COLONIST_CONFIG.deathMoodDuration, game.tick);
+        const art = colonist.artifact;
+        if (art?.combat?.autoReviveHp && !colonist.artifactBroken) {
+            colonist.hp = Math.floor(colonist.maxHp * art.combat.autoReviveHp);
+            colonist.artifactBroken = true;
+            game.eventLog.add(game, `${colonist.name}'s ${art.name} shatters, reviving them!`, 'success', { type: 'colonist', id: colonist.id });
+            game.combatEffects.push({ x: colonist.x, y: colonist.y, char: '✦', color: '#ffdd44', ttl: 8 });
+        } else {
+            colonist.hp = 0;
+            colonist.state = 'dead';
+            game.eventLog.add(game, `${colonist.name} has died!`, 'danger', { type: 'colonist', id: colonist.id });
+            if (game.settings.pauseOnDeath && !game.paused) {
+                game.paused = true;
+                game.notifications.push({ text: `${colonist.name} has died! (auto-paused)`, tick: game.tick, type: 'danger' });
+            }
+            for (const other of game.colonists) {
+                if (other.id !== colonist.id && other.hp > 0) {
+                    addThought(other, `${colonist.name} died`, COLONIST_CONFIG.deathMoodPenalty, COLONIST_CONFIG.deathMoodDuration, game.tick);
+                }
             }
         }
     } else if (colonist.state !== 'fighting' && colonist.state !== 'fleeing') {

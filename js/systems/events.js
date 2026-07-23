@@ -1,6 +1,7 @@
 import { CONFIG, EVENTS, CARAVAN_TRADES, WEATHER_TYPES, THOUGHTS, SKILLS, TRADE_VALUES, TRADER_MARKUP, TRADER_DISCOUNT, TRADER_EXCLUSIVE_ITEMS } from '../core/config.js';
 import { createColonist, addThought } from '../entities/colonist.js';
 import { createAnimal } from '../entities/wildlife.js';
+import { getPedestalEffect } from './artifacts.js';
 
 export class EventSystem {
     constructor() {
@@ -30,6 +31,7 @@ export class EventSystem {
                 const alive = game.colonists.filter(c => c.hp > 0);
                 const avgMood = alive.length > 0 ? alive.reduce((s, c) => s + c.mood, 0) / alive.length : 50;
                 chance *= Math.max(0.05, avgMood / 70);
+                chance *= getPedestalEffect(game, 'wandererChanceMult');
             }
 
             for (const m of mods) {

@@ -56,7 +56,7 @@ Colonists have 4 gear slots:
 - **Magic Weapon** — Wands and staves trade melee power for spell amplification. Wooden Wand (+30% spell dmg), Runic Wand (+50%), Crystal Staff (+20%), Void Staff (+40%). Best for dedicated spellcasters.
 - **Armor** — Void Armor reduces all incoming damage by 30%.
 - **Tool** — Boosts work speed. Stone Pickaxe (+20% mining), Runic Pickaxe (+50%), Woodcutter's Axe (+30% chopping), Harvesting Sickle (+25% farming).
-- **Artifact** — Special items. Boots of Haste (+30% move speed), Amulet of Fortune (+20% XP, trader exclusive).
+- **Artifact** — Special items with unique effects. Can be equipped for personal bonuses or placed on Artifact Pedestals for area-of-effect colony buffs. See the Artifacts section below.
 
 Use "Auto-equip Best" to quickly gear up a colonist with the best available items from storage.
 
@@ -87,6 +87,40 @@ Brewed at the Cauldron and auto-consumed by colonists:
 
 ---
 
+## Artifacts & Pedestals
+
+Artifacts are powerful items with effects spanning combat, expeditions, and colony management. They can be used in multiple ways:
+
+### Equipped Effects
+Equip an artifact on a colonist for personal bonuses: Boots of Haste (+30% move speed), Hourglass of Diligence (+25% work speed), Cloak of Shadows (enemies avoid targeting you), or Aegis of the Vanguard (draw enemy fire + 30% damage reduction for a tank role).
+
+### Artifact Pedestals
+Build an Artifact Pedestal (requires Arcane Infusion research) and place an artifact on it to project effects in a radius. Each pedestal artifact has a mana cost (1-3) and a radius of effect displayed as a diamond highlight when selected.
+
+| Artifact | Pedestal Effect | Radius | Mana |
+|---|---|---|---|
+| Seedkeeper's Locket | Crops immune to blight | 5 | 1 |
+| Hourglass of Diligence | +15% work speed | 4 | 2 |
+| Voidwalker's Lantern | Light source | 6 | 2 |
+| Drum of Rallying | +15% damage | 8 | 3 |
+| Tome of Shared Wisdom | +10% skill growth | 5 | 2 |
+| Lodestone of Prosperity | +50% wanderer chance | Global | 2 |
+| Cornucopia Charm | +1 food per cook | Global | 1 |
+| Haggler's Coin | -15% trade markup | Global | 1 |
+
+### Combat & Expedition Effects
+Some artifacts modify combat behavior (target priority, auto-revive, damage reduction) and expedition outcomes (loot multipliers, trap resistance, rare encounter chances). These apply when the artifact is equipped on a colonist.
+
+### Durability & Repair
+Certain artifacts (Ward of the Sentinel) break after triggering their effect. Broken artifacts provide no bonuses until repaired at an Anvil (requires Runeforging research, costs 1 runite). Colonists auto-queue repair tasks when broken artifacts are detected.
+
+### Sources
+- **Expeditions** — Dimension-specific rare drops (Compass of Greed from Crystal Caves, Cloak of Shadows from Shadow Realm, etc.). Map Fragments drop in all dimensions.
+- **Traders** — Exclusive items like Seedkeeper's Locket, Hourglass of Diligence, Lodestone of Prosperity, and Haggler's Coin.
+- **Crafting** — Ward of the Sentinel (Void Forging research).
+
+---
+
 ## Building Your Colony
 
 Press B to enter Build mode. Buildings are organized into 5 tabs (cycle with Tab/Shift+Tab):
@@ -105,6 +139,7 @@ Press B to enter Build mode. Buildings are organized into 5 tabs (cycle with Tab
 - **Workbench** (C) — Crafting station for weapons, tools, planks, bricks.
 - **Cauldron** (F) — Cooking and potion brewing.
 - **Food Chest** (S) — Each reduces food spoilage by 15% (stacks to 60%).
+- **Anvil** (⌂) — Repair broken artifacts. Requires Runeforging research.
 
 ### Defense
 - **Void Wall** (▓) — 120 HP reinforced wall. Requires Void Forging.
@@ -121,6 +156,7 @@ Press B to enter Build mode. Buildings are organized into 5 tabs (cycle with Tab
 - **Arcane Sentinel** (X) — Auto-attacks enemies in range 4. Consumes 3 mana.
 - **Ice Box** (I) — Reduces food spoilage by 40% (stacks with chests, max 90%). Consumes 1 mana.
 - **Rift Gate** (Ω) — Portal to alternate dimensions. Consumes 6 mana.
+- **Artifact Pedestal** (◆) — Place an artifact for area-of-effect buffs. Mana cost varies (1-3).
 - **Golem Forge** (Ğ) — Craft golems. Requires Golem Craft research.
 - **Forge Core** (⚒) — Center of the Great Forge multi-block structure.
 - **Ritual Core** (◎) — Center of the Ritual Circle multi-block structure.
@@ -291,7 +327,7 @@ As your party explores, small events occur randomly:
 Each dimension has unique ambient text, trap descriptions, discovery messages, and rare encounters that can only happen there.
 
 ### Pack Animals & Survival
-Tamed okapi reduce expedition duration by 25% each (stacks, minimum 50% of base). Defeated colonists return at 1 HP — there's no permadeath. If the entire party falls, they return empty-handed.
+Tamed okapi reduce expedition duration by 25% each (stacks, minimum 50% of base). Defeated colonists return at 1 HP — there's no permadeath. If the entire party falls, you still keep any loot found during the exploration (random discoveries and encounters), but miss the completion bonus for finishing the expedition.
 
 ---
 
@@ -311,6 +347,10 @@ Some items can only be obtained through trade:
 - **Amulet of Fortune** — Artifact, +20% XP gain.
 - **Enchanted Blade** — Weapon, 18 damage + 15% spell damage.
 - **Wanderer's Cloak** — Armor, -15% damage + 20% move speed.
+- **Seedkeeper's Locket** — Artifact, blight immunity radius (pedestal).
+- **Hourglass of Diligence** — Artifact, work speed bonus (equipped/pedestal).
+- **Lodestone of Prosperity** — Artifact, +50% wanderer chance (global pedestal).
+- **Haggler's Coin** — Artifact, -15% trade markup (global pedestal).
 
 ---
 
@@ -359,13 +399,14 @@ Mana Crystals generate mana; arcane buildings consume it. If consumption exceeds
 | Building | Mana Cost |
 |---|---|
 | Mana Crystal | +10 (generates) |
+| Ice Box | -1 |
+| Artifact Pedestal | -1 to -3 (varies by artifact) |
 | Glowstone | -2 |
 | Arcane Sentinel | -3 |
 | Ember Ward | -3 |
 | Enchanting Table | -4 |
 | Void Turret | -5 |
 | Rift Gate | -6 |
-| Ice Box | -1 |
 
 Plan your mana budget before expanding your arcane infrastructure.
 
@@ -406,6 +447,7 @@ o  Deposit         @  Colonist        G  Golem
 R  Raider          E  Void Enemy      V  Void Nexus
 ▓  Void Wall       ▒  Void Door       Y  Void Turret
 Ω  Rift Gate       S  Food Chest      I  Ice Box
+◆  Artifact Pedestal  ⌂  Anvil        
 Ğ  Golem Forge     ⚒  Forge Core      ◎  Ritual Core
 ⚑  Rally Point     *  Turret Beam     !  Melee Hit
 ```

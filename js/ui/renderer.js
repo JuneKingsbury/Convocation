@@ -270,13 +270,15 @@ export class Renderer {
             }
         }
 
-        if (game.settings.showColonistNames === 'always') {
+        const nameMode = game.settings.showColonistNames;
+        if (nameMode === 'always' || nameMode === 'selected') {
             ctx.save();
             ctx.font = `${Math.max(8, this.fontSize * 0.6)}px monospace`;
             ctx.textBaseline = 'bottom';
             ctx.globalAlpha = 0.8;
             for (const c of colonists) {
                 if (c.hp <= 0 || c.onExpedition) continue;
+                if (nameMode === 'selected' && c !== game.selectedColonist) continue;
                 const sx = c.x - camera.x;
                 const sy = c.y - camera.y;
                 if (sx < 0 || sx >= CONFIG.VIEWPORT_WIDTH || sy < 0 || sy >= CONFIG.VIEWPORT_HEIGHT) continue;

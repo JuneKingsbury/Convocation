@@ -188,17 +188,22 @@ function updateRaider(raider, game) {
     }
 }
 
+function getColonistTargetPriority(colonist) {
+    if (!colonist.artifact || colonist.artifactBroken) return 0;
+    return colonist.artifact.combat?.targetPriority || 0;
+}
+
 function findNearestColonist(raider, game) {
-    if (game.spatial) {
-        return game.spatial.colonists.findNearest(raider.x, raider.y, PATHFINDING_CONFIG.raiderSearchRadius, null);
-    }
     let nearest = null;
-    let minDist = Infinity;
+    let minScore = Infinity;
+    const radius = PATHFINDING_CONFIG.raiderSearchRadius;
     for (const c of game.colonists) {
         if (c.hp <= 0) continue;
         const dist = manhattanDist(raider.x, raider.y, c.x, c.y);
-        if (dist < minDist) {
-            minDist = dist;
+        if (dist > radius) continue;
+        const score = dist - getColonistTargetPriority(c);
+        if (score < minScore) {
+            minScore = score;
             nearest = c;
         }
     }

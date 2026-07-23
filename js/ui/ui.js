@@ -3,6 +3,7 @@ import { getComplexStructureAt } from '../systems/complexBuildings.js';
 import { getTameChance } from '../entities/taming.js';
 import { getAvailableRecipes } from '../systems/crafting.js';
 import { CROP_RESEARCH_REQS } from '../systems/farming.js';
+import { getPedestalEffect } from '../systems/artifacts.js';
 
 export class UI {
     constructor(game) {
@@ -525,6 +526,22 @@ export class UI {
         return html;
     }
 
+    getPedestalEffectDescription(artDef) {
+        if (!artDef?.pedestal) return '';
+        const p = artDef.pedestal;
+        const effects = [];
+        if (p.blightImmunity) effects.push('Crops immune to blight');
+        if (p.workSpeedBonus) effects.push(`+${Math.round(p.workSpeedBonus * 100)}% work speed`);
+        if (p.damageBonusMult) effects.push(`+${Math.round((p.damageBonusMult - 1) * 100)}% damage`);
+        if (p.skillGrowthBonus) effects.push(`+${Math.round(p.skillGrowthBonus * 100)}% skill growth`);
+        if (p.lightRadius) effects.push(`Light radius: ${p.lightRadius}`);
+        if (p.wandererChanceMult) effects.push(`+${Math.round((p.wandererChanceMult - 1) * 100)}% wanderer chance`);
+        if (p.cookingBonusFood) effects.push(`+${p.cookingBonusFood} bonus food per cook`);
+        if (p.tradeMarkupMult) effects.push(`${Math.round((1 - p.tradeMarkupMult) * 100)}% cheaper trade prices`);
+        if (effects.length === 0) return '';
+        return `<div class="info-row" style="color:#aaffaa;font-size:11px;">${effects.join(' | ')}</div>`;
+    }
+
     _switchToInfoTab() {
         const container = document.getElementById('game-container');
         const isTabbed = container.classList.contains('tabbed-mode');
@@ -855,6 +872,34 @@ export class UI {
             }
         }
 
+        if (tile.structure === 'artifact_pedestal') {
+            if (tile.pedestalArtifact) {
+                const artDef = ARTIFACTS[tile.pedestalArtifact];
+                const broken = tile.pedestalInactive ? ' <span style="color:#ff4444;">(No Power)</span>' : '';
+                html += `<div class="info-row" style="color:#ccaa44;">Artifact: ${artDef?.name || tile.pedestalArtifact}${broken}</div>`;
+                html += this.getPedestalEffectDescription(artDef);
+                if (artDef?.pedestal?.radius && artDef.pedestal.radius !== 'global') {
+                    html += `<div class="info-row">Radius: ${artDef.pedestal.radius} | Mana: -${artDef.pedestal.manaCost || 0}</div>`;
+                } else if (artDef?.pedestal?.radius === 'global') {
+                    html += `<div class="info-row">Effect: Colony-wide | Mana: -${artDef.pedestal.manaCost || 0}</div>`;
+                }
+                html += `<div class="info-actions"><button onclick="window.game.retrievePedestalArtifact(${x},${y})">Retrieve Artifact</button></div>`;
+            } else {
+                html += `<div class="info-row" style="color:#888;">Empty — place an artifact</div>`;
+                const available = this.game.resources.artifacts.filter(a => a.pedestal);
+                if (available.length > 0) {
+                    html += `<div class="info-actions"><select id="pedestal-select">`;
+                    for (const art of available) {
+                        html += `<option value="${art.key}">${art.name}</option>`;
+                    }
+                    html += `</select>`;
+                    html += `<button onclick="window.game.placePedestalArtifact(${x},${y},document.getElementById('pedestal-select').value)">Place</button></div>`;
+                } else {
+                    html += `<div class="info-row" style="color:#666;">No artifacts with pedestal effects in inventory</div>`;
+                }
+            }
+        }
+
         if (tile.structure === 'rift_gate') {
             html += this._buildRiftGateHtml();
         }
@@ -1006,6 +1051,34 @@ export class UI {
                 const nextWave = waves.highestWaveCompleted + 1;
                 html += `<div class="info-row">Next: Wave ${nextWave} (${this.getWavePreview(nextWave)})</div>`;
                 html += `<div class="info-actions"><button onclick="window.game.startWave()" style="background:#6622aa;color:white;">Start Wave ${nextWave}</button></div>`;
+            }
+        }
+
+        if (tile.structure === 'artifact_pedestal') {
+            if (tile.pedestalArtifact) {
+                const artDef = ARTIFACTS[tile.pedestalArtifact];
+                const broken = tile.pedestalInactive ? ' <span style="color:#ff4444;">(No Power)</span>' : '';
+                html += `<div class="info-row" style="color:#ccaa44;">Artifact: ${artDef?.name || tile.pedestalArtifact}${broken}</div>`;
+                html += this.getPedestalEffectDescription(artDef);
+                if (artDef?.pedestal?.radius && artDef.pedestal.radius !== 'global') {
+                    html += `<div class="info-row">Radius: ${artDef.pedestal.radius} | Mana: -${artDef.pedestal.manaCost || 0}</div>`;
+                } else if (artDef?.pedestal?.radius === 'global') {
+                    html += `<div class="info-row">Effect: Colony-wide | Mana: -${artDef.pedestal.manaCost || 0}</div>`;
+                }
+                html += `<div class="info-actions"><button onclick="window.game.retrievePedestalArtifact(${x},${y})">Retrieve Artifact</button></div>`;
+            } else {
+                html += `<div class="info-row" style="color:#888;">Empty — place an artifact</div>`;
+                const available = this.game.resources.artifacts.filter(a => a.pedestal);
+                if (available.length > 0) {
+                    html += `<div class="info-actions"><select id="pedestal-select">`;
+                    for (const art of available) {
+                        html += `<option value="${art.key}">${art.name}</option>`;
+                    }
+                    html += `</select>`;
+                    html += `<button onclick="window.game.placePedestalArtifact(${x},${y},document.getElementById('pedestal-select').value)">Place</button></div>`;
+                } else {
+                    html += `<div class="info-row" style="color:#666;">No artifacts with pedestal effects in inventory</div>`;
+                }
             }
         }
 
@@ -1778,7 +1851,7 @@ export class UI {
         html += `<div class="settings-row">`;
         html += `<label for="set-names">Colonist names:</label>`;
         html += `<select id="set-names" onchange="window.game.settings.showColonistNames=this.value" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;">`;
-        for (const val of ['off', 'hover', 'always']) {
+        for (const val of ['off', 'selected', 'always']) {
             html += `<option value="${val}" ${s.showColonistNames === val ? 'selected' : ''}>${val.charAt(0).toUpperCase() + val.slice(1)}</option>`;
         }
         html += `</select></div>`;
@@ -1838,7 +1911,7 @@ export class UI {
         if (tile.designation) parts.push(`[${tile.designation.type}]`);
         if (tile.zone) parts.push(`Farm: ${tile.zone.crop}`);
         const nameMode = this.game.settings.showColonistNames;
-        if (nameMode === 'hover' || nameMode === 'always') {
+        if (nameMode === 'selected' || nameMode === 'always') {
             const colHere = this.game.colonists.find(c => c.x === x && c.y === y && c.hp > 0 && !c.onExpedition);
             if (colHere) parts.push(colHere.name);
         }
@@ -1909,9 +1982,11 @@ export class UI {
         let html = `<div class="event-text" style="font-size:0.9em;">Trader's Goods — select what to buy and offer</div>`;
         html += `<div style="display:flex;gap:8px;flex-wrap:wrap;max-height:200px;overflow-y:auto;">`;
 
+        const markupMult = getPedestalEffect(this.game, 'tradeMarkupMult');
+        const effectiveMarkup = TRADER_MARKUP * markupMult;
         html += `<div style="flex:1;min-width:140px;"><b style="color:#88ddff;">Trader Sells:</b>`;
         for (const [res, amt] of Object.entries(data.traderResources)) {
-            const val = Math.ceil((TRADE_VALUES[res] || 1) * TRADER_MARKUP);
+            const val = Math.ceil((TRADE_VALUES[res] || 1) * effectiveMarkup);
             html += `<div style="font-size:0.85em;">${res}: ${amt} (${val}v ea) <button onclick="window.game.tradeRequest('${res}',1)" style="padding:0 4px;">+1</button></div>`;
         }
         if (data.exclusiveItem) {
@@ -1934,7 +2009,7 @@ export class UI {
         const offerVal = Object.entries(offer).reduce((sum, [r, n]) => sum + (TRADE_VALUES[r] || 1) * n * TRADER_DISCOUNT, 0);
         const reqVal = Object.entries(request).reduce((sum, [r, n]) => {
             if (r === '__exclusive') return sum + (TRADER_EXCLUSIVE_ITEMS[data.exclusiveItem]?.tradeValue || 0);
-            return sum + (TRADE_VALUES[r] || 1) * n * TRADER_MARKUP;
+            return sum + (TRADE_VALUES[r] || 1) * n * effectiveMarkup;
         }, 0);
 
         html += `<div style="margin-top:4px;font-size:0.85em;">`;

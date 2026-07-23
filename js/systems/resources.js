@@ -114,6 +114,11 @@ export class ResourceManager {
         this.artifacts.push(artifact);
     }
 
+    removeArtifact(key) {
+        const idx = this.artifacts.findIndex(a => a.key === key);
+        if (idx !== -1) this.artifacts.splice(idx, 1);
+    }
+
     takeArtifact() {
         if (this.artifacts.length === 0) return null;
         return this.artifacts.shift();

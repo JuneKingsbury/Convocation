@@ -1,4 +1,4 @@
-import { CONFIG, GAME_VERSION, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS, GOLEM_TYPES } from './config.js';
+import { CONFIG, GAME_VERSION, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS, GOLEM_TYPES, ARTIFACTS } from './config.js';
 import { generateMap } from '../world/map.js';
 import { Camera } from '../ui/camera.js';
 import { Renderer } from '../ui/renderer.js';
@@ -18,6 +18,7 @@ import { Minimap } from '../ui/minimap.js';
 import { ResearchSystem, updateResearch } from '../systems/research.js';
 import { updateTamedAnimals, designateTame } from '../entities/taming.js';
 import { PowerSystem } from '../systems/power.js';
+import { getPedestalEffect } from '../systems/artifacts.js';
 import { ExplorationSystem } from '../systems/exploration.js';
 import { WaveSystem } from '../entities/waves.js';
 import { EventLog } from '../ui/eventlog.js';
@@ -46,7 +47,7 @@ class Game {
             showOverlays: true,
             showNightLighting: true,
             showWeatherParticles: true,
-            showColonistNames: 'hover',
+            showColonistNames: 'selected',
             showMinimap: true,
             showFps: false,
             autoSaveInterval: 60,
@@ -243,6 +244,12 @@ class Game {
             updateTamedAnimals(this);
             updateAutoCook(this);
             updateAutoRepair(this);
+            for (const c of this.colonists) {
+                c.pedestalWorkBonus = 0;
+                c.pedestalDamageBonus = 1;
+                c.pedestalSkillBonus = 0;
+            }
+            updatePedestals(this);
         }
 
         if (this.tick % 3 === 0 && this.power.hasPower()) {
@@ -396,6 +403,27 @@ class Game {
             const tile = this.map[y][x];
             this.ui.showTileInfo(tile, x, y);
         }
+    }
+
+    placePedestalArtifact(x, y, artifactKey) {
+        const tile = this.map[y][x];
+        if (tile.structure !== 'artifact_pedestal' || tile.pedestalArtifact) return;
+        if (!ARTIFACTS[artifactKey]?.pedestal) return;
+        this.resources.removeArtifact(artifactKey);
+        tile.pedestalArtifact = artifactKey;
+        this.notifications.push({ text: `Placed ${ARTIFACTS[artifactKey].name} on pedestal`, tick: this.tick, type: 'success' });
+        this.ui.showTileInfo(tile, x, y);
+    }
+
+    retrievePedestalArtifact(x, y) {
+        const tile = this.map[y][x];
+        if (tile.structure !== 'artifact_pedestal' || !tile.pedestalArtifact) return;
+        const key = tile.pedestalArtifact;
+        tile.pedestalArtifact = null;
+        tile.pedestalInactive = false;
+        this.resources.addArtifact(key);
+        this.notifications.push({ text: `Retrieved ${ARTIFACTS[key].name} from pedestal`, tick: this.tick, type: 'success' });
+        this.ui.showTileInfo(tile, x, y);
     }
 
     selectColonistById(colonistId) {
@@ -907,6 +935,48 @@ class Game {
     }
 }
 
+function updatePedestals(game) {
+    const pedestals = game.mapIndex.getAllStructurePositions().filter(({ x, y }) => {
+        const tile = game.map[y][x];
+        return tile.structure === 'artifact_pedestal' && tile.pedestalArtifact;
+    });
+    for (const { x, y } of pedestals) {
+        const tile = game.map[y][x];
+        const def = ARTIFACTS[tile.pedestalArtifact];
+        if (!def?.pedestal) continue;
+        const mana = def.pedestal.manaCost || 0;
+        if (mana > 0 && !game.power.hasPower()) {
+            tile.pedestalInactive = true;
+            continue;
+        }
+        tile.pedestalInactive = false;
+        if (def.pedestal.radius === 'global') continue;
+        const radius = def.pedestal.radius;
+        if (def.pedestal.workSpeedBonus || def.pedestal.damageBonusMult || def.pedestal.skillGrowthBonus) {
+            for (const c of game.colonists) {
+                if (c.hp <= 0) continue;
+                const dist = Math.abs(c.x - x) + Math.abs(c.y - y);
+                if (dist <= radius) {
+                    if (def.pedestal.workSpeedBonus) c.pedestalWorkBonus = (c.pedestalWorkBonus || 0) + def.pedestal.workSpeedBonus;
+                    if (def.pedestal.damageBonusMult) c.pedestalDamageBonus = (c.pedestalDamageBonus || 1) * def.pedestal.damageBonusMult;
+                    if (def.pedestal.skillGrowthBonus) c.pedestalSkillBonus = (c.pedestalSkillBonus || 0) + def.pedestal.skillGrowthBonus;
+                }
+            }
+        }
+        if (def.pedestal.blightImmunity) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                    const ty = y + dy, tx = x + dx;
+                    if (ty < 0 || ty >= game.map.length || tx < 0 || tx >= game.map[0].length) continue;
+                    const cropTile = game.map[ty][tx];
+                    if (cropTile.crop) cropTile.blightImmune = true;
+                }
+            }
+        }
+    }
+}
+
 function updateAutoRepair(game) {
     const allStructures = game.mapIndex.getAllStructurePositions();
     for (const { x, y } of allStructures) {
@@ -922,6 +992,24 @@ function updateAutoRepair(game) {
             x, y,
             workAmount: 15,
         });
+    }
+    const anvils = allStructures.filter(s => s.type === 'anvil');
+    if (anvils.length === 0) return;
+    for (const c of game.colonists) {
+        if (c.hp <= 0 || !c.artifactBroken || !c.artifact) continue;
+        if (c._repairQueued) continue;
+        const anvil = anvils[0];
+        const existing = game.taskQueue.getAll().find(t => t.type === 'repair_artifact' && t.colonistId === c.id);
+        if (existing) continue;
+        game.taskQueue.add({
+            type: 'repair_artifact',
+            skillRequired: 'crafting',
+            x: anvil.x, y: anvil.y,
+            workAmount: 40,
+            colonistId: c.id,
+            artifactKey: c.artifact,
+        });
+        c._repairQueued = true;
     }
 }
 

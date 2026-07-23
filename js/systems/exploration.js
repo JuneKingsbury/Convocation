@@ -1,4 +1,4 @@
-import { DIMENSIONS, EXPLORATION_CONFIG, EXPLORATION_EVENTS, TAMED_ANIMALS, SPELLS } from '../core/config.js';
+import { DIMENSIONS, EXPLORATION_CONFIG, EXPLORATION_EVENTS, TAMED_ANIMALS, SPELLS, ARTIFACTS } from '../core/config.js';
 import { findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 
 let nextExpeditionId = 1;
@@ -75,6 +75,19 @@ export class ExplorationSystem {
         if (totalSpeedBonus > 0) {
             duration = Math.max(Math.floor(duration * (1 - totalSpeedBonus)), Math.floor(duration * 0.5));
         }
+        let durationMult = 1.0;
+        for (const c of party) {
+            if (c.artifact && !c.artifactBroken) {
+                const art = c.artifact;
+                if (art.expedition?.durationMult) durationMult *= art.expedition.durationMult;
+                if (art.consumable) {
+                    game.resources.removeArtifact(art.key);
+                    c.artifact = null;
+                    game.eventLog.add(game, `${c.name}'s ${art.name} crumbles to dust as the expedition begins`, 'event', null);
+                }
+            }
+        }
+        if (durationMult !== 1.0) duration = Math.floor(duration * durationMult);
         const encounters = this._generateEncounters(dim);
 
         const expedition = {
@@ -170,6 +183,21 @@ export class ExplorationSystem {
         if (exp.log.length > 50) exp.log.shift();
     }
 
+    _checkExpeditionRevive(exp, member, game) {
+        const art = member.artifact;
+        if (art?.expedition?.autoReviveHp && !member._reviveUsed) {
+            member.hp = Math.floor(member.maxHp * art.expedition.autoReviveHp);
+            member._reviveUsed = true;
+            member.artifact = null;
+            this._addLog(exp, game, `${member.name}'s ${art.name} shatters, bringing them back!`, 'success');
+            const colonist = game.getColonist(member.id);
+            if (colonist) colonist.artifactBroken = true;
+        } else {
+            exp.defeated.push(member.id);
+            this._addLog(exp, game, pickRandom(EXPLORATION_EVENTS.combatDefeat).replace('{name}', member.name), 'danger');
+        }
+    }
+
     _updateGathering(exp, game) {
         const gx = exp.gatePos.x;
         const gy = exp.gatePos.y;
@@ -210,6 +238,7 @@ export class ExplorationSystem {
                 return {
                     id: c.id, name: c.name, hp: c.hp, maxHp: c.maxHp,
                     weapon: c.weapon, armor: c.armor,
+                    artifact: c.artifactBroken ? null : c.artifact,
                     knownSpells: c.knownSpells ? [...c.knownSpells] : [],
                     mana: c.mana || 0,
                     maxMana: c.maxMana || 0,
@@ -255,10 +284,12 @@ export class ExplorationSystem {
         for (const entry of dim.loot) {
             roll -= entry.weight;
             if (roll <= 0) {
+                if (entry.artifact) return { artifact: entry.artifact };
                 return { resource: entry.resource, amount: randInt(entry.amount[0], entry.amount[1]) };
             }
         }
         const fallback = dim.loot[0];
+        if (fallback.artifact) return { artifact: fallback.artifact };
         return { resource: fallback.resource, amount: randInt(fallback.amount[0], fallback.amount[1]) };
     }
 
@@ -275,12 +306,20 @@ export class ExplorationSystem {
         const dimEvents = dim.events;
 
         if (dimEvents && dimEvents.rare) {
+            const rareEncounterMult = getPartyExpeditionEffect(exp.partySnapshot, 'rareEncounterMult');
             for (const rare of dimEvents.rare) {
-                if (Math.random() < rare.chance) {
+                if (Math.random() < rare.chance * rareEncounterMult) {
                     const msg = rare.text.replace('{name}', member.name);
-                    const amount = randInt(rare.loot.amount[0], rare.loot.amount[1]);
-                    exp.loot[rare.loot.resource] = (exp.loot[rare.loot.resource] || 0) + amount;
-                    this._addLog(exp, game, `${msg} (+${amount} ${rare.loot.resource.replace(/_/g, ' ')})`, 'loot');
+                    if (rare.loot.artifact) {
+                        if (!exp.loot._artifacts) exp.loot._artifacts = [];
+                        exp.loot._artifacts.push(rare.loot.artifact);
+                        const artName = ARTIFACTS[rare.loot.artifact]?.name || rare.loot.artifact;
+                        this._addLog(exp, game, `${msg} (found ${artName}!)`, 'loot');
+                    } else {
+                        const amount = randInt(rare.loot.amount[0], rare.loot.amount[1]);
+                        exp.loot[rare.loot.resource] = (exp.loot[rare.loot.resource] || 0) + amount;
+                        this._addLog(exp, game, `${msg} (+${amount} ${rare.loot.resource.replace(/_/g, ' ')})`, 'loot');
+                    }
                     return;
                 }
             }
@@ -289,21 +328,31 @@ export class ExplorationSystem {
         const roll = Math.random();
 
         if (roll < EXPLORATION_CONFIG.trapChance) {
-            const dmg = randInt(EXPLORATION_CONFIG.trapDamageRange[0], EXPLORATION_CONFIG.trapDamageRange[1]);
+            const trapMult = getPartyExpeditionEffect(exp.partySnapshot, 'trapDamageMult');
+            const baseDmg = randInt(EXPLORATION_CONFIG.trapDamageRange[0], EXPLORATION_CONFIG.trapDamageRange[1]);
+            const dmg = Math.floor(baseDmg * trapMult);
             member.hp -= dmg;
             const trapPool = (dimEvents && dimEvents.traps) || EXPLORATION_EVENTS.traps;
             const msg = pickRandom(trapPool).replace('{name}', member.name);
             this._addLog(exp, game, `${msg} (${dmg} dmg)`, 'danger');
             if (member.hp <= 0) {
-                exp.defeated.push(member.id);
-                this._addLog(exp, game, pickRandom(EXPLORATION_EVENTS.combatDefeat).replace('{name}', member.name), 'danger');
+                this._checkExpeditionRevive(exp, member, game);
             }
         } else if (roll < EXPLORATION_CONFIG.trapChance + EXPLORATION_CONFIG.findItemChance) {
             const lootEntry = this._rollLoot(dim);
-            exp.loot[lootEntry.resource] = (exp.loot[lootEntry.resource] || 0) + lootEntry.amount;
+            const lootMult = getPartyExpeditionEffect(exp.partySnapshot, 'lootMult');
             const discPool = (dimEvents && dimEvents.discoveries) || EXPLORATION_EVENTS.discoveries;
             const msg = pickRandom(discPool).replace('{name}', member.name);
-            this._addLog(exp, game, `${msg} (+${lootEntry.amount} ${lootEntry.resource.replace(/_/g, ' ')})`, 'loot');
+            if (lootEntry.artifact) {
+                if (!exp.loot._artifacts) exp.loot._artifacts = [];
+                exp.loot._artifacts.push(lootEntry.artifact);
+                const artName = ARTIFACTS[lootEntry.artifact]?.name || lootEntry.artifact;
+                this._addLog(exp, game, `${msg} (found ${artName}!)`, 'loot');
+            } else {
+                const boostedAmount = Math.floor(lootEntry.amount * lootMult);
+                exp.loot[lootEntry.resource] = (exp.loot[lootEntry.resource] || 0) + boostedAmount;
+                this._addLog(exp, game, `${msg} (+${boostedAmount} ${lootEntry.resource.replace(/_/g, ' ')})`, 'loot');
+            }
         } else {
             const ambientPool = (dimEvents && dimEvents.ambient) || EXPLORATION_EVENTS.ambient;
             const msg = pickRandom(ambientPool).replace('{name}', member.name);
@@ -352,12 +401,13 @@ export class ExplorationSystem {
             return;
         }
 
+        const partyDmgMult = getPartyExpeditionEffect(exp.partySnapshot, 'partyDamageMult');
         for (const member of alive) {
             if (member.hp <= 0) continue;
             const target = combat.enemies.find(e => e.hp > 0);
             if (!target) break;
             const weaponDmg = member.weapon ? member.weapon.damage : EXPLORATION_CONFIG.baseFistDamage;
-            const dmg = weaponDmg + randInt(0, 3);
+            const dmg = Math.floor((weaponDmg + randInt(0, 3)) * partyDmgMult);
 
             if (Math.random() < 0.15) {
                 const msg = pickRandom(EXPLORATION_EVENTS.combatMiss)
@@ -381,11 +431,21 @@ export class ExplorationSystem {
 
         for (const enemy of combat.enemies) {
             if (enemy.hp <= 0) continue;
-            const target = alive.find(p => p.hp > 0);
+            let target = null;
+            let bestScore = Infinity;
+            for (const p of alive) {
+                if (p.hp <= 0) continue;
+                const priority = p.artifact?.expedition?.targetPriority || 0;
+                const score = -priority;
+                if (score < bestScore) { bestScore = score; target = p; }
+            }
             if (!target) break;
             let dmg = enemy.damage + randInt(0, 2);
             if (target.armor) {
                 dmg = Math.max(1, Math.floor(dmg * (1 - target.armor.damageReduction)));
+            }
+            if (target.artifact?.expedition?.damageReduction) {
+                dmg = Math.max(1, Math.floor(dmg * (1 - target.artifact.expedition.damageReduction)));
             }
             if (target.shieldActive) {
                 dmg = Math.max(1, Math.floor(dmg * (1 - target.shieldReduction)));
@@ -404,8 +464,7 @@ export class ExplorationSystem {
                     .replace('{dmg}', dmg);
                 this._addLog(exp, game, msg, 'combat');
                 if (target.hp <= 0) {
-                    exp.defeated.push(target.id);
-                    this._addLog(exp, game, pickRandom(EXPLORATION_EVENTS.combatDefeat).replace('{name}', target.name), 'danger');
+                    this._checkExpeditionRevive(exp, target, game);
                 }
             }
         }
@@ -515,9 +574,18 @@ export class ExplorationSystem {
         const survived = exp.partySnapshot.filter(p => p.hp > 0).length;
         if (survived > 0) {
             const dim = DIMENSIONS[exp.dimension];
+            const lootMult = getPartyExpeditionEffect(exp.partySnapshot, 'lootMult');
             const lootEntry = this._rollLoot(dim);
-            exp.loot[lootEntry.resource] = (exp.loot[lootEntry.resource] || 0) + lootEntry.amount;
-            this._addLog(exp, game, `Victory! Looted ${lootEntry.amount} ${lootEntry.resource.replace(/_/g, ' ')}.`, 'success');
+            if (lootEntry.artifact) {
+                if (!exp.loot._artifacts) exp.loot._artifacts = [];
+                exp.loot._artifacts.push(lootEntry.artifact);
+                const artName = ARTIFACTS[lootEntry.artifact]?.name || lootEntry.artifact;
+                this._addLog(exp, game, `Victory! Found ${artName}!`, 'success');
+            } else {
+                const amount = Math.floor(lootEntry.amount * lootMult);
+                exp.loot[lootEntry.resource] = (exp.loot[lootEntry.resource] || 0) + amount;
+                this._addLog(exp, game, `Victory! Looted ${amount} ${lootEntry.resource.replace(/_/g, ' ')}.`, 'success');
+            }
         } else {
             this._addLog(exp, game, 'The party has been overwhelmed...', 'danger');
         }
@@ -557,14 +625,23 @@ export class ExplorationSystem {
             }
         }
 
+        const artifacts = exp.loot._artifacts || [];
+        delete exp.loot._artifacts;
+        game.resources.add(exp.loot);
+        for (const artKey of artifacts) {
+            game.resources.addArtifact({ ...ARTIFACTS[artKey], key: artKey });
+        }
+        const parts = Object.entries(exp.loot).map(([k, v]) => `${v} ${k}`);
+        for (const artKey of artifacts) {
+            parts.push(ARTIFACTS[artKey]?.name || artKey);
+        }
+        const lootSummary = parts.join(', ');
         if (!allDefeated) {
-            game.resources.add(exp.loot);
-            const lootSummary = Object.entries(exp.loot).map(([k, v]) => `${v} ${k}`).join(', ');
             this._addLog(exp, game, `Returned with: ${lootSummary || 'nothing'}`, 'success');
             game.eventLog.add(game, `Expedition returned from ${exp.dimensionName}: ${lootSummary || 'nothing'}`, 'event', null);
         } else {
-            this._addLog(exp, game, 'Party retreated empty-handed.', 'danger');
-            game.eventLog.add(game, `Expedition to ${exp.dimensionName} failed — party retreated`, 'warning', null);
+            this._addLog(exp, game, `Party defeated — salvaged: ${lootSummary || 'nothing'}`, 'danger');
+            game.eventLog.add(game, `Expedition to ${exp.dimensionName} failed — salvaged: ${lootSummary || 'nothing'}`, 'warning', null);
         }
 
         this.completedExpeditions.push(exp);
@@ -572,6 +649,18 @@ export class ExplorationSystem {
             this.completedExpeditions.shift();
         }
     }
+}
+
+function getPartyExpeditionEffect(partySnapshot, effectKey) {
+    let value = effectKey.includes('Mult') ? 1.0 : 0;
+    for (const member of partySnapshot) {
+        if (member.hp <= 0 || !member.artifact) continue;
+        const art = member.artifact;
+        if (!art.expedition?.[effectKey]) continue;
+        if (effectKey.includes('Mult')) value *= art.expedition[effectKey];
+        else value += art.expedition[effectKey];
+    }
+    return value;
 }
 
 function randInt(min, max) {

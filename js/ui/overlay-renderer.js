@@ -25,6 +25,10 @@ export class OverlayRenderer {
         const ch = charHeight;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        if (game.radiusHighlight) {
+            this._renderRadiusHighlight(ctx, game.radiusHighlight, cw, ch, camera);
+        }
+
         if (!game.overlays || game.overlays.length === 0) return;
 
         for (const overlay of game.overlays) {
@@ -112,6 +116,38 @@ export class OverlayRenderer {
         ctx.beginPath();
         ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+    }
+
+    _renderRadiusHighlight(ctx, highlight, cw, ch, camera) {
+        const { x, y, radius, color } = highlight;
+        ctx.save();
+        ctx.fillStyle = color;
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                const sx = (x + dx - camera.x) * cw;
+                const sy = (y + dy - camera.y) * ch;
+                if (sx < -cw || sx > this.canvas.width || sy < -ch || sy > this.canvas.height) continue;
+                ctx.fillRect(sx, sy, cw, ch);
+            }
+        }
+        const borderColor = color.slice(0, 7) + 'cc';
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let dy = -radius; dy <= radius; dy++) {
+            for (let dx = -radius; dx <= radius; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                const sx = (x + dx - camera.x) * cw;
+                const sy = (y + dy - camera.y) * ch;
+                if (Math.abs(dx) + Math.abs(dy + 1) > radius) { ctx.moveTo(sx, sy + ch); ctx.lineTo(sx + cw, sy + ch); }
+                if (Math.abs(dx) + Math.abs(dy - 1) > radius) { ctx.moveTo(sx, sy); ctx.lineTo(sx + cw, sy); }
+                if (Math.abs(dx + 1) + Math.abs(dy) > radius) { ctx.moveTo(sx + cw, sy); ctx.lineTo(sx + cw, sy + ch); }
+                if (Math.abs(dx - 1) + Math.abs(dy) > radius) { ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + ch); }
+            }
+        }
+        ctx.stroke();
         ctx.restore();
     }
 }

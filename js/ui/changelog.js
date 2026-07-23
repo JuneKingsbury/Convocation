@@ -1,4 +1,8 @@
 export const CHANGELOG = [
+    { date: '2026-07-23', message: 'Artifacts system: 14 artifacts with pedestal placement, AoE/global effects, combat targeting, expedition bonuses, durability & anvil repair' },
+    { date: '2026-07-23', message: 'New buildings: Artifact Pedestal (place artifacts for radius buffs) and Anvil (repair broken artifacts)' },
+    { date: '2026-07-23', message: 'Radius visualization: selecting pedestals, turrets, or heaters highlights affected tiles' },
+    { date: '2026-07-23', message: 'Expedition loot is now kept even if all party members are defeated' },
     { date: '2026-07-23', message: 'Performance: Map-based O(1) colonist/task lookups, reusable renderer buffers, precomputed night lighting grid' },
     { date: '2026-07-23', message: 'Balance pass: ~2x longer mid-to-endgame (research costs, craft times, exploration durations, tome learning)' },
     { date: '2026-07-23', message: 'Raider AI overhaul: individual flee at 25% HP, group rout at 75% casualties, longer safety timeout' },

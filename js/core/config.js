@@ -364,6 +364,8 @@ export const BUILDINGS = {
     golem_forge:       { char: 'Ğ', color: '#cc8833', cost: { stone: 8, runite: 4, planks: 4 }, work: 50, structureType: 'furniture', category: 'Production', research: 'golem_craft', description: 'Animate stone golems. Click to craft.' },
     forge_core:        { char: '⚒', color: '#ff8844', cost: { stone: 6, runite: 3, planks: 3 }, work: 40, structureType: 'furniture', category: 'Arcane', research: 'masterwork', description: 'Core of the Great Forge. Surround with walls + door to activate (2.5x equipment crafting).' },
     ritual_core:       { char: '◎', color: '#aa44ff', cost: { runite: 5, void_essence: 3, planks: 4 }, work: 50, structureType: 'furniture', category: 'Arcane', research: 'advanced_arcana', description: 'Core of the Ritual Circle. Place altars around it to activate (-30% spell cooldowns).' },
+    artifact_pedestal: { char: '◆', color: '#ccaa44', cost: { stone: 8, runite: 2 }, work: 35, structureType: 'furniture', category: 'Arcane', research: 'arcane_infusion', description: 'Place an artifact to project its effect in a radius. Mana cost varies by artifact.' },
+    anvil:             { char: '⌂', color: '#999999', cost: { stone: 10, planks: 4 }, work: 30, structureType: 'furniture', category: 'Production', research: 'runeforging', description: 'Repair broken artifacts and equipment.' },
 };
 
 // Auto-derived from BUILDINGS (terrain chars/colors + building chars/colors merged)
@@ -431,7 +433,7 @@ export const COMPLEX_STRUCTURES = {
 
 // To add a recipe: add entry here. Set 'research' field to gate behind tech.
 // Station must exist as a buildable structure. Equipment outputs auto-detected from WEAPONS/ARMORS/TOOLS.
-export const RECIPE_CATEGORIES = ['Materials', 'Equipment', 'Tools', 'Artifacts', 'Food & Potions', 'Tomes'];
+export const RECIPE_CATEGORIES = ['Materials', 'Equipment', 'Tools', 'Artifacts', 'Repair', 'Food & Potions', 'Tomes'];
 
 export const RECIPES = {
     craft_planks: { input: { wood: 2 }, output: { planks: 3 }, skill: 'crafting', ticks: 10, station: 'workbench', category: 'Materials' },
@@ -450,6 +452,9 @@ export const RECIPES = {
     craft_runic_wand: { input: { runite: 2, planks: 2 }, output: { runic_wand: 1 }, skill: 'crafting', ticks: 35, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
     craft_void_staff: { input: { void_essence: 5, runite: 2, planks: 2 }, output: { void_staff: 1 }, skill: 'crafting', ticks: 55, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
     craft_boots_of_haste: { input: { void_essence: 3, planks: 2, runite: 1 }, output: { boots_of_haste: 1 }, skill: 'crafting', ticks: 55, station: 'workbench', research: 'void_forging', category: 'Artifacts' },
+    craft_ward_of_the_sentinel: { input: { void_essence: 4, runite: 3, stone: 2 }, output: { ward_of_the_sentinel: 1 }, skill: 'crafting', ticks: 65, station: 'workbench', research: 'void_forging', category: 'Artifacts' },
+    craft_drum_of_rallying: { input: { wood: 6, runite: 2, planks: 3 }, output: { drum_of_rallying: 1 }, skill: 'crafting', ticks: 45, station: 'workbench', research: 'runeforging', category: 'Artifacts' },
+    repair_artifact: { input: { runite: 1 }, output: {}, skill: 'crafting', ticks: 40, station: 'anvil', category: 'Repair', special: 'repair' },
     brew_health_potion: { input: { berries: 3, wheat: 1 }, output: { health_potion: 1 }, skill: 'cooking', ticks: 16, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
     brew_speed_potion: { input: { corn: 2, potatoes: 2, berries: 1 }, output: { speed_potion: 1 }, skill: 'cooking', ticks: 20, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
     cook_meal: { input: { foodstuffs: 5 }, output: { food: 4 }, skill: 'cooking', ticks: 8, station: 'cauldron', category: 'Food & Potions' },
@@ -504,8 +509,80 @@ export const TOOLS = {
 
 // To add an artifact: add entry here + a recipe with output: { <key>: 1 }. Equipped in a dedicated artifact slot.
 // Artifacts are magical items with unique effects. Stat bonuses stack with weapon/tool bonuses.
+// Effect fields (all optional, data-driven — runtime reads these generically):
+//   moveSpeedBonus: flat addition to move speed (equipped)
+//   workSpeedBonus: flat addition to work speed multiplier (equipped)
+//   pedestal: { radius, manaCost, ...effects } — placed on pedestal building, applies in radius
+//     radius: number (Manhattan distance) or 'global' (colony-wide, no distance check)
+//     effects: blightImmunity, workSpeedBonus, damageBonusMult, lightRadius, skillGrowthBonus,
+//              wandererChanceMult, cookingBonusFood, tradeMarkupMult
+//   combat: { targetPriority, autoReviveHp, damageReduction } — applies during raids + waves (equipped)
+//   expedition: { lootMult, trapDamageMult, rareEncounterMult, partyDamageMult, durationMult, targetPriority, autoReviveHp, damageReduction }
+//   durability: { max, breakOnUse } — item breaks after triggered N times, needs anvil repair
+//   consumable: true — destroyed after one use
 export const ARTIFACTS = {
     boots_of_haste: { name: 'Boots of Haste', moveSpeedBonus: 0.3 },
+    seedkeepers_locket: {
+        name: "Seedkeeper's Locket",
+        pedestal: { radius: 5, manaCost: 1, blightImmunity: true },
+        expedition: { trapDamageMult: 0.7 },
+    },
+    hourglass_of_diligence: {
+        name: 'Hourglass of Diligence',
+        workSpeedBonus: 0.25,
+        pedestal: { radius: 4, manaCost: 2, workSpeedBonus: 0.15 },
+    },
+    lodestone_of_prosperity: {
+        name: 'Lodestone of Prosperity',
+        pedestal: { radius: 'global', manaCost: 2, wandererChanceMult: 1.5 },
+    },
+    cornucopia_charm: {
+        name: 'Cornucopia Charm',
+        pedestal: { radius: 'global', manaCost: 1, cookingBonusFood: 1 },
+    },
+    compass_of_greed: {
+        name: 'Compass of Greed',
+        expedition: { lootMult: 1.5, trapDamageMult: 1.2 },
+    },
+    voidwalkers_lantern: {
+        name: "Voidwalker's Lantern",
+        expedition: { rareEncounterMult: 2.0 },
+        pedestal: { radius: 6, manaCost: 2, lightRadius: 4 },
+    },
+    map_fragment: {
+        name: 'Map Fragment',
+        consumable: true,
+        expedition: { durationMult: 0.7 },
+    },
+    ward_of_the_sentinel: {
+        name: 'Ward of the Sentinel',
+        combat: { autoReviveHp: 0.5 },
+        expedition: { autoReviveHp: 0.5 },
+        durability: { max: 1, breakOnUse: true },
+    },
+    drum_of_rallying: {
+        name: 'Drum of Rallying',
+        pedestal: { radius: 8, manaCost: 3, damageBonusMult: 1.15 },
+        expedition: { partyDamageMult: 1.15 },
+    },
+    cloak_of_shadows: {
+        name: 'Cloak of Shadows',
+        combat: { targetPriority: -10 },
+        expedition: { targetPriority: -10 },
+    },
+    aegis_of_the_vanguard: {
+        name: 'Aegis of the Vanguard',
+        combat: { targetPriority: 10, damageReduction: 0.3 },
+        expedition: { targetPriority: 10, damageReduction: 0.3 },
+    },
+    hagglers_coin: {
+        name: "Haggler's Coin",
+        pedestal: { radius: 'global', manaCost: 1, tradeMarkupMult: 0.85 },
+    },
+    tome_of_shared_wisdom: {
+        name: 'Tome of Shared Wisdom',
+        pedestal: { radius: 5, manaCost: 2, skillGrowthBonus: 0.1 },
+    },
 };
 
 // To add a potion: add entry here + a recipe. Colonists auto-use potions from stockpile when conditions are met.
@@ -963,6 +1040,11 @@ export const TRADER_EXCLUSIVE_ITEMS = {
     enchanted_blade: { type: 'weapon', name: 'Enchanted Blade', damage: 18, spellDamageBonus: 0.15, tradeValue: 50 },
     wanderers_cloak: { type: 'armor', name: "Wanderer's Cloak", damageReduction: 0.15, moveSpeedBonus: 0.2, tradeValue: 45 },
     merchants_ring: { type: 'artifact', name: "Merchant's Ring", tradeBonus: 0.1, tradeValue: 35 },
+    seedkeepers_locket: { type: 'artifact', name: "Seedkeeper's Locket", tradeValue: 55 },
+    hourglass_of_diligence: { type: 'artifact', name: 'Hourglass of Diligence', tradeValue: 50 },
+    lodestone_of_prosperity: { type: 'artifact', name: 'Lodestone of Prosperity', tradeValue: 45 },
+    hagglers_coin: { type: 'artifact', name: "Haggler's Coin", tradeValue: 40 },
+    aegis_of_the_vanguard: { type: 'artifact', name: 'Aegis of the Vanguard', tradeValue: 60 },
 };
 
 // ----------------------------------------------------------------------------
@@ -978,6 +1060,7 @@ export const DIMENSIONS = {
             { resource: 'stone', weight: 40, amount: [5, 12] },
             { resource: 'runite', weight: 30, amount: [2, 5] },
             { resource: 'void_essence', weight: 10, amount: [1, 3] },
+            { artifact: 'map_fragment', weight: 3 },
         ],
         enemies: { hp: [40, 60], damage: [5, 8], count: [2, 4] },
         events: {
@@ -1001,6 +1084,7 @@ export const DIMENSIONS = {
             rare: [
                 { chance: 0.05, text: '{name} discovers a resonating crystal chamber — bonus runite!', loot: { resource: 'runite', amount: [3, 6] } },
                 { chance: 0.03, text: '{name} finds an ancient dwarven cache!', loot: { resource: 'stone', amount: [8, 15] } },
+                { chance: 0.02, text: '{name} finds a strange compass embedded in crystal — it pulses with greed!', loot: { artifact: 'compass_of_greed' } },
             ],
         },
     },
@@ -1011,6 +1095,7 @@ export const DIMENSIONS = {
             { resource: 'wood', weight: 50, amount: [8, 15] },
             { resource: 'wheat', weight: 20, amount: [5, 10] },
             { resource: 'berries', weight: 20, amount: [4, 8] },
+            { artifact: 'map_fragment', weight: 3 },
         ],
         enemies: { hp: [30, 50], damage: [4, 6], count: [1, 3] },
         events: {
@@ -1034,6 +1119,7 @@ export const DIMENSIONS = {
             rare: [
                 { chance: 0.06, text: '{name} discovers a fertile seed cache — rare crops!', loot: { resource: 'potatoes', amount: [6, 10] } },
                 { chance: 0.04, text: '{name} finds a druid\'s abandoned herb stash!', loot: { resource: 'berries', amount: [8, 12] } },
+                { chance: 0.02, text: '{name} finds a golden charm shaped like a cornucopia!', loot: { artifact: 'cornucopia_charm' } },
             ],
         },
     },
@@ -1043,6 +1129,7 @@ export const DIMENSIONS = {
         loot: [
             { resource: 'void_essence', weight: 40, amount: [3, 7] },
             { resource: 'runite', weight: 25, amount: [3, 6] },
+            { artifact: 'map_fragment', weight: 3 },
         ],
         enemies: { hp: [80, 120], damage: [8, 14], count: [3, 6] },
         research: 'deep_delving',
@@ -1069,6 +1156,8 @@ export const DIMENSIONS = {
             rare: [
                 { chance: 0.04, text: '{name} absorbs a collapsing void crystal — pure essence!', loot: { resource: 'void_essence', amount: [4, 8] } },
                 { chance: 0.02, text: '{name} finds a sealed void reliquary!', loot: { resource: 'void_essence', amount: [6, 10] } },
+                { chance: 0.015, text: '{name} pulls a glowing lantern from the void — it never goes dark!', loot: { artifact: 'voidwalkers_lantern' } },
+                { chance: 0.015, text: '{name} wraps themselves in living shadow — a cloak of concealment!', loot: { artifact: 'cloak_of_shadows' } },
             ],
         },
     },
@@ -1082,6 +1171,7 @@ export const DIMENSIONS = {
             { resource: 'tome_warp', weight: 15, amount: [1, 1] },
             { resource: 'tome_circle_of_growth', weight: 10, amount: [1, 1] },
             { resource: 'runite', weight: 20, amount: [2, 4] },
+            { artifact: 'map_fragment', weight: 3 },
         ],
         enemies: { hp: [30, 50], damage: [4, 7], count: [1, 3] },
         research: 'arcane_studies',
@@ -1107,6 +1197,7 @@ export const DIMENSIONS = {
             rare: [
                 { chance: 0.05, text: '{name} discovers a sealed headmaster\'s vault — rare tome inside!', loot: { resource: 'tome_magic_missile', amount: [1, 1] } },
                 { chance: 0.04, text: '{name} finds a cache of enchanting runite!', loot: { resource: 'runite', amount: [3, 5] } },
+                { chance: 0.015, text: '{name} finds a glowing codex that shares its knowledge with all who stand near!', loot: { artifact: 'tome_of_shared_wisdom' } },
             ],
         },
     },

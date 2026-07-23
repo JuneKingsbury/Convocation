@@ -135,12 +135,18 @@ export class WaveSystem {
             ? game.spatial.colonists.query(enemy.x, enemy.y, 1)
             : game.colonists.filter(c => c.hp > 0 && manhattanDist(enemy.x, enemy.y, c.x, c.y) <= 1);
 
+        let bestTarget = null;
+        let bestScore = -Infinity;
         for (const c of nearbyColonists) {
             if (c.hp <= 0) continue;
-            if (manhattanDist(enemy.x, enemy.y, c.x, c.y) <= 1) {
-                colonistTakeDamage(c, enemy.damage, game);
-                return;
-            }
+            if (manhattanDist(enemy.x, enemy.y, c.x, c.y) > 1) continue;
+            const priority = (c.artifact && !c.artifactBroken) ? (c.artifact.combat?.targetPriority || 0) : 0;
+            const score = -priority;
+            if (score > bestScore) { bestScore = score; bestTarget = c; }
+        }
+        if (bestTarget) {
+            colonistTakeDamage(bestTarget, enemy.damage, game);
+            return;
         }
 
         for (const c of nearbyColonists) {

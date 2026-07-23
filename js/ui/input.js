@@ -1,4 +1,4 @@
-import { CONFIG, CROPS, BUILDINGS, BUILD_CATEGORIES, DRAG_BUILD_TYPES, SINGLE_PLACE_TYPES, SPELLS } from '../core/config.js';
+import { CONFIG, CROPS, BUILDINGS, BUILD_CATEGORIES, DRAG_BUILD_TYPES, SINGLE_PLACE_TYPES, SPELLS, ARTIFACTS } from '../core/config.js';
 import { designateBuild, designateChop, designateMine, cancelDesignation } from '../systems/building.js';
 import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from '../systems/farming.js';
 import { isPassable } from '../world/map.js';
@@ -669,6 +669,26 @@ export class InputHandler {
             this.game.selectedColonist = null;
             this.game.selectedColonists = [];
         }
+
+        this.game.radiusHighlight = this._getRadiusHighlight(pos, tile, colonistsHere);
         this.game.ui.showTileEntities(tile, pos.x, pos.y, colonistsHere, animalsHere, [...raidersHere, ...waveEnemiesHere], tamedHere);
+    }
+
+    _getRadiusHighlight(pos, tile, colonistsHere) {
+        if (tile.structure === 'artifact_pedestal' && tile.pedestalArtifact) {
+            const def = ARTIFACTS[tile.pedestalArtifact];
+            if (def?.pedestal?.radius && def.pedestal.radius !== 'global') {
+                return { x: pos.x, y: pos.y, radius: def.pedestal.radius, color: '#ccaa4466' };
+            }
+        }
+        const bDef = BUILDINGS[tile.structure];
+        if (bDef?.power?.damage) {
+            const radius = bDef.power.range || 6;
+            return { x: pos.x, y: pos.y, radius, color: '#ff444466' };
+        }
+        if (bDef?.power?.warmRadius) {
+            return { x: pos.x, y: pos.y, radius: bDef.power.warmRadius, color: '#ff884466' };
+        }
+        return null;
     }
 }

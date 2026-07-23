@@ -134,6 +134,18 @@ export const GLOSSARY = [
         ]
     },
     {
+        title: 'Artifacts',
+        entries: [
+            ['Overview', 'Powerful items with unique effects. Some are equipped on colonists, others placed on Artifact Pedestals for area-of-effect buffs. Found in expeditions, purchased from traders, or crafted.'],
+            ['Artifact Pedestal', '(◆) Place an artifact on a pedestal to project its effect in a radius. Mana cost varies by artifact. Build after researching Arcane Infusion. Click to place or retrieve artifacts.'],
+            ['Radius Effects', 'Pedestal artifacts affect colonists/crops within their Manhattan-distance radius. Radius is shown as a diamond highlight when selecting the pedestal. Global artifacts (radius: global) affect the entire colony.'],
+            ['Equipped Effects', 'Some artifacts provide bonuses when equipped on a colonist: move speed, work speed, combat priority, or damage reduction. Expedition effects apply when the colonist is on an expedition.'],
+            ['Durability & Repair', 'Certain powerful artifacts (Ward of the Sentinel) break after use. Broken artifacts provide no effects. Repair at an Anvil (requires Runeforging research) — costs 1 runite.'],
+            ['Artifact List', 'All artifacts and their primary effects:\n\n  Boots of Haste          +30% move speed (equipped)\n  Seedkeeper\'s Locket     Blight immunity radius 5 (pedestal)\n  Hourglass of Diligence  +25% work (equip) / +15% work radius 4 (pedestal)\n  Lodestone of Prosperity +50% wanderer chance (global pedestal)\n  Cornucopia Charm        +1 bonus food per cook (global pedestal)\n  Compass of Greed        +50% loot, +20% trap dmg (expedition)\n  Voidwalker\'s Lantern    2x rare encounters (expedition) / light r6 (pedestal)\n  Map Fragment            -30% expedition duration (consumable)\n  Ward of the Sentinel    Auto-revive at 50% HP, breaks after use\n  Drum of Rallying        +15% damage radius 8 (pedestal/expedition)\n  Cloak of Shadows        Enemies avoid targeting (combat/expedition)\n  Aegis of the Vanguard   Enemies focus you, -30% damage taken (tank)\n  Haggler\'s Coin          -15% trade markup (global pedestal)\n  Tome of Shared Wisdom   +10% skill growth radius 5 (pedestal)'],
+            ['Sources', 'Expedition loot (dimension-specific rares + Map Fragments everywhere), Trader exclusive items, and crafting (Ward of the Sentinel via Void Forging).'],
+        ]
+    },
+    {
         title: 'Exploration (Rift Gate)',
         entries: [
             ['Rift Gate', '(Ω) Build after researching Planar Rift. Click to open the expedition panel. Consumes 6 mana.'],
@@ -142,7 +154,7 @@ export const GLOSSARY = [
             ['Pack Animals', 'Tamed okapi can join expeditions as pack animals, reducing expedition duration by 25% each.'],
             ['Dimensions', 'Each has unique events, traps, and rare encounters:\n\n  Crystal Caves   Diff 1  220-380t  Stone, Runite\n  Verdant Depths  Diff 1  150-280t  Wood, Wheat, Berries\n  Arcane Library  Diff 1  180-320t  Spell Tomes, Runite  (Arcane Studies)\n  Shadow Realm    Diff 2  400-650t  Void Essence, Runite (Deep Delving)'],
             ['Encounters', 'Combat encounters resolve round-by-round in real-time. Colonists attack with equipped weapons; enemies strike back. Traps deal damage to random party members. Discoveries provide bonus loot.'],
-            ['No Permadeath', 'Defeated colonists return at 1 HP. Entire party defeated = return empty-handed.'],
+            ['Loot on Defeat', 'Even if all party members are defeated, you keep any items found during exploration. You only lose the completion bonus for finishing the expedition.'],
         ]
     },
     {
@@ -168,7 +180,7 @@ export const GLOSSARY = [
     {
         title: 'Mana (Leylines)',
         entries: [
-            ['Net Mana', 'Generation minus consumption. If negative, all mana buildings shut off.\n\n  Building           Mana\n  Mana Crystal       +10 (generates)\n  Ice Box            -1\n  Glowstone          -2\n  Arcane Sentinel    -3\n  Ember Ward         -3\n  Enchanting Table   -4\n  Void Turret        -5\n  Rift Gate          -6'],
+            ['Net Mana', 'Generation minus consumption. If negative, all mana buildings shut off.\n\n  Building           Mana\n  Mana Crystal       +10 (generates)\n  Ice Box            -1\n  Artifact Pedestal  -1 to -3 (varies by artifact)\n  Glowstone          -2\n  Arcane Sentinel    -3\n  Ember Ward         -3\n  Enchanting Table   -4\n  Void Turret        -5\n  Rift Gate          -6'],
         ]
     },
     {
@@ -256,6 +268,8 @@ export const GLOSSARY = [
             ['Ğ', 'Golem Forge', '#cc8833'],
             ['⚒', 'Forge Core', '#ff8844'],
             ['◎', 'Ritual Core', '#aa44ff'],
+            ['◆', 'Artifact Pedestal', '#ccaa44'],
+            ['⌂', 'Anvil', '#999999'],
             ['G', 'Golem', '#888888'],
             ['!', 'Melee hit', '#ffff00'],
             ['*', 'Turret beam', '#ff4444'],
