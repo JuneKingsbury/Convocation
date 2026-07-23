@@ -242,6 +242,7 @@ export const MAGIC_SKILLS = {
     abjuration:    { name: 'Abjuration', baseLevel: [0, 0], biasBonus: 2, description: 'Healing and protective magic' },
     conjuration:   { name: 'Conjuration', baseLevel: [0, 0], biasBonus: 2, description: 'Summoning and teleportation' },
     transmutation: { name: 'Transmutation', baseLevel: [0, 0], biasBonus: 2, description: 'Environmental and growth magic' },
+    divination:    { name: 'Divination', baseLevel: [0, 0], biasBonus: 2, description: 'Predicting and influencing fate' },
 };
 
 // Mana system tuning. Max mana and regen scale with combined magic school levels.
@@ -421,6 +422,11 @@ export const RECIPES = {
     craft_tome_summon_familiar: { input: { planks: 5, runite: 3, void_essence: 3 }, output: { tome_summon_familiar: 1 }, skill: 'crafting', ticks: 32, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
     craft_tome_circle_of_growth: { input: { planks: 4, runite: 2, wheat: 3 }, output: { tome_circle_of_growth: 1 }, skill: 'crafting', ticks: 26, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
     craft_tome_level_field: { input: { planks: 5, runite: 4, void_essence: 3 }, output: { tome_level_field: 1 }, skill: 'crafting', ticks: 35, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_foresight: { input: { planks: 2, berries: 1 }, output: { tome_foresight: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_fair_winds: { input: { planks: 3, runite: 1 }, output: { tome_fair_winds: 1 }, skill: 'crafting', ticks: 20, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_merchants_omen: { input: { planks: 4, runite: 2 }, output: { tome_merchants_omen: 1 }, skill: 'crafting', ticks: 25, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_ward_of_calamity: { input: { planks: 5, runite: 3, void_essence: 2 }, output: { tome_ward_of_calamity: 1 }, skill: 'crafting', ticks: 30, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_fortunate_discovery: { input: { planks: 5, runite: 4, void_essence: 3 }, output: { tome_fortunate_discovery: 1 }, skill: 'crafting', ticks: 35, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
 };
 
 // To add a weapon: add entry here + a recipe with output: { <key>: 1 }. Auto-detected on craft.
@@ -664,6 +670,66 @@ export const SPELLS = {
         radius: 3,
         targetTerrain: 'grass',
     },
+    foresight: {
+        name: 'Foresight',
+        school: 'divination',
+        minLevel: 0,
+        manaCost: 6,
+        cooldown: 300,
+        castType: 'auto',
+        trigger: 'always',
+        effect: 'divination_modifier',
+        modifiers: { raidDelay: 200 },
+        duration: 300,
+    },
+    fair_winds: {
+        name: 'Fair Winds',
+        school: 'divination',
+        minLevel: 1,
+        manaCost: 10,
+        cooldown: 400,
+        castType: 'auto',
+        trigger: 'always',
+        effect: 'divination_modifier',
+        modifiers: { weatherBias: 'clear' },
+        duration: 200,
+    },
+    merchants_omen: {
+        name: "Merchant's Omen",
+        school: 'divination',
+        minLevel: 2,
+        manaCost: 15,
+        cooldown: 600,
+        castType: 'auto',
+        trigger: 'always',
+        effect: 'divination_modifier',
+        modifiers: { eventBoost: 'caravan', eventMult: 3.0 },
+        duration: 400,
+    },
+    ward_of_calamity: {
+        name: 'Ward of Calamity',
+        school: 'divination',
+        minLevel: 3,
+        manaCost: 20,
+        cooldown: 800,
+        castType: 'auto',
+        trigger: 'always',
+        effect: 'divination_modifier',
+        modifiers: { suppressEvents: ['blight', 'cold_snap', 'fire'] },
+        duration: 500,
+    },
+    fortunate_discovery: {
+        name: 'Fortunate Discovery',
+        school: 'divination',
+        minLevel: 4,
+        manaCost: 25,
+        cooldown: 1000,
+        castType: 'auto',
+        trigger: 'always',
+        effect: 'divination_modifier',
+        modifiers: { eventBoost: 'meteorite', eventMult: 5.0 },
+        duration: 600,
+    },
 };
 
 // To add a spell tome: add entry here + a recipe or loot source. Colonists study tomes at research desks.
@@ -683,6 +749,11 @@ export const SPELL_TOMES = {
     tome_summon_familiar: { name: 'Tome: Summon Familiar', spell: 'summon_familiar', learningWork: 240, minSchoolLevel: 3 },
     tome_circle_of_growth: { name: 'Tome: Circle of Growth', spell: 'circle_of_growth', learningWork: 160, minSchoolLevel: 2 },
     tome_level_field: { name: 'Tome: Level Field', spell: 'level_field', learningWork: 280, minSchoolLevel: 4 },
+    tome_foresight: { name: 'Tome: Foresight', spell: 'foresight', learningWork: 60, minSchoolLevel: 0 },
+    tome_fair_winds: { name: 'Tome: Fair Winds', spell: 'fair_winds', learningWork: 100, minSchoolLevel: 1 },
+    tome_merchants_omen: { name: "Tome: Merchant's Omen", spell: 'merchants_omen', learningWork: 160, minSchoolLevel: 2 },
+    tome_ward_of_calamity: { name: 'Tome: Ward of Calamity', spell: 'ward_of_calamity', learningWork: 220, minSchoolLevel: 3 },
+    tome_fortunate_discovery: { name: 'Tome: Fortunate Discovery', spell: 'fortunate_discovery', learningWork: 280, minSchoolLevel: 4 },
 };
 
 // Raw food ingredients usable in cooking. Add new ones here rather than in resources.js.
@@ -1134,5 +1205,7 @@ export const COMBAT_VISUALS = {
     spellGrowthColor: '#44ff44',
     spellTerraformChar: '.',
     spellTerraformColor: '#88ff88',
+    spellDivinationChar: '?',
+    spellDivinationColor: '#ccaaff',
     spellRangePreviewBg: '#1a0033', // background for targeting range preview tiles
 };

@@ -50,6 +50,8 @@ export function saveGame(game) {
             raidStartTick: game.combat.raidStartTick,
         },
 
+        divinationModifiers: game.divinationModifiers || [],
+
         waves: {
             highestWaveCompleted: game.waves.highestWaveCompleted,
             active: game.waves.active,
@@ -122,6 +124,13 @@ export function loadGame(game) {
                 c.magicBias = magicKeys[Math.floor(Math.random() * magicKeys.length)];
                 c.magicSkills[c.magicBias] = Math.min(10, c.magicSkills[c.magicBias] + (MAGIC_SKILLS[c.magicBias].biasBonus || 2));
             }
+        } else {
+            for (const [key, def] of Object.entries(MAGIC_SKILLS)) {
+                if (c.magicSkills[key] === undefined) {
+                    const [min, max] = def.baseLevel;
+                    c.magicSkills[key] = min + Math.floor(Math.random() * (max - min + 1));
+                }
+            }
         }
         if (c.mana === undefined || c.maxMana === undefined) {
             const combinedLevel = Object.values(c.magicSkills).reduce((sum, lvl) => sum + lvl, 0);
@@ -158,6 +167,7 @@ export function loadGame(game) {
     game.combat.nextRaidTick = data.combat.nextRaidTick;
     game.combat.raidActive = data.combat.raidActive;
     game.combat.raidStartTick = data.combat.raidStartTick;
+    game.divinationModifiers = data.divinationModifiers || [];
 
     game.events.cooldowns = data.events.cooldowns;
 

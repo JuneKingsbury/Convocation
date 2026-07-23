@@ -11,10 +11,15 @@ export class EventSystem {
     update(game) {
         if (this.pendingEvent) return;
 
+        const mods = game.divinationModifiers || [];
+
         for (const [eventKey, eventDef] of Object.entries(EVENTS)) {
             if (game.tick < eventDef.minTick) continue;
             if (this.cooldowns[eventKey] && game.tick < this.cooldowns[eventKey]) continue;
             if (eventDef.seasons && !eventDef.seasons.includes(game.weather.season)) continue;
+
+            if (mods.some(m => m.suppressEvents && m.suppressEvents.includes(eventKey))) continue;
+
             if (eventKey === 'fire') {
                 const wDef = WEATHER_TYPES[game.weather.currentWeather];
                 if (!(wDef && wDef.fireChance) && Math.random() > 0.01) continue;
@@ -26,6 +31,11 @@ export class EventSystem {
                 const avgMood = alive.length > 0 ? alive.reduce((s, c) => s + c.mood, 0) / alive.length : 50;
                 chance *= Math.max(0.05, avgMood / 70);
             }
+
+            for (const m of mods) {
+                if (m.eventBoost === eventKey) chance *= m.eventMult;
+            }
+
             if (Math.random() < chance) {
                 this.triggerEvent(eventKey, game);
                 this.cooldowns[eventKey] = game.tick + eventDef.cooldown;

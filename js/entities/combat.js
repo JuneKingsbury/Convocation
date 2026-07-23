@@ -20,7 +20,13 @@ export class CombatSystem {
         if (this.raidActive) {
             this.updateRaid(game);
         } else if (game.tick >= this.nextRaidTick) {
-            this.startRaid(game);
+            const mods = game.divinationModifiers || [];
+            const raidDelay = mods.reduce((sum, m) => sum + (m.raidDelay || 0), 0);
+            if (raidDelay > 0) {
+                this.nextRaidTick = game.tick + raidDelay;
+            } else {
+                this.startRaid(game);
+            }
         }
     }
 

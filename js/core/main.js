@@ -59,6 +59,7 @@ class Game {
         this.raiders = [];
         this.tamedAnimals = [];
         this.combatEffects = [];
+        this.divinationModifiers = [];
         this.overlays = [];
         this.notifications = [];
         this.cursor = null;
@@ -160,7 +161,7 @@ class Game {
         this.spatial.colonists.rebuild(this.colonists);
 
         const prevSeason = this.weather.season;
-        this.weather.update(this.tick);
+        this.weather.update(this.tick, this.divinationModifiers);
         if (this.weather.season !== prevSeason) {
             this.eventLog.add(this, `Season changed to ${this.weather.season} (Year ${this.weather.year})`, 'event', null);
         }
@@ -204,6 +205,9 @@ class Game {
         }
 
         this.combatEffects = this.combatEffects.filter(e => e.ttl-- > 0);
+        if (this.divinationModifiers) {
+            this.divinationModifiers = this.divinationModifiers.filter(m => m.expiresAt > this.tick);
+        }
         this.overlays = this.overlays.filter(o => o.ttl !== undefined && o.ttl-- > 0);
 
         for (const c of this.colonists) {

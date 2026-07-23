@@ -11,7 +11,7 @@ export class Weather {
         this.year = 1;
     }
 
-    update(tick) {
+    update(tick, divinationModifiers) {
         this.seasonTick++;
         if (this.seasonTick >= CONFIG.TICKS_PER_SEASON) {
             this.seasonTick = 0;
@@ -28,11 +28,20 @@ export class Weather {
 
         this.weatherTimer--;
         if (this.weatherTimer <= 0) {
-            this.rollWeather();
+            this.rollWeather(divinationModifiers);
         }
     }
 
-    rollWeather() {
+    rollWeather(divinationModifiers) {
+        const mods = divinationModifiers || [];
+        const weatherBias = mods.find(m => m.weatherBias)?.weatherBias;
+
+        if (weatherBias) {
+            this.currentWeather = weatherBias;
+            this.weatherTimer = 50 + Math.floor(Math.random() * 100);
+            return;
+        }
+
         const table = SEASON_WEATHER[this.season] || [];
         const roll = Math.random();
         let cumulative = 0;

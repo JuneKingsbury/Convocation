@@ -467,6 +467,23 @@ function applySpellEffect(colonist, spell, game) {
             game.combatEffects.push({ x: colonist.x, y: colonist.y, char: spell.summonChar || 'f', color: spell.summonColor || '#9966ff', ttl: 3 });
             break;
         }
+        case 'divination_modifier': {
+            if (!game.divinationModifiers) game.divinationModifiers = [];
+            const modKey = JSON.stringify(spell.modifiers);
+            const alreadyActive = game.divinationModifiers.some(m => {
+                const { expiresAt, casterName, ...rest } = m;
+                return JSON.stringify(rest) === modKey;
+            });
+            if (alreadyActive) return;
+            game.divinationModifiers.push({
+                ...spell.modifiers,
+                expiresAt: game.tick + spell.duration,
+                casterName: colonist.name,
+            });
+            game.combatEffects.push({ x: colonist.x, y: colonist.y, char: COMBAT_VISUALS.spellDivinationChar, color: COMBAT_VISUALS.spellDivinationColor, ttl: 3 });
+            game.notifications.push({ text: `${colonist.name} cast ${spell.name}`, tick: game.tick, type: 'success' });
+            break;
+        }
     }
 }
 
