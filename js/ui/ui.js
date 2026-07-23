@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, RESEARCH_TABS, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, SPELL_TOMES, SPELLS, FOODSTUFFS, WORK_CONFIG, GOLEM_TYPES, TRADE_VALUES, TRADER_MARKUP, TRADER_DISCOUNT, TRADER_EXCLUSIVE_ITEMS, COMPLEX_STRUCTURES } from '../core/config.js';
+import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, RESEARCH_TABS, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, SPELL_TOMES, SPELLS, FOODSTUFFS, WORK_CONFIG, GOLEM_TYPES, TRADE_VALUES, TRADER_MARKUP, TRADER_DISCOUNT, TRADER_EXCLUSIVE_ITEMS, COMPLEX_STRUCTURES, EVENTS } from '../core/config.js';
 import { getComplexStructureAt } from '../systems/complexBuildings.js';
 import { getTameChance } from '../entities/taming.js';
 import { getAvailableRecipes } from '../systems/crafting.js';
@@ -542,6 +542,52 @@ export class UI {
         return `<div class="info-row" style="color:#aaffaa;font-size:11px;">${effects.join(' | ')}</div>`;
     }
 
+    _getArtifactTooltip(art) {
+        const lines = [];
+        if (art.moveSpeedBonus) lines.push(`Equipped: +${Math.round(art.moveSpeedBonus * 100)}% move speed`);
+        if (art.workSpeedBonus) lines.push(`Equipped: +${Math.round(art.workSpeedBonus * 100)}% work speed`);
+        if (art.pedestal) {
+            const p = art.pedestal;
+            const r = p.radius === 'global' ? 'Colony-wide' : `Radius ${p.radius}`;
+            const parts = [];
+            if (p.blightImmunity) parts.push('blight immunity');
+            if (p.workSpeedBonus) parts.push(`+${Math.round(p.workSpeedBonus * 100)}% work`);
+            if (p.damageBonusMult) parts.push(`+${Math.round((p.damageBonusMult - 1) * 100)}% dmg`);
+            if (p.skillGrowthBonus) parts.push(`+${Math.round(p.skillGrowthBonus * 100)}% skill growth`);
+            if (p.lightRadius) parts.push(`light r${p.lightRadius}`);
+            if (p.wandererChanceMult) parts.push(`+${Math.round((p.wandererChanceMult - 1) * 100)}% wanderers`);
+            if (p.cookingBonusFood) parts.push(`+${p.cookingBonusFood} food/cook`);
+            if (p.tradeMarkupMult) parts.push(`${Math.round((1 - p.tradeMarkupMult) * 100)}% cheaper trades`);
+            if (parts.length) lines.push(`Aura (${r}): ${parts.join(', ')}`);
+            if (p.manaCost) lines.push(`Pedestal mana: -${p.manaCost}`);
+        }
+        if (art.combat) {
+            const parts = [];
+            if (art.combat.targetPriority > 0) parts.push('draws enemy fire');
+            if (art.combat.targetPriority < 0) parts.push('enemies avoid you');
+            if (art.combat.damageReduction) parts.push(`-${Math.round(art.combat.damageReduction * 100)}% dmg taken`);
+            if (art.combat.autoReviveHp) parts.push(`auto-revive at ${Math.round(art.combat.autoReviveHp * 100)}% HP`);
+            if (parts.length) lines.push(`Combat: ${parts.join(', ')}`);
+        }
+        if (art.expedition) {
+            const parts = [];
+            if (art.expedition.lootMult) parts.push(`+${Math.round((art.expedition.lootMult - 1) * 100)}% loot`);
+            if (art.expedition.trapDamageMult && art.expedition.trapDamageMult < 1) parts.push(`-${Math.round((1 - art.expedition.trapDamageMult) * 100)}% trap dmg`);
+            if (art.expedition.trapDamageMult && art.expedition.trapDamageMult > 1) parts.push(`+${Math.round((art.expedition.trapDamageMult - 1) * 100)}% trap dmg`);
+            if (art.expedition.rareEncounterMult) parts.push(`${art.expedition.rareEncounterMult}x rare encounters`);
+            if (art.expedition.partyDamageMult) parts.push(`+${Math.round((art.expedition.partyDamageMult - 1) * 100)}% party dmg`);
+            if (art.expedition.durationMult) parts.push(`-${Math.round((1 - art.expedition.durationMult) * 100)}% duration`);
+            if (art.expedition.targetPriority > 0) parts.push('draws enemy fire');
+            if (art.expedition.targetPriority < 0) parts.push('enemies avoid you');
+            if (art.expedition.damageReduction) parts.push(`-${Math.round(art.expedition.damageReduction * 100)}% dmg taken`);
+            if (art.expedition.autoReviveHp) parts.push(`auto-revive at ${Math.round(art.expedition.autoReviveHp * 100)}% HP`);
+            if (parts.length) lines.push(`Expedition: ${parts.join(', ')}`);
+        }
+        if (art.durability) lines.push(`Breaks after ${art.durability.max} use(s) — repair at Anvil`);
+        if (art.consumable) lines.push('Consumed on use');
+        return lines.join(' | ') || art.name;
+    }
+
     _switchToInfoTab() {
         const container = document.getElementById('game-container');
         const isTabbed = container.classList.contains('tabbed-mode');
@@ -575,7 +621,7 @@ export class UI {
         const weaponTip = colonist.weapon ? `${colonist.weapon.damage} damage${colonist.weapon.miningSpeed ? `, +${Math.round((colonist.weapon.miningSpeed-1)*100)}% mining` : ''}${colonist.weapon.choppingSpeed ? `, +${Math.round((colonist.weapon.choppingSpeed-1)*100)}% chopping` : ''}` : 'No weapon equipped';
         const armorTip = colonist.armor ? `${Math.round(colonist.armor.damageReduction * 100)}% damage reduction` : 'No armor equipped';
         const toolTip = colonist.tool ? Object.entries(colonist.tool).filter(([k]) => k !== 'name' && k !== 'key').map(([k, v]) => `${k}: ${typeof v === 'number' ? (v > 1 ? `+${Math.round((v-1)*100)}%` : `${Math.round(v*100)}%`) : v}`).join(', ') : 'No tool equipped';
-        const artifactTip = colonist.artifact ? Object.entries(colonist.artifact).filter(([k]) => k !== 'name' && k !== 'key').map(([k, v]) => `${k}: ${typeof v === 'number' ? (v > 1 ? `+${Math.round((v-1)*100)}%` : `${Math.round(v*100)}%`) : v}`).join(', ') : 'No artifact equipped';
+        const artifactTip = colonist.artifact ? this._getArtifactTooltip(colonist.artifact) : 'No artifact equipped';
 
         const nc = colonist.nameColor || '#ffff00';
         let html = `<div class="info-header" style="cursor:pointer;color:${nc}" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}${colonist.guardMode ? '[GUARDING]' : ''}</div>`;
@@ -632,6 +678,17 @@ export class UI {
         if (colonist.activeEffects && colonist.activeEffects.length > 0) {
             const effects = colonist.activeEffects.map(e => `<span style="color:#88ffaa">${e.type} (${e.expiresAt - this.game.tick}t)</span>`).join(', ');
             html += `<div class="info-row">Effects: ${effects}</div>`;
+        }
+        if (colonist.activeAuras && colonist.activeAuras.length > 0) {
+            const auraSpans = colonist.activeAuras.map(a => {
+                const def = ARTIFACTS[a.key];
+                const tip = def ? this._getArtifactTooltip(def) : a.name;
+                const clickAction = a.sourceType === 'pedestal'
+                    ? `window.game.camera.centerOn(${a.x},${a.y})`
+                    : `window.game.selectColonistById(${a.colonistId})`;
+                return `<span class="skill-tip" data-tip="${tip}" style="color:#ccaa44;cursor:pointer;text-decoration:underline" onclick="${clickAction}">${a.name}</span>`;
+            }).join(', ');
+            html += `<div class="info-row">Auras: ${auraSpans}</div>`;
         }
         html += `<div class="info-row">Bed: ${colonist.assignedBed ? `(${colonist.assignedBed.x},${colonist.assignedBed.y})` : 'None'}</div>`;
         if (thoughts) html += `<div class="info-thoughts"><b>Thoughts:</b><br>${thoughts}</div>`;
@@ -1688,14 +1745,8 @@ export class UI {
         if (artifacts.length > 0) {
             html += '<div class="info-row" style="color:#ccaa44;margin-top:8px;margin-bottom:4px;"><b>Artifacts:</b></div>';
             artifacts.forEach((a, i) => {
-                const stats = [];
-                if (a.miningSpeed) stats.push(`+${Math.round((a.miningSpeed-1)*100)}% mine`);
-                if (a.choppingSpeed) stats.push(`+${Math.round((a.choppingSpeed-1)*100)}% chop`);
-                if (a.farmingSpeed) stats.push(`+${Math.round((a.farmingSpeed-1)*100)}% farm`);
-                if (a.moveSpeedBonus) stats.push(`+${Math.round(a.moveSpeedBonus*100)}% move`);
-                if (a.damageReduction) stats.push(`-${Math.round(a.damageReduction*100)}% dmg`);
-                if (a.xpBonus) stats.push(`+${Math.round(a.xpBonus*100)}% XP`);
-                html += `<div class="inv-row"><span class="inv-name">${a.name}</span><span class="inv-amount">${stats.join(', ')}</span><button class="inv-delete" onclick="if(confirm('Discard ${a.name}?')){window.game.discardArtifact(${i})}">x</button></div>`;
+                const tip = this._getArtifactTooltip(a);
+                html += `<div class="inv-row"><span class="inv-name skill-tip" data-tip="${tip}">${a.name}</span><button class="inv-delete" onclick="if(confirm('Discard ${a.name}?')){window.game.discardArtifact(${i})}">x</button></div>`;
             });
         }
         if (!html) html = '<div class="info-row" style="color:#666;">No equipment in storage.</div>';
@@ -1873,8 +1924,65 @@ export class UI {
         html += `</div>`;
 
         html += `<div class="settings-section settings-debug"><div class="settings-section-title" style="color:#ff6666;">Debug / Testing</div>`;
-        html += `<button onclick="if(confirm('Grant 999 of all resources and complete all research? This cannot be undone.'))window.game.cheatResources()" class="settings-btn settings-btn-danger">Grant 999 Resources + Research</button>`;
-        html += `<button onclick="if(confirm('Grant all starter spells (level 0) to every colonist and set magic skills to 1? This cannot be undone.'))window.game.cheatGrantStarterSpells()" class="settings-btn settings-btn-danger">Grant All Starter Spells + Magic Lvl 1</button>`;
+        html += `<button onclick="if(confirm('Grant 999 of all resources?'))window.game.cheatResources()" class="settings-btn settings-btn-danger">Grant 999 Resources</button>`;
+        html += `<button onclick="if(confirm('Complete all research?'))window.game.cheatGrantResearch()" class="settings-btn settings-btn-danger">Grant All Research</button>`;
+        html += `<button onclick="if(confirm('Grant all starter spells (level 0) to every colonist and set magic skills to 1?'))window.game.cheatGrantStarterSpells()" class="settings-btn settings-btn-danger">Grant All Starter Spells + Magic Lvl 1</button>`;
+        html += `<button onclick="window.game.cheatSpawnColonist()" class="settings-btn settings-btn-danger">Grant New Colonist</button>`;
+        html += `<div class="settings-row" style="margin-top:8px;gap:4px;flex-wrap:wrap;">`;
+        html += `<select id="debug-artifact-select" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;flex:1;min-width:120px;">`;
+        for (const [key, def] of Object.entries(ARTIFACTS)) {
+            html += `<option value="${key}">${def.name}</option>`;
+        }
+        html += `</select>`;
+        html += `<button onclick="window.game.cheatSpawnItem('artifact',document.getElementById('debug-artifact-select').value)" class="settings-btn settings-btn-danger" style="white-space:nowrap;">Grant Artifact</button>`;
+        html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:4px;gap:4px;flex-wrap:wrap;">`;
+        html += `<select id="debug-weapon-select" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;flex:1;min-width:120px;">`;
+        for (const [key, def] of Object.entries(WEAPONS)) {
+            if (key === 'fists') continue;
+            html += `<option value="${key}">${def.name}</option>`;
+        }
+        html += `</select>`;
+        html += `<button onclick="window.game.cheatSpawnItem('weapon',document.getElementById('debug-weapon-select').value)" class="settings-btn settings-btn-danger" style="white-space:nowrap;">Grant Weapon</button>`;
+        html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:4px;gap:4px;flex-wrap:wrap;">`;
+        html += `<select id="debug-armor-select" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;flex:1;min-width:120px;">`;
+        for (const [key, def] of Object.entries(ARMORS)) {
+            html += `<option value="${key}">${def.name}</option>`;
+        }
+        html += `</select>`;
+        html += `<button onclick="window.game.cheatSpawnItem('armor',document.getElementById('debug-armor-select').value)" class="settings-btn settings-btn-danger" style="white-space:nowrap;">Grant Armor</button>`;
+        html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:4px;gap:4px;flex-wrap:wrap;">`;
+        html += `<select id="debug-tool-select" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;flex:1;min-width:120px;">`;
+        for (const [key, def] of Object.entries(TOOLS)) {
+            html += `<option value="${key}">${def.name}</option>`;
+        }
+        html += `</select>`;
+        html += `<button onclick="window.game.cheatSpawnItem('tool',document.getElementById('debug-tool-select').value)" class="settings-btn settings-btn-danger" style="white-space:nowrap;">Grant Tool</button>`;
+        html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:8px;gap:4px;flex-wrap:wrap;">`;
+        html += `<select id="debug-resource-select" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;flex:1;min-width:80px;">`;
+        for (const key of Object.keys(this.game.resources.stockpile)) {
+            html += `<option value="${key}">${key.replace(/_/g, ' ')}</option>`;
+        }
+        html += `</select>`;
+        html += `<input id="debug-resource-amount" type="number" value="50" min="1" max="999" style="width:50px;background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;">`;
+        html += `<button onclick="window.game.cheatAddResource(document.getElementById('debug-resource-select').value, parseInt(document.getElementById('debug-resource-amount').value)||50)" class="settings-btn settings-btn-danger" style="white-space:nowrap;">Grant Resource</button>`;
+        html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:8px;gap:4px;flex-wrap:wrap;">`;
+        html += `<select id="debug-event-select" style="background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;flex:1;min-width:120px;">`;
+        for (const key of Object.keys(EVENTS)) {
+            html += `<option value="${key}">${key.replace(/_/g, ' ')}</option>`;
+        }
+        html += `</select>`;
+        html += `<button onclick="window.game.cheatTriggerEvent(document.getElementById('debug-event-select').value)" class="settings-btn settings-btn-danger" style="white-space:nowrap;">Trigger Event</button>`;
+        html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:8px;gap:4px;flex-wrap:wrap;">`;
+        html += `<input id="debug-time-amount" type="number" value="300" min="1" max="9999" style="width:60px;background:#1a1a2e;color:#ccc;border:1px solid #444;padding:2px 4px;">`;
+        html += `<button onclick="window.game.cheatAdvanceTime(parseInt(document.getElementById('debug-time-amount').value)||300)" class="settings-btn settings-btn-danger" style="white-space:nowrap;">Advance Ticks</button>`;
+        html += `<span style="color:#666;font-size:10px;">(300=1 day)</span>`;
+        html += `</div>`;
         html += `</div>`;
         this.elements.settingsPanel.innerHTML = html;
     }

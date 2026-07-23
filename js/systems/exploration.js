@@ -651,14 +651,30 @@ export class ExplorationSystem {
     }
 }
 
+const PEDESTAL_TO_EXPEDITION = {
+    damageBonusMult: 'partyDamageMult',
+    workSpeedBonus: null,
+    skillGrowthBonus: null,
+    blightImmunity: null,
+};
+
 function getPartyExpeditionEffect(partySnapshot, effectKey) {
     let value = effectKey.includes('Mult') ? 1.0 : 0;
     for (const member of partySnapshot) {
         if (member.hp <= 0 || !member.artifact) continue;
         const art = member.artifact;
-        if (!art.expedition?.[effectKey]) continue;
-        if (effectKey.includes('Mult')) value *= art.expedition[effectKey];
-        else value += art.expedition[effectKey];
+        if (art.expedition?.[effectKey]) {
+            if (effectKey.includes('Mult')) value *= art.expedition[effectKey];
+            else value += art.expedition[effectKey];
+        }
+        if (art.pedestal && typeof art.pedestal.radius === 'number') {
+            for (const [pedestalKey, mappedKey] of Object.entries(PEDESTAL_TO_EXPEDITION)) {
+                if (mappedKey !== effectKey) continue;
+                if (!art.pedestal[pedestalKey]) continue;
+                if (effectKey.includes('Mult')) value *= art.pedestal[pedestalKey];
+                else value += art.pedestal[pedestalKey];
+            }
+        }
     }
     return value;
 }

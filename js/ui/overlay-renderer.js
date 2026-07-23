@@ -25,6 +25,13 @@ export class OverlayRenderer {
         const ch = charHeight;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        if (game.radiusHighlight && game.selectedColonist) {
+            const c = game.selectedColonist;
+            if (c.artifact && !c.artifactBroken && c.artifact.pedestal?.radius && c.artifact.pedestal.radius !== 'global') {
+                game.radiusHighlight.x = c.x;
+                game.radiusHighlight.y = c.y;
+            }
+        }
         if (game.radiusHighlight) {
             this._renderRadiusHighlight(ctx, game.radiusHighlight, cw, ch, camera);
         }

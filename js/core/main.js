@@ -1,4 +1,4 @@
-import { CONFIG, GAME_VERSION, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS, GOLEM_TYPES, ARTIFACTS } from './config.js';
+import { CONFIG, GAME_VERSION, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS, GOLEM_TYPES, ARTIFACTS, WEAPONS, ARMORS, TOOLS, SKILLS, EVENTS } from './config.js';
 import { generateMap } from '../world/map.js';
 import { Camera } from '../ui/camera.js';
 import { Renderer } from '../ui/renderer.js';
@@ -248,6 +248,7 @@ class Game {
                 c.pedestalWorkBonus = 0;
                 c.pedestalDamageBonus = 1;
                 c.pedestalSkillBonus = 0;
+                c.activeAuras = [];
             }
             updatePedestals(this);
         }
@@ -472,6 +473,7 @@ class Game {
         if (c[slot]) this.resources[addMethod](c[slot]);
         c[slot] = item;
         this.notifications.push({ text: `${c.name} equipped ${item.name}`, tick: this.tick, type: 'success' });
+        if (slot === 'artifact') this._updateColonistRadiusHighlight(c);
         this.ui.showColonistInfo(c);
     }
 
@@ -482,7 +484,16 @@ class Game {
         this.resources[addMethod](c[slot]);
         c[slot] = null;
         this.notifications.push({ text: `${c.name} unequipped ${label}`, tick: this.tick, type: 'success' });
+        if (slot === 'artifact') this._updateColonistRadiusHighlight(c);
         this.ui.showColonistInfo(c);
+    }
+
+    _updateColonistRadiusHighlight(c) {
+        if (c.artifact && !c.artifactBroken && c.artifact.pedestal?.radius && c.artifact.pedestal.radius !== 'global') {
+            this.radiusHighlight = { x: c.x, y: c.y, radius: c.artifact.pedestal.radius, color: '#ccaa4466' };
+        } else {
+            this.radiusHighlight = null;
+        }
     }
 
     // Generic discard: removes item from inventory
@@ -906,11 +917,15 @@ class Game {
         for (const key of Object.keys(this.resources.stockpile)) {
             this.resources.stockpile[key] = 999;
         }
+        this.notifications.push({ text: '[DEBUG] 999 of all resources granted', tick: this.tick, type: 'success' });
+    }
+
+    cheatGrantResearch() {
         this.research.studyPoints = 999;
         for (const key of Object.keys(RESEARCH)) {
             this.research.completed.add(key);
         }
-        this.notifications.push({ text: '[DEBUG] 999 resources + all research granted', tick: this.tick, type: 'success' });
+        this.notifications.push({ text: '[DEBUG] All research completed', tick: this.tick, type: 'success' });
     }
 
     cheatGrantStarterSpells() {
@@ -933,6 +948,64 @@ class Game {
         }
         this.notifications.push({ text: `[DEBUG] ${count} colonists granted ${starterSpells.length} starter spells + magic skills set to 1`, tick: this.tick, type: 'success' });
     }
+
+    cheatSpawnItem(category, key) {
+        switch (category) {
+            case 'weapon': {
+                const def = WEAPONS[key];
+                if (!def) return;
+                this.resources.addWeapon({ ...def, key });
+                this.notifications.push({ text: `[DEBUG] Granted weapon: ${def.name}`, tick: this.tick, type: 'success' });
+                break;
+            }
+            case 'armor': {
+                const def = ARMORS[key];
+                if (!def) return;
+                this.resources.addArmor({ ...def, key });
+                this.notifications.push({ text: `[DEBUG] Granted armor: ${def.name}`, tick: this.tick, type: 'success' });
+                break;
+            }
+            case 'tool': {
+                const def = TOOLS[key];
+                if (!def) return;
+                this.resources.addTool({ ...def, key });
+                this.notifications.push({ text: `[DEBUG] Granted tool: ${def.name}`, tick: this.tick, type: 'success' });
+                break;
+            }
+            case 'artifact': {
+                const def = ARTIFACTS[key];
+                if (!def) return;
+                this.resources.addArtifact({ ...def, key });
+                this.notifications.push({ text: `[DEBUG] Granted artifact: ${def.name}`, tick: this.tick, type: 'success' });
+                break;
+            }
+        }
+    }
+
+    cheatAddResource(key, amount) {
+        this.resources.add({ [key]: amount });
+        this.notifications.push({ text: `[DEBUG] Granted ${amount} ${key}`, tick: this.tick, type: 'success' });
+    }
+
+    cheatSpawnColonist() {
+        const skillKeys = Object.keys(SKILLS);
+        const bias = skillKeys[Math.floor(Math.random() * skillKeys.length)];
+        const existingNames = this.colonists.map(c => c.name);
+        const edge = { x: Math.floor(CONFIG.MAP_WIDTH / 2), y: Math.floor(CONFIG.MAP_HEIGHT / 2) };
+        const c = createColonist(edge.x, edge.y, bias, existingNames);
+        this.addColonist(c);
+        this.notifications.push({ text: `[DEBUG] Granted colonist: ${c.name} (${bias})`, tick: this.tick, type: 'success' });
+    }
+
+    cheatTriggerEvent(eventKey) {
+        this.events.triggerEvent(eventKey, this);
+        this.notifications.push({ text: `[DEBUG] Triggered event: ${eventKey}`, tick: this.tick, type: 'success' });
+    }
+
+    cheatAdvanceTime(ticks) {
+        this.tick += ticks;
+        this.notifications.push({ text: `[DEBUG] Advanced ${ticks} ticks`, tick: this.tick, type: 'success' });
+    }
 }
 
 function updatePedestals(game) {
@@ -950,17 +1023,22 @@ function updatePedestals(game) {
             continue;
         }
         tile.pedestalInactive = false;
-        if (def.pedestal.radius === 'global') continue;
-        const radius = def.pedestal.radius;
-        if (def.pedestal.workSpeedBonus || def.pedestal.damageBonusMult || def.pedestal.skillGrowthBonus) {
+        if (def.pedestal.radius === 'global') {
             for (const c of game.colonists) {
                 if (c.hp <= 0) continue;
-                const dist = Math.abs(c.x - x) + Math.abs(c.y - y);
-                if (dist <= radius) {
-                    if (def.pedestal.workSpeedBonus) c.pedestalWorkBonus = (c.pedestalWorkBonus || 0) + def.pedestal.workSpeedBonus;
-                    if (def.pedestal.damageBonusMult) c.pedestalDamageBonus = (c.pedestalDamageBonus || 1) * def.pedestal.damageBonusMult;
-                    if (def.pedestal.skillGrowthBonus) c.pedestalSkillBonus = (c.pedestalSkillBonus || 0) + def.pedestal.skillGrowthBonus;
-                }
+                c.activeAuras.push({ name: def.name, key: tile.pedestalArtifact, sourceType: 'pedestal', x, y });
+            }
+            continue;
+        }
+        const radius = def.pedestal.radius;
+        for (const c of game.colonists) {
+            if (c.hp <= 0) continue;
+            const dist = Math.abs(c.x - x) + Math.abs(c.y - y);
+            if (dist <= radius) {
+                if (def.pedestal.workSpeedBonus) c.pedestalWorkBonus = (c.pedestalWorkBonus || 0) + def.pedestal.workSpeedBonus;
+                if (def.pedestal.damageBonusMult) c.pedestalDamageBonus = (c.pedestalDamageBonus || 1) * def.pedestal.damageBonusMult;
+                if (def.pedestal.skillGrowthBonus) c.pedestalSkillBonus = (c.pedestalSkillBonus || 0) + def.pedestal.skillGrowthBonus;
+                c.activeAuras.push({ name: def.name, key: tile.pedestalArtifact, sourceType: 'pedestal', x, y });
             }
         }
         if (def.pedestal.blightImmunity) {
@@ -968,6 +1046,35 @@ function updatePedestals(game) {
                 for (let dx = -radius; dx <= radius; dx++) {
                     if (Math.abs(dx) + Math.abs(dy) > radius) continue;
                     const ty = y + dy, tx = x + dx;
+                    if (ty < 0 || ty >= game.map.length || tx < 0 || tx >= game.map[0].length) continue;
+                    const cropTile = game.map[ty][tx];
+                    if (cropTile.crop) cropTile.blightImmune = true;
+                }
+            }
+        }
+    }
+
+    for (const carrier of game.colonists) {
+        if (carrier.hp <= 0 || carrier.artifactBroken || carrier.onExpedition) continue;
+        const art = carrier.artifact;
+        if (!art?.pedestal) continue;
+        if (art.pedestal.radius === 'global' || typeof art.pedestal.radius !== 'number') continue;
+        const radius = art.pedestal.radius;
+        for (const c of game.colonists) {
+            if (c.hp <= 0) continue;
+            const dist = Math.abs(c.x - carrier.x) + Math.abs(c.y - carrier.y);
+            if (dist <= radius) {
+                if (art.pedestal.workSpeedBonus) c.pedestalWorkBonus = (c.pedestalWorkBonus || 0) + art.pedestal.workSpeedBonus;
+                if (art.pedestal.damageBonusMult) c.pedestalDamageBonus = (c.pedestalDamageBonus || 1) * art.pedestal.damageBonusMult;
+                if (art.pedestal.skillGrowthBonus) c.pedestalSkillBonus = (c.pedestalSkillBonus || 0) + art.pedestal.skillGrowthBonus;
+                c.activeAuras.push({ name: art.name, key: art.key, sourceType: 'colonist', colonistId: carrier.id });
+            }
+        }
+        if (art.pedestal.blightImmunity) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > radius) continue;
+                    const ty = carrier.y + dy, tx = carrier.x + dx;
                     if (ty < 0 || ty >= game.map.length || tx < 0 || tx >= game.map[0].length) continue;
                     const cropTile = game.map[ty][tx];
                     if (cropTile.crop) cropTile.blightImmune = true;

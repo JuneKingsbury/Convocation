@@ -681,6 +681,12 @@ export class InputHandler {
                 return { x: pos.x, y: pos.y, radius: def.pedestal.radius, color: '#ccaa4466' };
             }
         }
+        if (colonistsHere.length > 0) {
+            const c = colonistsHere[0];
+            if (c.artifact && !c.artifactBroken && c.artifact.pedestal?.radius && c.artifact.pedestal.radius !== 'global') {
+                return { x: pos.x, y: pos.y, radius: c.artifact.pedestal.radius, color: '#ccaa4466' };
+            }
+        }
         const bDef = BUILDINGS[tile.structure];
         if (bDef?.power?.damage) {
             const radius = bDef.power.range || 6;
