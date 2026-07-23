@@ -363,10 +363,27 @@ class BlueprintEditor {
             case 'place':
                 if (this.activeBrush) {
                     this._snapshotCell(x, y);
-                    if (this.activeBrush.isCustom) {
-                        this.grid[y][x] = { isCustom: true, customDef: this.activeBrush.customDef, customIndex: this.activeBrush.customIndex };
+                    const brushDef = this.activeBrush.isCustom ? this.activeBrush.customDef : BUILDINGS[this.activeBrush.buildingKey];
+                    const isFloor = brushDef && brushDef.structureType === 'floor';
+                    const existing = this.grid[y][x];
+
+                    if (isFloor) {
+                        const floorData = this.activeBrush.isCustom
+                            ? { isCustom: true, customDef: this.activeBrush.customDef, customIndex: this.activeBrush.customIndex }
+                            : { buildingKey: this.activeBrush.buildingKey };
+                        if (existing && this._cellIsStructure(existing)) {
+                            existing.floorKey = floorData;
+                        } else {
+                            this.grid[y][x] = { ...floorData, _floorOnly: true };
+                        }
                     } else {
-                        this.grid[y][x] = { buildingKey: this.activeBrush.buildingKey };
+                        const floorKey = existing?.floorKey || (existing?._floorOnly ? this._extractFloorData(existing) : null);
+                        if (this.activeBrush.isCustom) {
+                            this.grid[y][x] = { isCustom: true, customDef: this.activeBrush.customDef, customIndex: this.activeBrush.customIndex };
+                        } else {
+                            this.grid[y][x] = { buildingKey: this.activeBrush.buildingKey };
+                        }
+                        if (floorKey) this.grid[y][x].floorKey = floorKey;
                     }
                 }
                 break;
@@ -406,6 +423,18 @@ class BlueprintEditor {
         delete this.reqOverrides[key];
     }
 
+    _cellIsStructure(cell) {
+        if (!cell || cell._floorOnly) return false;
+        const def = cell.isCustom ? cell.customDef : BUILDINGS[cell.buildingKey];
+        return def && def.structureType !== 'floor';
+    }
+
+    _extractFloorData(cell) {
+        if (!cell) return null;
+        const { _floorOnly, ...data } = cell;
+        return data;
+    }
+
     _setTool(tool) {
         this.tool = tool;
         this.container.querySelectorAll('.bp-tool').forEach(btn => {
@@ -441,10 +470,24 @@ class BlueprintEditor {
         const reqKey = `${x},${y}`;
         const currentReq = this.reqOverrides[reqKey] || key;
 
-        let html = `<div><span style="color:${def.color}">${def.char}</span> <strong>${key.replace(/_/g, ' ')}</strong>`;
-        if (isCore) html += ` <span class="bp-core-badge">CORE</span>`;
-        html += `</div>`;
-        html += `<div class="bp-muted">${def.structureType} | ${def.category}</div>`;
+        let html = '';
+        if (cell._floorOnly) {
+            html += `<div><span style="color:${def.color}">${def.char}</span> <strong>${key.replace(/_/g, ' ')}</strong> <span style="color:#999">(floor)</span></div>`;
+            html += `<div class="bp-muted">floor | ${def.category || 'Walls & Floors'}</div>`;
+        } else {
+            html += `<div><span style="color:${def.color}">${def.char}</span> <strong>${key.replace(/_/g, ' ')}</strong>`;
+            if (isCore) html += ` <span class="bp-core-badge">CORE</span>`;
+            html += `</div>`;
+            html += `<div class="bp-muted">${def.structureType} | ${def.category}</div>`;
+
+            if (cell.floorKey) {
+                const floorDef = cell.floorKey.isCustom ? cell.floorKey.customDef : BUILDINGS[cell.floorKey.buildingKey];
+                const floorName = cell.floorKey.isCustom ? cell.floorKey.customDef.key : cell.floorKey.buildingKey;
+                if (floorDef) {
+                    html += `<div style="margin-top:4px;color:#999;font-size:0.85em">Floor: <span style="color:${floorDef.color}">${floorDef.char}</span> ${floorName.replace(/_/g, ' ')}</div>`;
+                }
+            }
+        }
 
         html += `<label>Layout req:
             <select id="bp-req-override" data-pos="${reqKey}">
@@ -654,7 +697,10 @@ class BlueprintEditor {
 
         // Export custom building definitions
         const usedCustoms = new Set();
-        cells.forEach(c => { if (c.cell.isCustom) usedCustoms.add(c.cell.customIndex); });
+        cells.forEach(c => {
+            if (c.cell.isCustom) usedCustoms.add(c.cell.customIndex);
+            if (c.cell.floorKey?.isCustom) usedCustoms.add(c.cell.floorKey.customIndex);
+        });
         if (usedCustoms.size > 0) {
             output += '// === Add to BUILDINGS in config.js ===\n';
             for (const idx of usedCustoms) {
@@ -695,7 +741,11 @@ class BlueprintEditor {
             const dy = y - this.coreCell.y;
             const posKey = `${x},${y}`;
             const req = this.reqOverrides[posKey] || (cell.isCustom ? cell.customDef.key : cell.buildingKey);
-            layout.push({ dx, dy, req });
+            const entry = { dx, dy, req };
+            if (cell.floorKey) {
+                entry.floor = cell.floorKey.isCustom ? cell.floorKey.customDef.key : cell.floorKey.buildingKey;
+            }
+            layout.push(entry);
         }
 
         layout.sort((a, b) => a.dy - b.dy || a.dx - b.dx);
@@ -711,9 +761,16 @@ class BlueprintEditor {
         output += `    name: '${name.replace(/'/g, "\\'")}',\n`;
         if (this.structureResearch) output += `    research: '${this.structureResearch}',\n`;
         output += `    coreBuild: '${coreBuild}',\n`;
+        if (coreCell.floorKey) {
+            const coreFloor = coreCell.floorKey.isCustom ? coreCell.floorKey.customDef.key : coreCell.floorKey.buildingKey;
+            output += `    coreFloor: '${coreFloor}',\n`;
+        }
         output += `    layout: [\n`;
         for (const l of layout) {
-            output += `        { dx: ${l.dx}, dy: ${l.dy}, req: '${l.req}' },\n`;
+            let line = `        { dx: ${l.dx}, dy: ${l.dy}, req: '${l.req}'`;
+            if (l.floor) line += `, floor: '${l.floor}'`;
+            line += ` },`;
+            output += line + '\n';
         }
         output += `    ],\n`;
         output += `    effect: ${effectStr},\n`;

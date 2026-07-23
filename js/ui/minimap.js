@@ -122,11 +122,11 @@ export class Minimap {
             if (bDef) {
                 const type = bDef.structureType;
                 if (type === 'wall') return [180, 180, 180];
-                if (type === 'floor') return [80, 80, 80];
                 if (type === 'door') return [150, 120, 60];
             }
             return [120, 100, 60];
         }
+        if (tile.floor) return [80, 80, 80];
         if (tile.zone) {
             if (tile.zone.state === 'ready') return [220, 200, 0];
             if (tile.zone.state === 'growing') return [60, 150, 30];

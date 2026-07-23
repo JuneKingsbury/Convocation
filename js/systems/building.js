@@ -5,19 +5,15 @@ export function designateBuild(game, x, y, buildType) {
     if (tile.resource) return false;
     if (tile.terrain === 'water' || tile.terrain === 'rock' || tile.terrain === 'tall_rock') return false;
 
-    const existingDef = tile.structure ? BUILDINGS[tile.structure] : null;
-    if (tile.structure) {
-        if (existingDef && existingDef.structureType === 'floor') {
-            tile.structure = null;
-            tile.structureHp = undefined;
-        } else {
-            return false;
-        }
-    }
-    if (!tile.passable) return false;
-
     const def = BUILDINGS[buildType];
     if (!def) return false;
+
+    if (def.structureType === 'floor') {
+        if (tile.floor) return false;
+    } else {
+        if (tile.structure) return false;
+    }
+    if (!tile.passable) return false;
 
     if (def.research && !game.research.isResearched(def.research)) return false;
     if (!game.resources.has(def.cost)) return false;
@@ -83,7 +79,7 @@ export function cancelDesignation(game, x, y) {
         return;
     }
 
-    if (tile.structure && !tile.designation) {
+    if ((tile.structure || tile.floor) && !tile.designation) {
         const existing = game.taskQueue.getByPosition(x, y);
         if (existing && existing.type === 'deconstruct') return;
 

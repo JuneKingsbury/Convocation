@@ -784,9 +784,14 @@ function completeTask(colonist, task, game) {
     switch (task.type) {
         case 'build': {
             const tile = game.map[task.y][task.x];
-            tile.structure = task.buildType;
+            const bDef = BUILDINGS[task.buildType];
+            if (bDef && bDef.structureType === 'floor') {
+                tile.floor = task.buildType;
+            } else {
+                tile.structure = task.buildType;
+                tile.passable = !IMPASSABLE_STRUCTURES.has(task.buildType);
+            }
             tile.designation = null;
-            tile.passable = !IMPASSABLE_STRUCTURES.has(task.buildType);
             if (game.mapIndex) game.mapIndex.addStructure(task.x, task.y, task.buildType);
             game.roomsDirty = true;
             if (game.waves && game.waves.active) game.waves.invalidatePathPreview();
@@ -956,9 +961,9 @@ function completeTask(colonist, task, game) {
         }
         case 'deconstruct': {
             const tile = game.map[task.y][task.x];
-            if (tile.structure) {
-                const oldStructure = tile.structure;
-                const def = BUILDINGS[oldStructure];
+            const target = tile.structure || tile.floor;
+            if (target) {
+                const def = BUILDINGS[target];
                 if (def) {
                     const partial = {};
                     for (const [res, amt] of Object.entries(def.cost)) {
@@ -966,10 +971,15 @@ function completeTask(colonist, task, game) {
                     }
                     game.resources.add(partial);
                 }
-                tile.structure = null;
-                tile.passable = true;
+                if (tile.structure) {
+                    if (game.mapIndex) game.mapIndex.removeStructure(task.x, task.y, tile.structure);
+                    tile.structure = null;
+                    tile.passable = true;
+                } else {
+                    if (game.mapIndex) game.mapIndex.removeStructure(task.x, task.y, tile.floor);
+                    tile.floor = null;
+                }
                 tile.designation = null;
-                if (game.mapIndex) game.mapIndex.removeStructure(task.x, task.y, oldStructure);
                 game.roomsDirty = true;
                 applyThought(colonist, 'deconstructed', game.tick);
             }

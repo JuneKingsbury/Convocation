@@ -281,6 +281,7 @@ function serializeMap(map) {
                 p: tile.passable ? 1 : 0,
             };
             if (tile.structure) t.s = tile.structure;
+            if (tile.floor) t.fl = tile.floor;
             if (tile.structureHp !== undefined) t.shp = tile.structureHp;
             if (tile.resource) t.r = tile.resource;
             if (tile.designation) t.d = tile.designation;
@@ -303,6 +304,7 @@ function deserializeMap(map, data) {
             tile.terrain = t.t;
             tile.passable = t.p === 1;
             tile.structure = t.s === 'storage_chest' ? 'food_chest' : (t.s || null);
+            tile.floor = t.fl || null;
             tile.structureHp = t.shp !== undefined ? t.shp : undefined;
             tile.resource = t.r || null;
             tile.designation = t.d || null;

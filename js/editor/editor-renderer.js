@@ -58,9 +58,17 @@ export class EditorRenderer {
                 const cell = grid[wy]?.[wx];
 
                 if (cell) {
+                    // Render floor background first
+                    if (cell.floorKey) {
+                        const floorDef = cell.floorKey.isCustom ? cell.floorKey.customDef : buildings[cell.floorKey.buildingKey];
+                        if (floorDef && floorDef.bg) {
+                            ctx.fillStyle = floorDef.bg;
+                            ctx.fillRect(px, py, cw, ch);
+                        }
+                    }
                     const def = cell.isCustom ? cell.customDef : buildings[cell.buildingKey];
                     if (def) {
-                        if (def.bg) {
+                        if (!cell.floorKey && def.bg) {
                             ctx.fillStyle = def.bg;
                             ctx.fillRect(px, py, cw, ch);
                         }

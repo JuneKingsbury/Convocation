@@ -4,6 +4,7 @@ export function createTile(terrain) {
     return {
         terrain,
         structure: null,
+        floor: null,
         resource: null,
         designation: null,
         zone: null,
@@ -251,13 +252,16 @@ function generateRuins(map, params) {
             const decay = isFloor ? floorDecayChance : decayChance;
             if (Math.random() < decay) continue;
 
-            tile.structure = piece.type;
-            tile.passable = !(IMPASSABLE_STRUCTURES.has(piece.type));
-            tile.resource = null;
-
-            if (BUILDINGS[piece.type] && BUILDINGS[piece.type].hp) {
-                tile.structureHp = BUILDINGS[piece.type].hp;
+            if (isFloor) {
+                tile.floor = piece.type;
+            } else {
+                tile.structure = piece.type;
+                tile.passable = !(IMPASSABLE_STRUCTURES.has(piece.type));
+                if (BUILDINGS[piece.type] && BUILDINGS[piece.type].hp) {
+                    tile.structureHp = BUILDINGS[piece.type].hp;
+                }
             }
+            tile.resource = null;
         }
     }
 }
@@ -297,6 +301,7 @@ export function getTileChar(tile, season) {
         const rDef = RESOURCES[tile.resource.type];
         if (rDef) return rDef.char;
     }
+    if (tile.floor) return TILE_CHARS[tile.floor] || '·';
     if (tile.snowCovered && tile.terrain === 'grass') return TILE_CHARS.snow;
     const tDef = TERRAIN[tile.terrain];
     return tDef ? tDef.char : '?';
@@ -317,6 +322,7 @@ export function getTileColor(tile, season) {
             return rDef.color;
         }
     }
+    if (tile.floor) return TILE_COLORS[tile.floor] || '#888';
     if (tile.snowCovered) return TILE_COLORS.snow;
     const tDef = TERRAIN[tile.terrain];
     return tDef ? tDef.color : '#fff';
@@ -326,6 +332,10 @@ export function getTileBg(tile) {
     if (tile.structure) {
         const bDef = BUILDINGS[tile.structure];
         if (bDef && bDef.bg) return bDef.bg;
+    }
+    if (tile.floor) {
+        const fDef = BUILDINGS[tile.floor];
+        if (fDef && fDef.bg) return fDef.bg;
     }
     if (tile.snowCovered && tile.terrain === 'grass') return TILE_COLORS.snowBg;
     const tDef = TERRAIN[tile.terrain];

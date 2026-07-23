@@ -885,6 +885,9 @@ export class UI {
             }
             html += this.getStructureDescription(tile.structure);
         }
+        if (tile.floor) {
+            html += `<div class="info-row" style="color:#999">Floor: ${tile.floor.replace(/_/g,' ')}</div>`;
+        }
         if (tile.resource) html += `<div class="info-row">Resource: ${tile.resource.type} (${tile.resource.amount})</div>`;
         if (tile.zone) html += `<div class="info-row">Zone: ${tile.zone.crop} (${tile.zone.state})</div>`;
         if (tile.roomId !== null) html += `<div class="info-row">Room #${tile.roomId}</div>`;
@@ -1068,6 +1071,7 @@ export class UI {
             }
             html += this.getStructureDescription(tile.structure);
         }
+        if (tile.floor) html += `<div class="info-row" style="color:#999">Floor: ${tile.floor.replace(/_/g,' ')}</div>`;
         if (tile.zone) html += `<div class="info-row">Zone: ${tile.zone.crop} (${tile.zone.state})</div>`;
         if (tile.resource) html += `<div class="info-row">Resource: ${tile.resource.type} (${tile.resource.amount})</div>`;
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
