@@ -3,7 +3,9 @@ let nextTaskId = 1;
 export class TaskQueue {
     constructor() {
         this.tasks = [];
+        this._byId = new Map();
         this._byPosition = new Map();
+        this._busyStations = new Set();
         this._pending = [];
         this._pendingDirty = true;
     }
@@ -18,6 +20,7 @@ export class TaskQueue {
         task.assignedTo = null;
         task.status = 'pending';
         this.tasks.push(task);
+        this._byId.set(task.id, task);
         this._byPosition.set(this._posKey(task.x, task.y), task);
         this._pendingDirty = true;
         return task;
@@ -30,23 +33,31 @@ export class TaskQueue {
     }
 
     _rebuildIndices() {
+        this._byId.clear();
         this._byPosition.clear();
+        this._busyStations.clear();
         for (const t of this.tasks) {
+            this._byId.set(t.id, t);
             this._byPosition.set(this._posKey(t.x, t.y), t);
+            if ((t.type === 'craft' || t.type === 'cook') && t.status === 'in_progress') {
+                this._busyStations.add(this._posKey(t.x, t.y));
+            }
         }
         this._pendingDirty = true;
     }
 
     remove(taskId) {
-        const idx = this.tasks.findIndex(t => t.id === taskId);
-        if (idx >= 0) {
-            const task = this.tasks[idx];
-            this._byPosition.delete(this._posKey(task.x, task.y));
-            this.tasks.splice(idx, 1);
-            this._pendingDirty = true;
-        }
+        const task = this._byId.get(taskId);
+        if (!task) return;
+        const idx = this.tasks.indexOf(task);
+        if (idx >= 0) this.tasks.splice(idx, 1);
+        this._byId.delete(taskId);
+        this._byPosition.delete(this._posKey(task.x, task.y));
+        this._busyStations.delete(this._posKey(task.x, task.y));
+        this._pendingDirty = true;
     }
 
+    // Called per colonist per tick — scoring favors higher priority then shorter distance
     findBestTask(colonist, tick) {
         const failedTasks = colonist._failedTasks;
         if (this._pendingDirty) {
@@ -58,11 +69,14 @@ export class TaskQueue {
         let bestScore = Infinity;
 
         for (const t of this._pending) {
+            // Re-check status since _pending is a cached snapshot
             if (t.status !== 'pending' || t.assignedTo !== null) continue;
             if (colonist.priorities[t.skillRequired] <= 0) continue;
+            // Skip tasks this colonist recently failed to reach (30-tick cooldown)
             if (failedTasks && failedTasks[t.id] !== undefined && tick - failedTasks[t.id] < 30) continue;
-            if ((t.type === 'craft' || t.type === 'cook') && this.isStationBusy(t.x, t.y)) continue;
+            if ((t.type === 'craft' || t.type === 'cook') && this._busyStations.has(this._posKey(t.x, t.y))) continue;
 
+            // Lower priority number = higher preference; multiplied to dominate over distance
             const prio = colonist.priorities[t.skillRequired];
             const dist = Math.abs(colonist.x - t.x) + Math.abs(colonist.y - t.y);
             const score = prio * 10000 + dist;
@@ -76,28 +90,24 @@ export class TaskQueue {
         return best;
     }
 
-    isStationBusy(x, y) {
-        const k = this._posKey(x, y);
-        for (const t of this.tasks) {
-            if ((t.type === 'craft' || t.type === 'cook') && t.status === 'in_progress' && this._posKey(t.x, t.y) === k) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     claim(taskId, colonistId) {
-        const task = this.tasks.find(t => t.id === taskId);
+        const task = this._byId.get(taskId);
         if (task) {
             task.assignedTo = colonistId;
             task.status = 'in_progress';
+            if (task.type === 'craft' || task.type === 'cook') {
+                this._busyStations.add(this._posKey(task.x, task.y));
+            }
             this._pendingDirty = true;
         }
     }
 
     release(taskId) {
-        const task = this.tasks.find(t => t.id === taskId);
+        const task = this._byId.get(taskId);
         if (task) {
+            if (task.type === 'craft' || task.type === 'cook') {
+                this._busyStations.delete(this._posKey(task.x, task.y));
+            }
             task.assignedTo = null;
             task.status = 'pending';
             task.workDone = 0;
@@ -106,13 +116,18 @@ export class TaskQueue {
     }
 
     complete(taskId) {
-        const idx = this.tasks.findIndex(t => t.id === taskId);
-        if (idx >= 0) {
-            const task = this.tasks[idx];
-            this._byPosition.delete(this._posKey(task.x, task.y));
-            this.tasks.splice(idx, 1);
-            this._pendingDirty = true;
-        }
+        const task = this._byId.get(taskId);
+        if (!task) return;
+        const idx = this.tasks.indexOf(task);
+        if (idx >= 0) this.tasks.splice(idx, 1);
+        this._byId.delete(taskId);
+        this._byPosition.delete(this._posKey(task.x, task.y));
+        this._busyStations.delete(this._posKey(task.x, task.y));
+        this._pendingDirty = true;
+    }
+
+    getById(taskId) {
+        return this._byId.get(taskId) || null;
     }
 
     getByPosition(x, y) {
@@ -132,7 +147,7 @@ export class TaskQueue {
     }
 
     updatePosition(taskId, x, y) {
-        const task = this.tasks.find(t => t.id === taskId);
+        const task = this._byId.get(taskId);
         if (task) {
             this._byPosition.delete(this._posKey(task.x, task.y));
             task.x = x;

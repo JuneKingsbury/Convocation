@@ -547,7 +547,7 @@ export class InputHandler {
 
     executeSpellTarget(pos) {
         const { colonistId, spellKey, spell } = this.spellTargeting;
-        const colonist = this.game.colonists.find(c => c.id === colonistId);
+        const colonist = this.game.getColonist(colonistId);
         if (!colonist || colonist.hp <= 0) {
             this.spellTargeting = null;
             return;

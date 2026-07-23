@@ -180,7 +180,7 @@ export class EventSystem {
                 this.pendingEvent = null;
                 return;
             }
-            game.colonists.push(this.pendingEvent.data);
+            game.addColonist(this.pendingEvent.data);
             game.notifications.push({ text: `${this.pendingEvent.data.name} joined!`, tick: game.tick, type: 'success' });
             game.eventLog.add(game, `${this.pendingEvent.data.name} joined the colony`, 'success', { type: 'colonist', id: this.pendingEvent.data.id });
             const t = THOUGHTS.new_colonist;

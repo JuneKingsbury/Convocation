@@ -18,6 +18,15 @@ export class Renderer {
         this.fontSize = RENDER_CONFIG.fontSize;
         this._lastViewportW = 0;
         this._lastViewportH = 0;
+
+        // Reusable Maps cleared each frame to avoid GC pressure
+        this._entityMap = new Map();
+        this._rallySet = new Map();
+        this._portalMap = new Map();
+        this._portalPathMap = new Map();
+        this._shotMap = new Map();
+        this._effectMap = new Map();
+
         this.measureFont(RENDER_CONFIG.fontSize);
     }
 
@@ -73,7 +82,7 @@ export class Renderer {
         const spellTargeting = game.input.spellTargeting;
         let spellRangeSet = null;
         if (spellTargeting) {
-            const caster = colonists.find(c => c.id === spellTargeting.colonistId);
+            const caster = game.getColonist(spellTargeting.colonistId);
             if (caster && caster.hp > 0) {
                 spellRangeSet = new Set();
                 const range = spellTargeting.spell.range || 1;
@@ -93,7 +102,8 @@ export class Renderer {
         ctx.fillStyle = RENDER_CONFIG.bgColor;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        const entityMap = new Map();
+        const entityMap = this._entityMap;
+        entityMap.clear();
         for (const a of wildlife) {
             if (a.hp > 0) entityMap.set(a.y * CONFIG.MAP_WIDTH + a.x, { char: a.char, color: a.color });
         }
@@ -110,7 +120,8 @@ export class Renderer {
         for (const r of raiders) {
             if (r.hp > 0) entityMap.set(r.y * CONFIG.MAP_WIDTH + r.x, { char: 'R', color: TILE_COLORS.raider });
         }
-        const rallySet = new Map();
+        const rallySet = this._rallySet;
+        rallySet.clear();
         for (const c of colonists) {
             if (c.hp > 0 && !c.onExpedition) {
                 const drafted = c.drafted;
@@ -135,8 +146,10 @@ export class Renderer {
             }
         }
 
-        const portalMap = new Map();
-        const portalPathMap = new Map();
+        const portalMap = this._portalMap;
+        const portalPathMap = this._portalPathMap;
+        portalMap.clear();
+        portalPathMap.clear();
         if (game.waves && game.waves.active && game.waves.portals.length > 0) {
             for (const p of game.waves.portals) {
                 portalMap.set(p.y * CONFIG.MAP_WIDTH + p.x, true);
@@ -148,7 +161,8 @@ export class Renderer {
             }
         }
 
-        const shotMap = new Map();
+        const shotMap = this._shotMap;
+        shotMap.clear();
         if (game.power && game.power.activeShots) {
             for (const shot of game.power.activeShots) {
                 const points = getLinePoints(shot.fromX, shot.fromY, shot.toX, shot.toY);
@@ -158,7 +172,8 @@ export class Renderer {
             }
         }
 
-        const effectMap = new Map();
+        const effectMap = this._effectMap;
+        effectMap.clear();
         if (game.combatEffects) {
             for (const e of game.combatEffects) {
                 effectMap.set(e.y * CONFIG.MAP_WIDTH + e.x, e);
@@ -271,7 +286,7 @@ export class Renderer {
             ctx.restore();
         }
 
-        // Night overlay pass
+        // Night overlay: precompute light grid to avoid O(viewport * sources) per tile
         const darkness = game.settings.showNightLighting ? this.getNightDarkness(game.timeOfDay, game.weather.season) : 0;
         if (darkness > 0) {
             const lightSources = this._getLightSources(game, camera);
@@ -282,23 +297,42 @@ export class Renderer {
                 darkStyles.push(`rgba(${nr},${ng},${nb},${(darkness * i / steps).toFixed(3)})`);
             }
 
-            let lastDarkStyle = '';
-            for (let sy = 0; sy < CONFIG.VIEWPORT_HEIGHT; sy++) {
-                for (let sx = 0; sx < CONFIG.VIEWPORT_WIDTH; sx++) {
-                    const wx = camera.x + sx;
-                    const wy = camera.y + sy;
-                    if (wx < 0 || wx >= CONFIG.MAP_WIDTH || wy < 0 || wy >= CONFIG.MAP_HEIGHT) continue;
+            const vw = CONFIG.VIEWPORT_WIDTH;
+            const vh = CONFIG.VIEWPORT_HEIGHT;
 
-                    let lightLevel = 0;
-                    for (const src of lightSources) {
-                        const dist = Math.abs(wx - src.x) + Math.abs(wy - src.y);
-                        if (dist <= src.radius) {
-                            const falloff = 1 - (dist / (src.radius + 1));
-                            if (falloff > lightLevel) lightLevel = falloff;
-                        }
+            // Build a flat light-level grid by stamping each source's radius
+            if (!this._lightGrid || this._lightGrid.length < vw * vh) {
+                this._lightGrid = new Float32Array(vw * vh);
+            }
+            const lightGrid = this._lightGrid;
+            lightGrid.fill(0);
+
+            for (const src of lightSources) {
+                const localX = src.x - camera.x;
+                const localY = src.y - camera.y;
+                const r = src.radius;
+                const yStart = Math.max(0, localY - r);
+                const yEnd = Math.min(vh - 1, localY + r);
+                const xStart = Math.max(0, localX - r);
+                const xEnd = Math.min(vw - 1, localX + r);
+                for (let sy = yStart; sy <= yEnd; sy++) {
+                    const rowOff = sy * vw;
+                    const dy = Math.abs(sy - localY);
+                    for (let sx = xStart; sx <= xEnd; sx++) {
+                        const dist = dy + Math.abs(sx - localX);
+                        if (dist > r) continue;
+                        const falloff = 1 - (dist / (r + 1));
+                        const idx = rowOff + sx;
+                        if (falloff > lightGrid[idx]) lightGrid[idx] = falloff;
                     }
+                }
+            }
 
-                    const shade = Math.round((1 - lightLevel) * steps);
+            let lastDarkStyle = '';
+            for (let sy = 0; sy < vh; sy++) {
+                const rowOff = sy * vw;
+                for (let sx = 0; sx < vw; sx++) {
+                    const shade = Math.round((1 - lightGrid[rowOff + sx]) * steps);
                     if (shade < 1) continue;
                     const style = darkStyles[shade - 1];
                     if (style !== lastDarkStyle) {

@@ -35,7 +35,7 @@ export class ExplorationSystem {
         const party = [];
 
         for (const id of colonistIds) {
-            const c = game.colonists.find(col => col.id === id);
+            const c = game.getColonist(id);
             if (!c || c.hp <= 0 || c.onExpedition || c.drafted) continue;
             party.push(c);
         }
@@ -176,7 +176,7 @@ export class ExplorationSystem {
         let allArrived = true;
 
         for (const id of exp.partyIds) {
-            const c = game.colonists.find(col => col.id === id);
+            const c = game.getColonist(id);
             if (!c || c.onExpedition) continue;
 
             const dist = manhattanDist(c.x, c.y, gx, gy);
@@ -206,7 +206,7 @@ export class ExplorationSystem {
             exp.startTick = game.tick;
             exp.nextEncounterTick = game.tick + Math.floor(exp.duration * EXPLORATION_CONFIG.encounterSpacing);
             exp.partySnapshot = exp.partyIds.map(id => {
-                const c = game.colonists.find(col => col.id === id);
+                const c = game.getColonist(id);
                 return {
                     id: c.id, name: c.name, hp: c.hp, maxHp: c.maxHp,
                     weapon: c.weapon, armor: c.armor,
@@ -536,7 +536,7 @@ export class ExplorationSystem {
         const gy = exp.gatePos.y;
 
         for (const snapshot of exp.partySnapshot) {
-            const colonist = game.colonists.find(c => c.id === snapshot.id);
+            const colonist = game.getColonist(snapshot.id);
             if (!colonist) continue;
             colonist.onExpedition = false;
             colonist.x = gx;

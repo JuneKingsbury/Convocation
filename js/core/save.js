@@ -142,6 +142,7 @@ export function loadGame(game) {
         if (c.equippedTome === undefined) c.equippedTome = null;
         if (!c.tomeProgress || typeof c.tomeProgress === 'number') c.tomeProgress = {};
     }
+    game.rebuildColonistIndex();
     game.wildlife = data.wildlife;
     game.raiders = data.raiders;
     game.tamedAnimals = data.tamedAnimals || [];

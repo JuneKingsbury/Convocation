@@ -69,6 +69,7 @@ class Game {
         this.eventLog = new EventLog();
 
         this.colonists = [];
+        this._colonistById = new Map();
         this.wildlife = [];
         this.raiders = [];
         this.tamedAnimals = [];
@@ -103,6 +104,21 @@ class Game {
         this.gameLoop = this.gameLoop.bind(this);
     }
 
+    // O(1) colonist lookup by id — always use this instead of colonists.find()
+    getColonist(id) {
+        return this._colonistById.get(id) || null;
+    }
+
+    addColonist(colonist) {
+        this.colonists.push(colonist);
+        this._colonistById.set(colonist.id, colonist);
+    }
+
+    rebuildColonistIndex() {
+        this._colonistById.clear();
+        for (const c of this.colonists) this._colonistById.set(c.id, c);
+    }
+
     spawnStartingColonists() {
         const cx = Math.floor(CONFIG.MAP_WIDTH / 2);
         const cy = Math.floor(CONFIG.MAP_HEIGHT / 2);
@@ -111,7 +127,7 @@ class Game {
             const existingNames = this.colonists.map(c => c.name);
             const c = createColonist(cx + i - 1, cy, biases[i], existingNames);
             c.priorities[biases[i]] = 1;
-            this.colonists.push(c);
+            this.addColonist(c);
         }
     }
 
@@ -159,7 +175,7 @@ class Game {
         }
 
         if (this.followingColonist) {
-            const fc = this.colonists.find(c => c.id === this.followingColonist);
+            const fc = this.getColonist(this.followingColonist);
             if (fc && fc.hp > 0) {
                 this.camera.centerOn(fc.x, fc.y);
             } else {
@@ -293,13 +309,13 @@ class Game {
     }
 
     cyclePriority(colonistId, skill) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c) return;
         c.priorities[skill] = (c.priorities[skill] + 1) % 6;
     }
 
     toggleDraft(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c || c.hp <= 0) return;
         c.drafted = !c.drafted;
         if (c.drafted) {
@@ -320,7 +336,7 @@ class Game {
     }
 
     toggleGuard(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c || c.hp <= 0) return;
         c.guardMode = !c.guardMode;
         if (c.guardMode) {
@@ -362,7 +378,7 @@ class Game {
     assignBedFromSelect(x, y, colonistIdStr) {
         const colonistId = parseInt(colonistIdStr);
         if (!colonistId) return;
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c) return;
         c.assignedBed = { x, y };
         this.notifications.push({ text: `${c.name} assigned to bed at (${x},${y})`, tick: this.tick, type: 'success' });
@@ -383,7 +399,7 @@ class Game {
     }
 
     selectColonistById(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c || c.hp <= 0) return;
         this.selectedColonist = c;
         this.selectedColonists = [c];
@@ -392,13 +408,13 @@ class Game {
     }
 
     centerOnColonist(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c || c.hp <= 0) return;
         this.camera.centerOn(c.x, c.y);
     }
 
     setColonistColor(colonistId, color) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c) return;
         c.nameColor = color;
         this.ui.showColonistInfo(c);
@@ -410,7 +426,7 @@ class Game {
             this.notifications.push({ text: 'Camera unfollowed', tick: this.tick, type: 'success' });
         } else {
             this.followingColonist = colonistId;
-            const c = this.colonists.find(col => col.id === colonistId);
+            const c = this.getColonist(colonistId);
             if (c) {
                 this.notifications.push({ text: `Following ${c.name}`, tick: this.tick, type: 'success' });
             }
@@ -418,25 +434,40 @@ class Game {
         if (this.selectedColonist) this.ui.showColonistInfo(this.selectedColonist);
     }
 
-    equipWeapon(colonistId, index) {
-        const c = this.colonists.find(col => col.id === colonistId);
+    // Generic equip: takes item from inventory, swaps with colonist's slot
+    _equipItem(colonistId, index, slot, listName, addMethod) {
+        const c = this.getColonist(colonistId);
         if (!c) return;
-        if (index === undefined || index < 0 || index >= this.resources.weapons.length) return;
-        const weapon = this.resources.weapons.splice(index, 1)[0];
-        if (c.weapon) this.resources.addWeapon(c.weapon);
-        c.weapon = weapon;
-        this.notifications.push({ text: `${c.name} equipped ${weapon.name}`, tick: this.tick, type: 'success' });
+        const list = this.resources[listName];
+        if (index === undefined || index < 0 || index >= list.length) return;
+        const item = list.splice(index, 1)[0];
+        if (c[slot]) this.resources[addMethod](c[slot]);
+        c[slot] = item;
+        this.notifications.push({ text: `${c.name} equipped ${item.name}`, tick: this.tick, type: 'success' });
         this.ui.showColonistInfo(c);
     }
 
-    unequipWeapon(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
-        if (!c || !c.weapon) return;
-        this.resources.addWeapon(c.weapon);
-        c.weapon = null;
-        this.notifications.push({ text: `${c.name} unequipped weapon`, tick: this.tick, type: 'success' });
+    // Generic unequip: returns item to inventory, clears colonist slot
+    _unequipItem(colonistId, slot, addMethod, label) {
+        const c = this.getColonist(colonistId);
+        if (!c || !c[slot]) return;
+        this.resources[addMethod](c[slot]);
+        c[slot] = null;
+        this.notifications.push({ text: `${c.name} unequipped ${label}`, tick: this.tick, type: 'success' });
         this.ui.showColonistInfo(c);
     }
+
+    // Generic discard: removes item from inventory
+    _discardItem(index, listName) {
+        const list = this.resources[listName];
+        if (index < 0 || index >= list.length) return;
+        const item = list.splice(index, 1)[0];
+        this.notifications.push({ text: `Discarded ${item.name}`, tick: this.tick, type: 'event' });
+        this.ui.updateInventoryPanel();
+    }
+
+    equipWeapon(colonistId, index) { this._equipItem(colonistId, index, 'weapon', 'weapons', 'addWeapon'); }
+    unequipWeapon(colonistId) { this._unequipItem(colonistId, 'weapon', 'addWeapon', 'weapon'); }
 
     huntAnimal(animalId) {
         designateHunt(this, animalId);
@@ -609,89 +640,18 @@ class Game {
         }
     }
 
-    equipArmor(colonistId, index) {
-        const c = this.colonists.find(col => col.id === colonistId);
-        if (!c) return;
-        if (index === undefined || index < 0 || index >= this.resources.armors.length) return;
-        const armor = this.resources.armors.splice(index, 1)[0];
-        if (c.armor) this.resources.addArmor(c.armor);
-        c.armor = armor;
-        this.notifications.push({ text: `${c.name} equipped ${armor.name}`, tick: this.tick, type: 'success' });
-        this.ui.showColonistInfo(c);
-    }
-
-    unequipArmor(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
-        if (!c || !c.armor) return;
-        this.resources.addArmor(c.armor);
-        c.armor = null;
-        this.notifications.push({ text: `${c.name} unequipped armor`, tick: this.tick, type: 'success' });
-        this.ui.showColonistInfo(c);
-    }
-
-    discardWeapon(index) {
-        if (index < 0 || index >= this.resources.weapons.length) return;
-        const w = this.resources.weapons.splice(index, 1)[0];
-        this.notifications.push({ text: `Discarded ${w.name}`, tick: this.tick, type: 'event' });
-        this.ui.updateInventoryPanel();
-    }
-
-    discardArmor(index) {
-        if (index < 0 || index >= this.resources.armors.length) return;
-        const a = this.resources.armors.splice(index, 1)[0];
-        this.notifications.push({ text: `Discarded ${a.name}`, tick: this.tick, type: 'event' });
-        this.ui.updateInventoryPanel();
-    }
-
-    equipTool(colonistId, index) {
-        const c = this.colonists.find(col => col.id === colonistId);
-        if (!c) return;
-        if (index === undefined || index < 0 || index >= this.resources.tools.length) return;
-        const tool = this.resources.tools.splice(index, 1)[0];
-        if (c.tool) this.resources.addTool(c.tool);
-        c.tool = tool;
-        this.notifications.push({ text: `${c.name} equipped ${tool.name}`, tick: this.tick, type: 'success' });
-        this.ui.showColonistInfo(c);
-    }
-
-    unequipTool(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
-        if (!c || !c.tool) return;
-        this.resources.addTool(c.tool);
-        c.tool = null;
-        this.notifications.push({ text: `${c.name} unequipped tool`, tick: this.tick, type: 'success' });
-        this.ui.showColonistInfo(c);
-    }
-
-    discardTool(index) {
-        if (index < 0 || index >= this.resources.tools.length) return;
-        const t = this.resources.tools.splice(index, 1)[0];
-        this.notifications.push({ text: `Discarded ${t.name}`, tick: this.tick, type: 'event' });
-        this.ui.updateInventoryPanel();
-    }
-
-    equipArtifact(colonistId, index) {
-        const c = this.colonists.find(col => col.id === colonistId);
-        if (!c) return;
-        if (index === undefined || index < 0 || index >= this.resources.artifacts.length) return;
-        const artifact = this.resources.artifacts.splice(index, 1)[0];
-        if (c.artifact) this.resources.addArtifact(c.artifact);
-        c.artifact = artifact;
-        this.notifications.push({ text: `${c.name} equipped ${artifact.name}`, tick: this.tick, type: 'success' });
-        this.ui.showColonistInfo(c);
-    }
-
-    unequipArtifact(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
-        if (!c || !c.artifact) return;
-        this.resources.addArtifact(c.artifact);
-        c.artifact = null;
-        this.notifications.push({ text: `${c.name} unequipped artifact`, tick: this.tick, type: 'success' });
-        this.ui.showColonistInfo(c);
-    }
+    equipArmor(colonistId, index) { this._equipItem(colonistId, index, 'armor', 'armors', 'addArmor'); }
+    unequipArmor(colonistId) { this._unequipItem(colonistId, 'armor', 'addArmor', 'armor'); }
+    discardWeapon(index) { this._discardItem(index, 'weapons'); }
+    discardArmor(index) { this._discardItem(index, 'armors'); }
+    equipTool(colonistId, index) { this._equipItem(colonistId, index, 'tool', 'tools', 'addTool'); }
+    unequipTool(colonistId) { this._unequipItem(colonistId, 'tool', 'addTool', 'tool'); }
+    discardTool(index) { this._discardItem(index, 'tools'); }
+    equipArtifact(colonistId, index) { this._equipItem(colonistId, index, 'artifact', 'artifacts', 'addArtifact'); }
+    unequipArtifact(colonistId) { this._unequipItem(colonistId, 'artifact', 'addArtifact', 'artifact'); }
 
     equipTome(colonistId, index) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c) return;
         const tome = this.resources.takeTome(index);
         if (!tome) return;
@@ -702,7 +662,7 @@ class Game {
     }
 
     unequipTome(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c || !c.equippedTome) return;
         this.resources.addTome({ ...SPELL_TOMES[c.equippedTome], key: c.equippedTome });
         c.equippedTome = null;
@@ -715,7 +675,7 @@ class Game {
     }
 
     toggleSpell(colonistId, spellKey) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c) return;
         if (!c.disabledSpells) c.disabledSpells = [];
         const idx = c.disabledSpells.indexOf(spellKey);
@@ -782,12 +742,7 @@ class Game {
         addThought(colonist, 'Cast a spell', 3, 80, this.tick);
     }
 
-    discardArtifact(index) {
-        if (index < 0 || index >= this.resources.artifacts.length) return;
-        const a = this.resources.artifacts.splice(index, 1)[0];
-        this.notifications.push({ text: `Discarded ${a.name}`, tick: this.tick, type: 'event' });
-        this.ui.updateInventoryPanel();
-    }
+    discardArtifact(index) { this._discardItem(index, 'artifacts'); }
 
     cycleColonist(dir) {
         const alive = this.colonists.filter(c => c.hp > 0);
@@ -810,8 +765,8 @@ class Game {
     }
 
     copyPriorities(toId, fromId) {
-        const to = this.colonists.find(c => c.id === toId);
-        const from = this.colonists.find(c => c.id === fromId);
+        const to = this.getColonist(toId);
+        const from = this.getColonist(fromId);
         if (!to || !from) return;
         to.priorities = { ...from.priorities };
         this.notifications.push({ text: `${to.name} copied priorities from ${from.name}`, tick: this.tick, type: 'success' });
@@ -828,7 +783,7 @@ class Game {
     }
 
     autoEquipBest(colonistId) {
-        const c = this.colonists.find(col => col.id === colonistId);
+        const c = this.getColonist(colonistId);
         if (!c) return;
         if (this.resources.weapons.length > 0) {
             this.resources.weapons.sort((a, b) => b.damage - a.damage);
@@ -868,7 +823,7 @@ class Game {
         const x = forge ? forge.x : this.colonists[0]?.x || 128;
         const y = forge ? forge.y : this.colonists[0]?.y || 128;
         const golem = createGolem(golemType, x, y);
-        this.colonists.push(golem);
+        this.addColonist(golem);
         this.notifications.push({ text: `${def.name} animated!`, tick: this.tick, type: 'success' });
         this.eventLog.add(this, `Crafted a ${def.name}`, 'success', { type: 'position', x, y });
     }
@@ -888,7 +843,7 @@ class Game {
 
     jumpToEntity(entityType, entityId) {
         if (entityType === 'colonist') {
-            const c = this.colonists.find(col => col.id === entityId);
+            const c = this.getColonist(entityId);
             if (c) {
                 this.camera.centerOn(c.x, c.y);
                 this.selectedColonist = c;
@@ -1232,6 +1187,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     modalBackdrop.addEventListener('click', closeModals);
 
+    // Shared transition from start screen into active game
+    function launchGame(setup) {
+        startScreen.style.display = 'none';
+        gameContainer.style.display = 'grid';
+        initFooterTabs();
+        initPanelOverlay();
+        initResizeHandles(fitGameFont);
+        if (window.innerWidth <= 768) setFooterMode(true);
+        requestAnimationFrame(() => {
+            fitGameFont();
+            const game = new Game();
+            setup(game);
+            fitGameFont();
+            game.start();
+        });
+    }
+
     document.getElementById('start-game').addEventListener('click', () => {
         CONFIG.PEACEFUL_MODE = document.getElementById('start-peaceful-check').checked;
         const startSettings = {
@@ -1248,37 +1220,12 @@ document.addEventListener('DOMContentLoaded', () => {
             showColonistNames: document.getElementById('start-names').value,
             uiFontSize: parseInt(document.getElementById('start-ui-font-size').value) || 12,
         };
-
-        startScreen.style.display = 'none';
-        gameContainer.style.display = 'grid';
-        initFooterTabs();
-        initPanelOverlay();
-        initResizeHandles(fitGameFont);
-        if (window.innerWidth <= 768) setFooterMode(true);
         setUIFontSize(startSettings.uiFontSize);
-        requestAnimationFrame(() => {
-            fitGameFont();
-            const game = new Game();
-            Object.assign(game.settings, startSettings);
-            fitGameFont();
-            game.start();
-        });
+        launchGame(game => Object.assign(game.settings, startSettings));
     });
 
     loadBtn.addEventListener('click', () => {
-        startScreen.style.display = 'none';
-        gameContainer.style.display = 'grid';
-        initFooterTabs();
-        initPanelOverlay();
-        initResizeHandles(fitGameFont);
-        if (window.innerWidth <= 768) setFooterMode(true);
-        requestAnimationFrame(() => {
-            fitGameFont();
-            const game = new Game();
-            game.load();
-            fitGameFont();
-            game.start();
-        });
+        launchGame(game => game.load());
     });
 
     const importFileInput = document.getElementById('import-file');
@@ -1296,19 +1243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (success) {
             loadBtn.disabled = false;
             exportBtn.disabled = false;
-            startScreen.style.display = 'none';
-            gameContainer.style.display = 'grid';
-            initFooterTabs();
-            initPanelOverlay();
-            initResizeHandles(fitGameFont);
-            if (window.innerWidth <= 768) setFooterMode(true);
-            requestAnimationFrame(() => {
-                fitGameFont();
-                const game = new Game();
-                game.load();
-                fitGameFont();
-                game.start();
-            });
+            launchGame(game => game.load());
         } else {
             alert('Invalid save file.');
         }

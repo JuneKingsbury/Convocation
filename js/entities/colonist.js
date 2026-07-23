@@ -709,7 +709,7 @@ function updateMoving(colonist, game) {
             colonist.moveCooldown = moveCost;
         }
     } else {
-        const task = game.taskQueue.getAll().find(t => t.id === colonist.currentTaskId);
+        const task = game.taskQueue.getById(colonist.currentTaskId);
         if (task) {
             const newPath = findPathAdjacent(game.map, colonist.x, colonist.y, task.x, task.y);
             if (newPath) {
@@ -737,7 +737,7 @@ function updateWorking(colonist, game) {
         }
     }
 
-    const task = game.taskQueue.getAll().find(t => t.id === colonist.currentTaskId);
+    const task = game.taskQueue.getById(colonist.currentTaskId);
     if (!task) {
         colonist.state = 'idle';
         colonist.currentTaskId = null;

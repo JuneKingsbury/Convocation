@@ -349,7 +349,7 @@ export class UI {
     }
 
     _refreshColonistInfo() {
-        const colonist = this.game.colonists.find(c => c.id === this._viewingColonistId);
+        const colonist = this.game.getColonist(this._viewingColonistId);
         if (!colonist) {
             this._viewingColonistId = null;
             return;
@@ -393,7 +393,7 @@ export class UI {
             for (const exp of expl.expeditions) {
                 if (exp.status === 'gathering') {
                     const names = exp.partyIds.map(id => {
-                        const c = this.game.colonists.find(col => col.id === id);
+                        const c = this.game.getColonist(id);
                         return c ? c.name : '?';
                     }).join(', ');
                     html += `<div class="info-row" style="color:#aaddff;">${exp.dimensionName} — assembling</div>`;
@@ -1172,7 +1172,9 @@ export class UI {
 
     updateColonistHud() {
         let html = '<div class="footer-panel-header">Colonists</div>';
-        for (const c of this.game.colonists) {
+        // Show alive colonists first, dead at the bottom
+        const sorted = [...this.game.colonists].sort((a, b) => (b.hp > 0 ? 1 : 0) - (a.hp > 0 ? 1 : 0));
+        for (const c of sorted) {
             if (c.hp <= 0) {
                 html += `<div class="hud-colonist dead"><span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> <span style="color:#cc4444">DEAD</span></div>`;
                 continue;
