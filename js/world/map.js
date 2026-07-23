@@ -215,15 +215,31 @@ function generateRiver(map, params) {
 
 function generateRuins(map, params) {
     const count = params.count || 1;
+    const placed = [];
+    const padding = 2;
+    const maxAttempts = 20;
+
     for (let i = 0; i < count; i++) {
         if (Math.random() > (params.chance ?? 1.0)) continue;
 
         const margin = params.margin || 30;
-        const cx = margin + Math.floor(Math.random() * (CONFIG.MAP_WIDTH - 2 * margin));
-        const cy = margin + Math.floor(Math.random() * (CONFIG.MAP_HEIGHT - 2 * margin));
-
-        // Pick a blueprint
         const blueprint = params.blueprints[Math.floor(Math.random() * params.blueprints.length)];
+
+        let cx, cy, overlaps;
+        let attempts = 0;
+        do {
+            cx = margin + Math.floor(Math.random() * (CONFIG.MAP_WIDTH - 2 * margin));
+            cy = margin + Math.floor(Math.random() * (CONFIG.MAP_HEIGHT - 2 * margin));
+            overlaps = placed.some(r =>
+                cx < r.x + r.w + padding && cx + blueprint.width + padding > r.x &&
+                cy < r.y + r.h + padding && cy + blueprint.height + padding > r.y
+            );
+            attempts++;
+        } while (overlaps && attempts < maxAttempts);
+        if (overlaps) continue;
+
+        placed.push({ x: cx, y: cy, w: blueprint.width, h: blueprint.height });
+
         const decayChance = params.decayChance ?? 0.33;
         const floorDecayChance = params.floorDecayChance ?? 0.15;
 
