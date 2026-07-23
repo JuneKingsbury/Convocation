@@ -25,6 +25,7 @@ import { saveGame, loadGame, hasSave, exportSave, importSave } from './save.js';
 import { initResizeHandles } from '../ui/resize.js';
 import { SpatialHash } from '../world/spatial.js';
 import { MapIndex } from '../world/mapindex.js';
+import { renderGlossaryHTML } from '../ui/glossary.js';
 
 class Game {
     constructor() {
@@ -994,6 +995,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const glossaryPanel = document.getElementById('glossary-panel');
     const modalBackdrop = document.getElementById('modal-backdrop');
+    const glossaryBody = document.getElementById('glossary-body');
+    if (glossaryBody) glossaryBody.innerHTML = renderGlossaryHTML();
 
     function closeModals() {
         settingsPanel.style.display = 'none';

@@ -3,7 +3,7 @@ A Rimworld-like Arcane Colony Management Sim
 
 ## About
 
-Convocation is a browser-based ASCII colony management game inspired by Rimworld and Dwarf Fortress. Manage colonists, build defenses, research arcane technologies, and defend your settlement against waves of void creatures. Features include a full crafting system, beast taming, weather/seasons, mood/needs simulation, tower defense mechanics, food spoilage, and interdimensional exploration.
+Convocation is a browser-based ASCII colony management game inspired by Rimworld and Dwarf Fortress. Manage colonists, build defenses, research arcane technologies, and defend your settlement against waves of void creatures. Features include a full magic system with six schools, spell tomes, mana-based casting, beast taming with animal roles (pack animals, happiness auras), weather/seasons, mood/needs simulation, tower defense mechanics, food spoilage, and interdimensional exploration.
 
 ## Glossary
 ### Colonists
@@ -25,11 +25,25 @@ Fleeing - Colonists automatically flee combat when HP drops below 20. They disen
 
 Exploring - Colonists sent on expeditions via the Rift Gate disappear from the map and show "EXPLORING" in the HUD. They return automatically when the expedition concludes.
 
-Skills - Building, Farming, Crafting, Cooking, Hauling. Higher skill = faster work completion for that task type.
+Skills - Building, Farming, Crafting, Cooking, Hauling, and six Magic schools (Evocation, Enchantment, Abjuration, Conjuration, Transmutation, Divination). Higher skill = faster work completion. Magic skills increase by studying tomes and casting spells.
 
 Equipment Slots - Colonists have 4 equipment slots: Weapon, Armor, Tool, and Artifact. Use "Auto-equip Best" to quickly gear up a colonist with the best available items.
 
-Active Effects - Temporary buffs from potions (speed, healing). Shown in colonist info with remaining duration.
+Active Effects - Temporary buffs from potions (speed, healing) and magic spells (heal, haste, defense). Shown in colonist info with remaining duration. Colonists with active spell buffs pulse cyan on the map.
+
+Magic - Colonists learn spells by studying Spell Tomes at the Arcanum. Each tome teaches one spell from a specific school. Progress is per-colonist per-tome and persists across unequip/re-equip. Completing a tome consumes it and permanently grants the spell. Casting spells also grants XP in that school.
+
+Mana (Colonist) - Each colonist has a personal mana pool (base 20 + bonuses from magic skill levels). Spells consume mana and go on cooldown. Mana regenerates over time.
+
+Known Spells - Colonists auto-cast known spells when conditions are met (heal when ally is hurt, buff speed when working, etc.). Use the disable checkbox next to each spell to prevent auto-casting specific spells for mana conservation.
+
+Magic Schools:
+- Evocation - Ranged combat spells (Magic Missile, Fireball, Chain Lightning). Damage enemies at range.
+- Enchantment - Buffs for everyday tasks (Haste, Animate Golem). Speed up colonist work.
+- Abjuration - Defensive/healing spells (Heal, Shield, Mass Heal). Keep colonists alive.
+- Conjuration - Summoning and teleportation (Summon Familiar, Warp, Blink).
+- Transmutation - Reshape the environment (Circle of Growth, Raise Mountain, Level Field). Boost crops and terrain.
+- Divination - Manipulate odds (Foresight, Fair Winds, Merchant's Omen, Ward of Calamity, Fortunate Discovery). Influence weather, events, and raid timing.
 
 ### Equipment
 
@@ -115,6 +129,8 @@ Weapons - Wooden Club (3 wood), Etched Axe (2 stone + 1 wood, needs Runecraft), 
 Tools - Stone Pickaxe (2 stone + 1 wood), Runic Pickaxe (2 runite + 1 stone, needs Runeforging), Woodcutter's Axe (3 wood + 1 stone), Harvesting Sickle (2 wood + 1 stone).
 
 Artifacts - Boots of Haste (3 runite + 2 planks, needs Runeforging).
+
+Spell Tomes - Craft at workbench to teach colonists spells. Each school has multiple tomes at different skill levels. Equip a tome and study at the Arcanum to learn the spell.
 
 Potions - Health Potion (3 berries + 2 wheat), Speed Potion (2 corn + 2 potatoes + 1 berries).
 
@@ -204,12 +220,23 @@ Rabbit (r) - Passive. Fast. Yields 1 meat.
 
 Wolf (w) - Hostile. Attacks colonists at night or in winter. Yields 2 meat.
 
+Okapi (k) - Passive. Pack animal when tamed — include in expeditions for 25% faster completion.
+
+Tapir (t) - Passive. Happiness aura when tamed — nearby colonists (4-tile radius) get a mood bonus.
+
+Chicken (c) - Passive. Produces eggs when tamed.
+
 Hunting - Select an animal, click Hunt. Creates a task for a colonist to kill it.
 
-Beast Binding - Requires Beast Binding research + Beast Circle. Bound creatures produce resources (eggs, milk, wool).
+Beast Binding - Requires Beast Binding research + Beast Circle. Bound creatures can have different roles:
+- Production animals (chickens) produce resources over time (eggs, milk).
+- Pack animals (okapi) can join expeditions to reduce travel time.
+- Aura animals (tapir) passively boost nearby colonists' mood.
 
 ### Combat
 Combat - Melee, 1-tile range. Damage = base + weapon bonus. Colonists auto-defend when attacked or when wave enemies are present. Yellow ! appears when colonists strike, red ! when hit.
+
+Ranged Magic - Colonists with Evocation spells (Magic Missile, Fireball, Chain Lightning) attack enemies at range automatically during combat.
 
 Weapons - Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22), Runic Pick (12), Void Blade (30). Craft and equip for better defense.
 
@@ -243,7 +270,9 @@ Tower Defense Strategy - Build walls/doors to funnel enemies, place turrets alon
 ### Exploration (Alternate Dimensions)
 Rift Gate (Ω) - Build after researching Planar Rift. Click it to open the expedition panel. Consumes 6 mana. Colonists physically walk to the gate before departing.
 
-Expeditions - Select colonists and a dimension, then launch. The party walks to the Rift Gate, enters the dimension, auto-explores, and returns with loot. Colonists are removed from the workforce and map while exploring.
+Expeditions - Select colonists (and optional pack animals) and a dimension, then launch. The party walks to the Rift Gate, enters the dimension, auto-explores, and returns with loot. Colonists are removed from the workforce and map while exploring.
+
+Pack Animals - Tamed okapi can join expeditions as pack animals, reducing expedition duration by 25% each (stacks, min 50% of original duration).
 
 No Permadeath - Defeated colonists return at 1 HP. If the entire party is defeated, they return empty-handed. Returned low-HP colonists need rest and food to recover.
 
