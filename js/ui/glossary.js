@@ -192,6 +192,48 @@ export const GLOSSARY = [
         ]
     },
     {
+        title: 'Wolf Taming',
+        entries: [
+            ['Dangerous Tame', 'Wolves are dangerous to tame. Success chance = 40% base + 6% per Animals skill level. At skill 10, success is guaranteed.'],
+            ['Retaliation', 'On tame failure, the wolf attacks the colonist for 12 damage and flees. The colonist gets negative mood thoughts.'],
+            ['Guard Wolves', 'Once tamed, wolves become guard animals. They patrol near colonists and automatically attack raiders, wave enemies, and hostile wildlife within range 8.'],
+            ['Guard States', 'Patrolling (following colonists), Engaging (attacking threats), Retreating (low HP, returning to safety).'],
+        ]
+    },
+    {
+        title: 'Golems',
+        entries: [
+            ['Overview', 'Golems are animated stone workers. They never eat, sleep, or have mood swings. Each specializes in one skill.'],
+            ['Golem Forge', 'Build a Golem Forge (requires Golem Craft research) and click it to craft golems. Costs stone, runite, and void essence.'],
+            ['Types', 'Farmer (farming 6), Miner (building 6), Combat (dmg 20, auto-fights), Hauler (hauling 8, fast speed).'],
+            ['Limitations', 'Cannot equip tomes or learn spells. Cannot be drafted. Do not count toward colonist cap.'],
+        ]
+    },
+    {
+        title: 'Complex Structures',
+        entries: [
+            ['Pattern Activation', 'Build the core piece, then surround it with the required pattern. Activation is automatic when the pattern is complete. Destroying any piece deactivates the bonus.'],
+            ['Great Forge', '3×3 room: Forge Core (⚒) at center, walls on all sides except one door. Effect: 2.5x equipment crafting speed for colonists within 3 tiles. Requires: Masterwork research.'],
+            ['Ritual Circle', '5×5 diamond: Ritual Core (◎) at center, walls at 8 positions forming a diamond. Effect: -30% spell cooldowns within radius 6. Requires: Advanced Arcana research.'],
+        ]
+    },
+    {
+        title: 'Trading',
+        entries: [
+            ['Barter System', 'When a caravan arrives, open the trade panel to barter any resources. Your offer value must meet or exceed request value.'],
+            ['Trade Values', 'Each resource has a base value. You sell at 70% (discount) and buy at 140% (markup) of base value.'],
+            ['Exclusive Items', 'Traders occasionally carry rare items unavailable through crafting: Amulet of Fortune, Enchanted Blade, Wanderer\'s Cloak, Merchant\'s Ring.'],
+        ]
+    },
+    {
+        title: 'Guard/Patrol',
+        entries: [
+            ['Guard Mode', 'Toggle Guard on a colonist to make them patrol their current position instead of doing tasks. They engage hostiles within a wider radius than normal.'],
+            ['Guard Radius', 'Guards patrol within 6 tiles of their post and engage threats within 10 tiles.'],
+            ['Needs Priority', 'Guards still eat and sleep when needs are critical, then return to their post.'],
+        ]
+    },
+    {
         title: 'Controls',
         entries: [
             ['WASD / Arrows', 'Pan camera.'],
@@ -231,6 +273,10 @@ export const GLOSSARY = [
             ['▓', 'Void Wall', '#6622aa'],
             ['Y', 'Void Turret', '#aa33ff'],
             ['Ω', 'Rift Gate', '#66aaff'],
+            ['Ğ', 'Golem Forge', '#cc8833'],
+            ['⚒', 'Forge Core', '#ff8844'],
+            ['◎', 'Ritual Core', '#aa44ff'],
+            ['G', 'Golem', '#888888'],
             ['!', 'Melee hit', '#ffff00'],
             ['*', 'Turret beam', '#ff4444'],
         ]

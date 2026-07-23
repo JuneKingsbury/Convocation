@@ -165,6 +165,8 @@ export const THOUGHTS = {
     food_spoiled:      { text: 'Food is rotting', moodEffect: -5, duration: 150 },
     learned_spell:     { text: 'Learned a new spell!', moodEffect: 8, duration: 200 },
     cast_spell:        { text: 'Cast a spell', moodEffect: 3, duration: 80 },
+    tame_failed:       { text: 'Failed taming attempt!', moodEffect: -8, duration: 150 },
+    wolf_retaliated:   { text: 'Wolf attacked during taming!', moodEffect: -12, duration: 200 },
 };
 
 // To add a trait: add entry here. Trait effects are checked in colonist.js updateNeeds/getWorkSpeed.
@@ -292,11 +294,16 @@ export const WORK_CONFIG = {
     researchWork: 20,            // ticks per research task cycle at research desk
     deconstructWork: 10,         // ticks to deconstruct a building
     tameWork: 20,                // ticks to tame an animal
+    dangerousTameWork: 30,       // ticks to tame a dangerous animal (wolves)
+    tameSkillChanceBonus: 0.06,  // +6% tame success per animals skill level
     poweredWorkbenchDivisor: 2,  // enchanting table divides craft time by this
     alchemyFoodBonus: 2,         // extra food per cook_meal when alchemy researched
     wealthPerWeapon: 10,         // wealth value added per weapon in stockpile (affects raid scaling)
     penWanderRadius: 3,          // max tiles a tamed animal wanders from its pen
     tamedMoveChance: 0.1,        // probability per tick a tamed animal moves
+    guardPatrolRadius: 6,        // how far a guarding colonist patrols from their post
+    guardEngageRadius: 10,       // how far they'll chase a threat before returning
+    guardReturnThreshold: 12,    // distance at which they abandon chase and return to post
 };
 
 // Spell tome study tuning. Used by colonist.js when studying at a research desk with a tome equipped.
@@ -352,6 +359,9 @@ export const BUILDINGS = {
     ember_ward:        { char: 'H', color: '#ff8844', cost: { stone: 4, planks: 2 }, work: 28, structureType: 'furniture', category: 'Arcane', research: 'ember_magic', power: { consumes: 3, warmRadius: 4 }, description: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.' },
     ice_box:           { char: 'I', color: '#88ccff', cost: { runite: 2, stone: 4, planks: 2, void_essence: 2 }, work: 40, structureType: 'furniture', category: 'Furniture', research: 'alchemy', power: { consumes: 1 }, description: 'Magically chills food — reduces spoilage by 40%. Consumes 1 mana.' },
     rift_gate:         { char: 'Ω', color: '#33ccff', cost: { runite: 4, stone: 6, planks: 4, void_essence: 6 }, work: 60, structureType: 'furniture', category: 'Arcane', passable: { colonist: false, animal: false, enemy: false }, research: 'planar_rift', power: { consumes: 6 }, description: 'Send exploration parties to alternate dimensions. Consumes 6 mana.' },
+    golem_forge:       { char: 'Ğ', color: '#cc8833', cost: { stone: 8, runite: 4, planks: 4 }, work: 50, structureType: 'furniture', category: 'Production', research: 'golem_craft', description: 'Animate stone golems. Click to craft.' },
+    forge_core:        { char: '⚒', color: '#ff8844', cost: { stone: 6, runite: 3, planks: 3 }, work: 40, structureType: 'furniture', category: 'Arcane', research: 'masterwork', description: 'Core of the Great Forge. Surround with walls + door to activate (2.5x equipment crafting).' },
+    ritual_core:       { char: '◎', color: '#aa44ff', cost: { runite: 5, void_essence: 3, planks: 4 }, work: 50, structureType: 'furniture', category: 'Arcane', research: 'advanced_arcana', description: 'Core of the Ritual Circle. Place altars around it to activate (-30% spell cooldowns).' },
 };
 
 // Auto-derived from BUILDINGS (terrain chars/colors + building chars/colors merged)
@@ -388,6 +398,35 @@ export const SINGLE_PLACE_TYPES = new Set(
     Object.entries(BUILDINGS).filter(([, b]) => b.structureType === 'furniture' && !b.dragPlace).map(([k]) => k)
 );
 
+export const COMPLEX_STRUCTURES = {
+    great_forge: {
+        name: 'Great Forge',
+        research: 'masterwork',
+        coreBuild: 'forge_core',
+        layout: [
+            { dx: -1, dy: -1, req: 'wall' }, { dx: 0, dy: -1, req: 'wall' }, { dx: 1, dy: -1, req: 'wall' },
+            { dx: -1, dy: 0, req: 'wall' },  { dx: 1, dy: 0, req: 'wall' },
+            { dx: -1, dy: 1, req: 'wall' },  { dx: 0, dy: 1, req: 'door' },  { dx: 1, dy: 1, req: 'wall' },
+        ],
+        effect: { craftSpeedMult: 2.5, craftCategory: 'Equipment' },
+        description: '3x3 enclosed room with Forge Core at center. Walls on all sides, door on one. 2.5x equipment crafting speed.',
+    },
+    ritual_circle: {
+        name: 'Ritual Circle',
+        research: 'advanced_arcana',
+        coreBuild: 'ritual_core',
+        layout: [
+            { dx: 0, dy: -2, req: 'wall' },
+            { dx: -1, dy: -1, req: 'wall' }, { dx: 1, dy: -1, req: 'wall' },
+            { dx: -2, dy: 0, req: 'wall' }, { dx: 2, dy: 0, req: 'wall' },
+            { dx: -1, dy: 1, req: 'wall' }, { dx: 1, dy: 1, req: 'wall' },
+            { dx: 0, dy: 2, req: 'wall' },
+        ],
+        effect: { spellCooldownMult: 0.7, radius: 6 },
+        description: 'Diamond pattern (5x5) with Ritual Core at center. Walls at cardinal + diagonal positions. Reduces spell cooldowns by 30% in radius 6.',
+    },
+};
+
 // To add a recipe: add entry here. Set 'research' field to gate behind tech.
 // Station must exist as a buildable structure. Equipment outputs auto-detected from WEAPONS/ARMORS/TOOLS.
 export const RECIPE_CATEGORIES = ['Materials', 'Equipment', 'Tools', 'Artifacts', 'Food & Potions', 'Tomes'];
@@ -404,6 +443,10 @@ export const RECIPES = {
     craft_runic_pickaxe: { input: { runite: 2, planks: 1 }, output: { runic_pickaxe: 1 }, skill: 'crafting', ticks: 22, station: 'workbench', research: 'runeforging', category: 'Tools' },
     craft_woodcutter_axe: { input: { planks: 2, stone: 1 }, output: { woodcutter_axe: 1 }, skill: 'crafting', ticks: 16, station: 'workbench', category: 'Tools' },
     craft_harvesting_sickle: { input: { stone: 1, planks: 1, wood: 1 }, output: { harvesting_sickle: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', research: 'druidcraft', category: 'Tools' },
+    craft_wooden_wand: { input: { wood: 3, planks: 1 }, output: { wooden_wand: 1 }, skill: 'crafting', ticks: 12, station: 'workbench', research: 'arcane_studies', category: 'Equipment' },
+    craft_crystal_staff: { input: { stone: 3, planks: 2, runite: 1 }, output: { crystal_staff: 1 }, skill: 'crafting', ticks: 20, station: 'workbench', research: 'arcane_studies', category: 'Equipment' },
+    craft_runic_wand: { input: { runite: 2, planks: 2 }, output: { runic_wand: 1 }, skill: 'crafting', ticks: 22, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
+    craft_void_staff: { input: { void_essence: 3, runite: 2, planks: 2 }, output: { void_staff: 1 }, skill: 'crafting', ticks: 28, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
     craft_boots_of_haste: { input: { void_essence: 2, planks: 2, runite: 1 }, output: { boots_of_haste: 1 }, skill: 'crafting', ticks: 28, station: 'workbench', research: 'void_forging', category: 'Artifacts' },
     brew_health_potion: { input: { berries: 3, wheat: 1 }, output: { health_potion: 1 }, skill: 'cooking', ticks: 12, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
     brew_speed_potion: { input: { corn: 2, potatoes: 2, berries: 1 }, output: { speed_potion: 1 }, skill: 'cooking', ticks: 15, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
@@ -436,7 +479,10 @@ export const WEAPONS = {
     wooden_club: { name: 'Wooden Club', damage: 10 },
     etched_axe: { name: 'Etched Axe', damage: 15 },
     runic_blade: { name: 'Runic Blade', damage: 22 },
-    //runic_pick: { name: 'Runic Pick', damage: 12, miningSpeed: 1.4 }, // kept as an example of a weapon with non-combat stat bonuses
+    wooden_wand: { name: 'Wooden Wand', damage: 3, spellDamageBonus: 0.3 },
+    crystal_staff: { name: 'Crystal Staff', damage: 8, spellDamageBonus: 0.2 },
+    runic_wand: { name: 'Runic Wand', damage: 5, spellDamageBonus: 0.5 },
+    void_staff: { name: 'Void Staff', damage: 12, spellDamageBonus: 0.4 },
     void_blade: { name: 'Void Blade', damage: 30 },
 };
 
@@ -823,6 +869,7 @@ export const RESEARCH = {
     deep_delving: { name: 'Deep Delving', cost: 250, requires: ['planar_rift'], description: 'Access deeper, more dangerous dimensions' },
     arcane_studies: { name: 'Arcane Studies', cost: 80, requires: ['runecraft'], description: 'Study and craft basic spell tomes' },
     advanced_arcana: { name: 'Advanced Arcana', cost: 160, requires: ['arcane_studies', 'arcane_infusion'], description: 'Craft advanced spell tomes' },
+    golem_craft: { name: 'Golem Craft', cost: 200, requires: ['arcane_infusion', 'void_forging'], description: 'Animate stone golems to serve as tireless workers' },
 };
 
 // Auto-derive unlocks from the 'research' field on buildings, recipes, and crops.
@@ -849,7 +896,7 @@ for (const [name, c] of Object.entries(CROPS)) {
 export const ANIMALS = {
     deer:    { char: 'd', color: '#bb8855', hp: 40, speed: 0.5, hostile: false, meatYield: 3, fleeRange: 5, spawnWeight: 20 },
     rabbit:  { char: 'r', color: '#ccaa88', hp: 10, speed: 0.7, hostile: false, meatYield: 1, fleeRange: 4, spawnWeight: 20 },
-    wolf:    { char: 'w', color: '#555555', hp: 60, speed: 0.6, hostile: true, meatYield: 2, damage: 8, aggroRange: 6, spawnWeight: 0, spawnCondition: 'hostileNight' },
+    wolf:    { char: 'w', color: '#555555', hp: 60, speed: 0.6, hostile: true, meatYield: 2, damage: 8, aggroRange: 6, spawnWeight: 0, spawnCondition: 'hostileNight', tameable: true, tamed: { guardAnimal: true, guardRadius: 8, guardDamage: 8, foodToTame: 6, dangerousTame: true, baseTameChance: 0.40, retaliationDamage: 12 } },
     chicken: { char: 'c', color: '#ddaa44', hp: 15, speed: 0.4, hostile: false, meatYield: 1, fleeRange: 3, spawnWeight: 10, tameable: true, tamed: { produces: 'eggs', produceRate: 80, produceAmount: 1, foodToTame: 2 } },
     cow:     { char: 'C', color: '#aa7744', hp: 80, speed: 0.3, hostile: false, meatYield: 4, fleeRange: 4, spawnWeight: 15, tameable: true, tamed: { produces: 'milk', produceRate: 100, produceAmount: 2, foodToTame: 4 } },
     sheep:   { char: 's', color: '#cccccc', hp: 40, speed: 0.35, hostile: false, meatYield: 2, fleeRange: 4, spawnWeight: 15, tameable: true, tamed: { produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 3 } },
@@ -871,6 +918,13 @@ export const TAMED_ANIMALS = Object.fromEntries(
     Object.entries(ANIMALS).filter(([, a]) => a.tameable).map(([k, a]) => [k, { char: a.char, color: a.color, hp: a.hp, ...a.tamed }])
 );
 
+export const GOLEM_TYPES = {
+    farmer_golem:  { name: 'Farmer Golem', char: 'G', color: '#55aa33', hp: 150, speed: 0.3, specialty: 'farming', skillLevel: 6, cost: { stone: 10, runite: 3, void_essence: 2 }, craftTicks: 50 },
+    miner_golem:   { name: 'Miner Golem', char: 'G', color: '#888888', hp: 180, speed: 0.25, specialty: 'building', skillLevel: 6, cost: { stone: 12, runite: 4, void_essence: 2 }, craftTicks: 55 },
+    combat_golem:  { name: 'Combat Golem', char: 'G', color: '#cc4444', hp: 250, speed: 0.35, specialty: 'combat', damage: 20, cost: { stone: 15, runite: 5, void_essence: 4 }, craftTicks: 65 },
+    hauler_golem:  { name: 'Hauler Golem', char: 'G', color: '#bbaa55', hp: 120, speed: 0.5, specialty: 'hauling', skillLevel: 8, cost: { stone: 8, runite: 2, void_essence: 1 }, craftTicks: 40 },
+};
+
 // Raid system tuning. Used by combat.js. Raiders spawn at map edges and attack colonists.
 export const RAID_CONFIG = {
     firstRaidTick: 1500,         // earliest tick a raid can happen
@@ -883,6 +937,22 @@ export const RAID_CONFIG = {
     raiderSpeed: 0.4,            // movement speed (lower = slower)
     fleeThreshold: 0.5,          // remaining fraction of raiders that triggers retreat
     timeout: 150,                // ticks after which remaining raiders flee
+};
+
+// Trade values for bartering system. Used by events.js caravan trades.
+export const TRADE_VALUES = {
+    wood: 1, stone: 1.5, planks: 2.5, food: 1.2, bricks: 3,
+    runite: 6, void_essence: 10, meat: 0.8, wheat: 0.6, berries: 0.5,
+    corn: 0.7, potatoes: 0.6, eggs: 1.5, milk: 2, wool: 2.5,
+};
+export const TRADER_MARKUP = 1.4;
+export const TRADER_DISCOUNT = 0.7;
+
+export const TRADER_EXCLUSIVE_ITEMS = {
+    amulet_of_fortune: { type: 'artifact', name: 'Amulet of Fortune', xpBonus: 0.2, tradeValue: 40 },
+    enchanted_blade: { type: 'weapon', name: 'Enchanted Blade', damage: 18, spellDamageBonus: 0.15, tradeValue: 50 },
+    wanderers_cloak: { type: 'armor', name: "Wanderer's Cloak", damageReduction: 0.15, moveSpeedBonus: 0.2, tradeValue: 45 },
+    merchants_ring: { type: 'artifact', name: "Merchant's Ring", tradeBonus: 0.1, tradeValue: 35 },
 };
 
 // ----------------------------------------------------------------------------

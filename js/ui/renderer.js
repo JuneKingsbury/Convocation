@@ -123,7 +123,7 @@ export class Renderer {
                 } else {
                     color = c.nameColor || TILE_COLORS.colonist;
                 }
-                entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color });
+                entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: c.golem ? 'G' : '@', color });
                 if (drafted && c.draftTarget) {
                     rallySet.set(c.draftTarget.y * CONFIG.MAP_WIDTH + c.draftTarget.x, true);
                 }

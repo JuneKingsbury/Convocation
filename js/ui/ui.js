@@ -1,4 +1,6 @@
-import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, SPELL_TOMES, SPELLS, FOODSTUFFS } from '../core/config.js';
+import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, SPELL_TOMES, SPELLS, FOODSTUFFS, WORK_CONFIG, GOLEM_TYPES, TRADE_VALUES, TRADER_MARKUP, TRADER_DISCOUNT, TRADER_EXCLUSIVE_ITEMS, COMPLEX_STRUCTURES } from '../core/config.js';
+import { getComplexStructureAt } from '../systems/complexBuildings.js';
+import { getTameChance } from '../entities/taming.js';
 import { getAvailableRecipes } from '../systems/crafting.js';
 import { CROP_RESEARCH_REQS } from '../systems/farming.js';
 
@@ -17,6 +19,10 @@ export class UI {
 
     initElements() {
         this.elements.statusBar = document.getElementById('status-bar');
+        document.getElementById('btn-speed-down').addEventListener('click', () => this.game.speedDown());
+        document.getElementById('btn-pause').addEventListener('click', () => this.game.togglePause());
+        document.getElementById('btn-speed-up').addEventListener('click', () => this.game.speedUp());
+        document.getElementById('btn-settings').addEventListener('click', () => this.game.toggleSettingsPanel());
         this.elements.infoPanel = document.getElementById('info-content');
         this.elements.infoPanel.addEventListener('mouseleave', () => {
             if (this._pendingColonistInfoHtml) {
@@ -198,7 +204,7 @@ export class UI {
 
         const alerts = CONFIG.STOCKPILE_ALERTS || {};
         const resStyle = (key, val) => (alerts[key] && val <= alerts[key]) ? ' style="color:#ff4444;font-weight:bold"' : '';
-        this.elements.statusBar.innerHTML =
+        const html =
             `<span class="res"${resStyle('wood', r.wood)}>Wood:${r.wood}</span>` +
             `<span class="res"${resStyle('stone', r.stone)}>Stone:${r.stone}</span>` +
             `<span class="res"${resStyle('food', r.food)}>Food:${r.food}</span>` +
@@ -213,8 +219,14 @@ export class UI {
             `<span class="info status-extra">Mood:${avgMood}%</span>` +
             (waveStr ? `<span class="info" style="color:#cc00ff">${waveStr}</span>` : '') +
             (pendingTasks > 0 ? `<span class="info status-extra" style="color:#ccaa44">Tasks:${pendingTasks}</span>` : '') +
-            `<span class="info">${speed}</span>` +
             (CONFIG.PEACEFUL_MODE ? `<span class="peaceful">PEACEFUL</span>` : '');
+
+        if (html !== this._lastStatusHtml) {
+            this._lastStatusHtml = html;
+            document.getElementById('status-info').innerHTML = html;
+        }
+        const speedEl = document.getElementById('status-speed');
+        if (speedEl && speedEl.textContent !== speed) speedEl.textContent = speed;
     }
 
     updateModeDisplay(input) {
@@ -280,7 +292,6 @@ export class UI {
             html += `<span class="mode-opt" data-mode-action="research">[R]Research</span>`;
             html += `<span class="mode-opt" data-mode-action="tame">[T]Tame</span>`;
             html += `<span class="mode-opt" data-mode-action="inventory">[I]Inventory</span>`;
-            html += `<span class="mode-opt" data-mode-action="settings">[,]Settings</span>`;
             html += '</span>';
         }
         this.elements.modeBar.innerHTML = html;
@@ -318,6 +329,21 @@ export class UI {
                 this._pendingColonistInfoHtml = null;
             }
         }
+    }
+
+    _buildGolemForgeHtml() {
+        if (!this.game.research.isResearched('golem_craft')) {
+            return `<div class="info-row" style="color:#888;">Requires Golem Craft research</div>`;
+        }
+        let html = `<div class="info-row" style="color:#cc8833;font-weight:bold;">Golem Forge</div>`;
+        html += `<div class="info-row" style="margin-top:4px;"><b>Craft Golem:</b></div>`;
+        for (const [key, def] of Object.entries(GOLEM_TYPES)) {
+            const costStr = Object.entries(def.cost).map(([r, n]) => `${n} ${r}`).join(', ');
+            const canAfford = this.game.resources.has(def.cost);
+            html += `<div class="info-actions"><button ${canAfford ? '' : 'disabled'} onclick="window.game.craftGolem('${key}')" style="background:#553311;color:#ffcc88;">${def.name}</button> <span style="color:#aaa;font-size:0.85em">${costStr}</span></div>`;
+            html += `<div class="info-row" style="color:#888;font-size:0.85em;margin-bottom:4px;">Specialty: ${def.specialty} (skill ${def.skillLevel || '-'}), HP: ${def.hp}</div>`;
+        }
+        return html;
     }
 
     _buildRiftGateHtml() {
@@ -421,7 +447,7 @@ export class UI {
         const artifactTip = colonist.artifact ? Object.entries(colonist.artifact).filter(([k]) => k !== 'name' && k !== 'key').map(([k, v]) => `${k}: ${typeof v === 'number' ? (v > 1 ? `+${Math.round((v-1)*100)}%` : `${Math.round(v*100)}%`) : v}`).join(', ') : 'No artifact equipped';
 
         const nc = colonist.nameColor || '#ffff00';
-        let html = `<div class="info-header" style="cursor:pointer;color:${nc}" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}</div>`;
+        let html = `<div class="info-header" style="cursor:pointer;color:${nc}" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}${colonist.guardMode ? '[GUARDING]' : ''}</div>`;
         html += `<div class="info-row">HP: ${colonist.hp}/${colonist.maxHp}</div>`;
         html += `<div class="info-row">Mood: <span class="mood-${moodLevel}">${colonist.mood.toFixed(0)} (${moodLevel})</span></div>`;
         html += `<div class="info-row">State: ${colonist.state}</div>`;
@@ -479,6 +505,7 @@ export class UI {
         if (thoughts) html += `<div class="info-thoughts"><b>Thoughts:</b><br>${thoughts}</div>`;
         html += `<div class="info-actions">`;
         html += `<button onclick="window.game.toggleDraft(${colonist.id})">${colonist.drafted ? 'Undraft' : 'Draft'}</button>`;
+        html += `<button onclick="window.game.toggleGuard(${colonist.id})">${colonist.guardMode ? 'Unguard' : 'Guard'}</button>`;
         html += `<button onclick="window.game.draftAll()">Draft All</button>`;
         html += `<button onclick="window.game.undraftAll()">Undraft All</button>`;
         html += this.buildWeaponDropdown(colonist);
@@ -717,6 +744,21 @@ export class UI {
             html += this._buildRiftGateHtml();
         }
 
+        if (tile.structure === 'golem_forge') {
+            html += this._buildGolemForgeHtml();
+        }
+
+        if (tile.structure === 'forge_core' || tile.structure === 'ritual_core') {
+            const cs = getComplexStructureAt(this.game, x, y);
+            if (cs) {
+                html += `<div class="info-row" style="color:#44ff44;font-weight:bold;">Pattern Active!</div>`;
+                const def = COMPLEX_STRUCTURES[cs.key];
+                if (def) html += `<div class="info-row" style="color:#88ff88;">${def.description}</div>`;
+            } else {
+                html += `<div class="info-row" style="color:#ff8844;">Pattern incomplete — surround with the required layout to activate</div>`;
+            }
+        }
+
         this.elements.infoPanel.innerHTML = html;
     }
 
@@ -765,7 +807,14 @@ export class UI {
             if (def?.tameable && this.game.research.isResearched('beast_binding')) {
                 const tamedDef = TAMED_ANIMALS[a.type];
                 const canAfford = tamedDef && this.game.resources.has({ food: tamedDef.foodToTame });
-                html += `<button ${canAfford ? '' : 'disabled'} onclick="window.game.tameWildAnimal(${a.id})">Tame (${tamedDef?.foodToTame || '?'} food)</button>`;
+                if (tamedDef?.dangerousTame) {
+                    const bestTamer = this.game.colonists.filter(c => c.hp > 0).sort((a, b) => (b.skills.animals || 0) - (a.skills.animals || 0))[0];
+                    const chance = bestTamer ? Math.round(getTameChance(bestTamer, a.type) * 100) : Math.round((tamedDef.baseTameChance || 0.4) * 100);
+                    html += `<button ${canAfford ? '' : 'disabled'} onclick="window.game.tameWildAnimal(${a.id})">Tame (${tamedDef.foodToTame} food) — ${chance}%</button>`;
+                    html += `<div class="info-row" style="color:#ff6644;font-size:0.85em">⚠ Dangerous! Retaliation: ${tamedDef.retaliationDamage} dmg on failure</div>`;
+                } else {
+                    html += `<button ${canAfford ? '' : 'disabled'} onclick="window.game.tameWildAnimal(${a.id})">Tame (${tamedDef?.foodToTame || '?'} food)</button>`;
+                }
             }
             html += `</div></div>`;
         }
@@ -779,6 +828,10 @@ export class UI {
             if (def?.produces) {
                 html += `<div class="info-row">Produces: ${def.produces} (every ${def.produceRate} ticks)</div>`;
                 html += `<div class="info-row">Next in: ${a.produceCooldown} ticks</div>`;
+            }
+            if (def?.guardAnimal) {
+                const stateColor = a.guardState === 'engaging' ? '#ff4444' : a.guardState === 'retreating' ? '#ffaa00' : '#44cc44';
+                html += `<div class="info-row" style="color:${stateColor}">Guard: ${(a.guardState || 'patrolling').charAt(0).toUpperCase() + (a.guardState || 'patrolling').slice(1)}</div>`;
             }
             if (def?.packAnimal) html += `<div class="info-row" style="color:#bbaa44">Pack animal (+${Math.round(def.expeditionSpeedBonus * 100)}% expedition speed)</div>`;
             if (def?.happinessAura) html += `<div class="info-row" style="color:#ff88cc">Happiness aura (radius ${def.auraRadius})</div>`;
@@ -845,6 +898,10 @@ export class UI {
             html += this._buildRiftGateHtml();
         }
 
+        if (tile.structure === 'golem_forge') {
+            html += this._buildGolemForgeHtml();
+        }
+
         this.elements.infoPanel.innerHTML = html;
     }
 
@@ -864,11 +921,12 @@ export class UI {
             html += `<div style="border-top:1px solid #333;margin-top:4px;padding-top:4px;">`;
             html += `<span class="info-header" style="font-size:12px;cursor:pointer;color:${c.nameColor || '#ffff00'}" onclick="window.game.selectColonistById(${c.id})">${c.name}</span>`;
             html += ` <span class="mood-${moodLevel}">${c.mood.toFixed(0)}</span>`;
-            html += ` <span style="color:#888">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
+            html += ` <span style="color:#888">${c.state}${c.drafted ? ' [D]' : ''}${c.guardMode ? ' [G]' : ''}${c.golem ? ' [Golem]' : ''}</span>`;
             html += `<div class="info-row">HP:${c.hp} H:${c.needs.hunger.toFixed(0)} R:${c.needs.rest.toFixed(0)}</div>`;
             html += `<div class="info-actions">`;
             html += `<button onclick="window.game.selectColonistById(${c.id})">Focus</button>`;
             html += `<button onclick="window.game.toggleDraft(${c.id})">${c.drafted ? 'Undraft' : 'Draft'}</button>`;
+            html += `<button onclick="window.game.toggleGuard(${c.id})">${c.guardMode ? 'Unguard' : 'Guard'}</button>`;
             html += `</div></div>`;
         }
 
@@ -1033,7 +1091,7 @@ export class UI {
             const weapon = c.weapon?.name || 'Fists';
             html += `<div class="hud-colonist" data-colonist-id="${c.id}">`;
             const needsDots = `<span class="hud-dots"><span style="color:${moodColor}">●</span><span style="color:${hungerColor}">●</span><span style="color:${restColor}">●</span><span style="color:${hpColor}">●</span></span>`;
-            html += `<span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> ${needsDots} <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}</span>`;
+            html += `<span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> ${needsDots} <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}${c.guardMode ? ' [G]' : ''}</span>`;
             html += `<div class="hud-bars">Mood: <span style="color:${moodColor}">${c.mood.toFixed(0)} (${moodLevel})</span> | Hunger: <span style="color:${hungerColor}">${c.needs.hunger.toFixed(0)}</span> | Rest: <span style="color:${restColor}">${c.needs.rest.toFixed(0)}</span> | HP: <span style="color:${hpColor}">${c.hp}/${c.maxHp}</span></div>`;
             html += `</div>`;
         }
@@ -1563,6 +1621,9 @@ export class UI {
         html += `<button onclick="window.game.save()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a4a2a;border:1px solid #4a4;color:#8c8;cursor:pointer;border-radius:3px;">Save Game</button>`;
         html += `<button onclick="window.game.exportSave()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a2a4a;border:1px solid #55a;color:#aaf;cursor:pointer;border-radius:3px;">Export Save</button>`;
         html += `</div>`;
+        html += `<div class="settings-row" style="margin-top:12px; border-top:1px solid #444; padding-top:8px;">`;
+        html += `<button onclick="window.game.showGlossary()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a2a3a;border:1px solid #66a;color:#aaccff;cursor:pointer;border-radius:3px;">View Glossary</button>`;
+        html += `</div>`;
         html += `<div class="settings-row" style="margin-top:16px; border-top:1px solid #633; padding-top:10px; flex-direction:column; align-items:flex-start;">`;
         html += `<div style="color:#ff6666; font-size:10px; font-weight:bold; margin-bottom:4px;">⚠ DEBUG / TESTING ONLY ⚠</div>`;
         html += `<button onclick="window.game.cheatResources()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant 999 of All Resources + Research</button>`;
@@ -1627,19 +1688,80 @@ export class UI {
                 this.elements.eventPanel.style.display = 'none';
                 this.elements.eventPanel.className = '';
                 this._lastEventId = null;
+                this._tradeOpen = false;
             }
             return;
         }
+
+        if (evt.type === 'trade' && this._tradeOpen) {
+            this._updateTradePanel(evt);
+            return;
+        }
+
         const eventId = evt.type + evt.text;
         if (this._lastEventId === eventId) return;
         this._lastEventId = eventId;
         this.elements.eventPanel.style.display = 'block';
         this.elements.eventPanel.className = evt.type === 'raid' ? 'event-panel-raid' : '';
         let html = `<div class="event-text">${evt.text}</div><div class="event-choices">`;
-        evt.choices.forEach((choice, i) => {
-            html += `<button onclick="window.game.resolveEvent(${i})">${choice}</button>`;
-        });
+        if (evt.type === 'trade') {
+            html += `<button onclick="window.game.openTradePanel()">Open Trade</button>`;
+            html += `<button onclick="window.game.dismissTrader()">Dismiss</button>`;
+        } else {
+            evt.choices.forEach((choice, i) => {
+                html += `<button onclick="window.game.resolveEvent(${i})">${choice}</button>`;
+            });
+        }
         html += '</div>';
+        this.elements.eventPanel.innerHTML = html;
+    }
+
+    _updateTradePanel(evt) {
+        const data = evt.data;
+        const stock = this.game.resources.stockpile;
+        let html = `<div class="event-text" style="font-size:0.9em;">Trader's Goods — select what to buy and offer</div>`;
+        html += `<div style="display:flex;gap:8px;flex-wrap:wrap;max-height:200px;overflow-y:auto;">`;
+
+        html += `<div style="flex:1;min-width:140px;"><b style="color:#88ddff;">Trader Sells:</b>`;
+        for (const [res, amt] of Object.entries(data.traderResources)) {
+            const val = Math.ceil((TRADE_VALUES[res] || 1) * TRADER_MARKUP);
+            html += `<div style="font-size:0.85em;">${res}: ${amt} (${val}v ea) <button onclick="window.game.tradeRequest('${res}',1)" style="padding:0 4px;">+1</button></div>`;
+        }
+        if (data.exclusiveItem) {
+            const item = TRADER_EXCLUSIVE_ITEMS[data.exclusiveItem];
+            html += `<div style="font-size:0.85em;color:#ffcc00;">${item.name} (${item.tradeValue}v) <button onclick="window.game.tradeRequest('__exclusive',1)" style="padding:0 4px;">Buy</button></div>`;
+        }
+        html += `</div>`;
+
+        html += `<div style="flex:1;min-width:140px;"><b style="color:#ffaa44;">You Offer:</b>`;
+        for (const [res, amt] of Object.entries(stock)) {
+            if (typeof amt !== 'number' || amt <= 0 || res.startsWith('_')) continue;
+            if (!TRADE_VALUES[res]) continue;
+            const val = Math.floor((TRADE_VALUES[res] || 1) * TRADER_DISCOUNT * 10) / 10;
+            html += `<div style="font-size:0.85em;">${res}: ${amt} (${val}v ea) <button onclick="window.game.tradeOffer('${res}',1)" style="padding:0 4px;">+1</button></div>`;
+        }
+        html += `</div></div>`;
+
+        const offer = this._tradeOffer || {};
+        const request = this._tradeRequest || {};
+        const offerVal = Object.entries(offer).reduce((sum, [r, n]) => sum + (TRADE_VALUES[r] || 1) * n * TRADER_DISCOUNT, 0);
+        const reqVal = Object.entries(request).reduce((sum, [r, n]) => {
+            if (r === '__exclusive') return sum + (TRADER_EXCLUSIVE_ITEMS[data.exclusiveItem]?.tradeValue || 0);
+            return sum + (TRADE_VALUES[r] || 1) * n * TRADER_MARKUP;
+        }, 0);
+
+        html += `<div style="margin-top:4px;font-size:0.85em;">`;
+        html += `<span style="color:#ffaa44;">Offering: ${Object.entries(offer).map(([r,n]) => `${n} ${r}`).join(', ') || 'nothing'} (${offerVal.toFixed(1)}v)</span> `;
+        html += `<span style="color:#88ddff;">Requesting: ${Object.entries(request).map(([r,n]) => r === '__exclusive' ? TRADER_EXCLUSIVE_ITEMS[data.exclusiveItem]?.name : `${n} ${r}`).join(', ') || 'nothing'} (${reqVal.toFixed(1)}v)</span>`;
+        html += `</div>`;
+
+        const canTrade = offerVal >= reqVal && reqVal > 0;
+        html += `<div class="event-choices" style="margin-top:4px;">`;
+        html += `<button ${canTrade ? '' : 'disabled'} onclick="window.game.confirmTrade()">Confirm Trade</button>`;
+        html += `<button onclick="window.game.clearTradeSelection()">Clear</button>`;
+        html += `<button onclick="window.game.dismissTrader()">Done</button>`;
+        html += `</div>`;
+
         this.elements.eventPanel.innerHTML = html;
     }
 }

@@ -97,6 +97,8 @@ function updateAnimal(animal, game) {
 
     const def = ANIMALS[animal.type];
 
+    if (def.tameable && isBeingTamed(animal, game)) return;
+
     if (def.hostile) {
         updateHostileAnimal(animal, def, game);
     } else {

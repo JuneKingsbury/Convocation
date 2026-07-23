@@ -99,6 +99,33 @@ body {
     font-size: var(--ui-font-size);
 }
 
+.status-controls {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+}
+.status-controls button {
+    background: #333;
+    color: #ccc;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: monospace;
+    line-height: 1.2;
+}
+.status-controls button:hover {
+    background: #444;
+    color: #fff;
+}
+.status-controls .speed-active {
+    background: #446;
+    color: #aaf;
+    border-color: #66a;
+}
+
 #status-bar {
     grid-column: 1 / -1;
     background: #0d0d1a;
@@ -113,6 +140,14 @@ body {
     overflow: hidden;
 }
 
+#status-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
 #status-bar .res { color: #88cc88; }
 #status-bar .sep { color: #555; }
 #status-bar .info { color: #aaa; }

@@ -1,8 +1,8 @@
-import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, BUILDINGS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, MAGIC_STUDY_CONFIG, SPELL_TOMES, SPELLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG, TASK_CONFIG } from '../core/config.js';
+import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, BUILDINGS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, MAGIC_STUDY_CONFIG, SPELL_TOMES, SPELLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG, TASK_CONFIG, ANIMALS, TAMED_ANIMALS, GOLEM_TYPES } from '../core/config.js';
 import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 import { isPassable, getMoveCost } from '../world/map.js';
 import { FOODSTUFFS } from '../systems/resources.js';
-import { completeTame } from './taming.js';
+import { completeTame, attemptDangerousTame } from './taming.js';
 
 let nextColonistId = 1;
 
@@ -77,17 +77,55 @@ export function createColonist(x, y, skillBias, existingNames = []) {
         artifact: null,
         drafted: false,
         draftTarget: null,
+        guardMode: false,
+        guardPost: null,
         stateTimer: 0,
         wanderCooldown: 0,
         moveCooldown: 0,
     };
 }
 
+export function createGolem(type, x, y) {
+    const def = GOLEM_TYPES[type];
+    const id = nextColonistId++;
+    const skills = Object.fromEntries(Object.keys(SKILLS).map(k => [k, 0]));
+    if (def.specialty && skills.hasOwnProperty(def.specialty)) {
+        skills[def.specialty] = def.skillLevel || 6;
+    }
+    return {
+        id, name: def.name, x, y, skills,
+        magicSkills: Object.fromEntries(Object.keys(MAGIC_SKILLS).map(k => [k, { level: 0, xp: 0 }])),
+        magicBias: null, traits: [],
+        nameColor: def.color,
+        priorities: Object.fromEntries(Object.keys(SKILLS).map(k => [k, k === def.specialty ? 1 : 5])),
+        needs: { hunger: 100, rest: 100 },
+        mood: 60,
+        thoughts: [],
+        hp: def.hp, maxHp: def.hp,
+        mana: 0, maxMana: 0,
+        knownSpells: [], disabledSpells: [],
+        equippedTome: null, tomeProgress: {},
+        state: 'idle',
+        currentTaskId: null, path: [], workProgress: 0,
+        assignedBed: null,
+        weapon: null, armor: null, tool: null, artifact: null,
+        drafted: false, draftTarget: null,
+        guardMode: false, guardPost: null,
+        stateTimer: 0, wanderCooldown: 0, moveCooldown: 0,
+        golem: true, golemType: type,
+    };
+}
+
 export function updateColonist(colonist, game) {
     if (colonist.onExpedition) return;
 
-    updateNeeds(colonist, game);
-    updateThoughts(colonist, game);
+    if (colonist.golem) {
+        colonist.needs.hunger = 100;
+        colonist.needs.rest = 100;
+    } else {
+        updateNeeds(colonist, game);
+        updateThoughts(colonist, game);
+    }
     colonist.mood = computeMood(colonist);
 
     if (colonist.hp <= 0) return;
@@ -402,7 +440,9 @@ function applySpellEffect(colonist, spell, game) {
             if (!target) return;
             const dist = manhattanDist(colonist.x, colonist.y, target.x, target.y);
             if (dist > spell.range) return;
-            target.hp -= spell.damage;
+            let dmg = spell.damage;
+            if (colonist.weapon?.spellDamageBonus) dmg = Math.floor(dmg * (1 + colonist.weapon.spellDamageBonus));
+            target.hp -= dmg;
             game.combatEffects.push({ x: target.x, y: target.y, char: spell.projectileChar || '*', color: spell.projectileColor || '#ff44ff', ttl: 3 });
             break;
         }
@@ -411,11 +451,13 @@ function applySpellEffect(colonist, spell, game) {
             if (!target) return;
             const dist = manhattanDist(colonist.x, colonist.y, target.x, target.y);
             if (dist > spell.range) return;
+            let aoeDmg = spell.damage;
+            if (colonist.weapon?.spellDamageBonus) aoeDmg = Math.floor(aoeDmg * (1 + colonist.weapon.spellDamageBonus));
             const allHostiles = [...game.raiders, ...(game.waves ? game.waves.enemies : []), ...game.wildlife.filter(w => w.hostile)];
             for (const h of allHostiles) {
                 if (h.hp <= 0) continue;
                 if (manhattanDist(target.x, target.y, h.x, h.y) <= spell.radius) {
-                    h.hp -= spell.damage;
+                    h.hp -= aoeDmg;
                     game.combatEffects.push({ x: h.x, y: h.y, char: spell.projectileChar || '●', color: spell.projectileColor || '#ff6600', ttl: 3 });
                 }
             }
@@ -521,6 +563,11 @@ function updateIdle(colonist, game) {
         return;
     }
 
+    if (colonist.guardMode && colonist.guardPost) {
+        updateGuarding(colonist, game);
+        return;
+    }
+
     const task = game.taskQueue.findBestTask(colonist, game.tick);
     if (task) {
         game.taskQueue.claim(task.id, colonist.id);
@@ -569,6 +616,52 @@ function wander(colonist, game) {
     if (isPassable(game.map, nx, ny)) {
         colonist.x = nx;
         colonist.y = ny;
+    }
+}
+
+function updateGuarding(colonist, game) {
+    const post = colonist.guardPost;
+    const threat = findNearestHostile(colonist, game);
+
+    if (threat) {
+        const distToThreat = manhattanDist(colonist.x, colonist.y, threat.x, threat.y);
+        const distFromPost = manhattanDist(colonist.x, colonist.y, post.x, post.y);
+
+        if (distFromPost > WORK_CONFIG.guardReturnThreshold) {
+            moveTowardPoint(colonist, post.x, post.y, game.map);
+            return;
+        }
+
+        if (distToThreat <= WORK_CONFIG.guardEngageRadius) {
+            colonist.state = 'fighting';
+            return;
+        }
+    }
+
+    const distFromPost = manhattanDist(colonist.x, colonist.y, post.x, post.y);
+    if (distFromPost > WORK_CONFIG.guardPatrolRadius) {
+        moveTowardPoint(colonist, post.x, post.y, game.map);
+    } else if (Math.random() < 0.15) {
+        const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+        const dir = dirs[Math.floor(Math.random() * 4)];
+        const nx = colonist.x + dir[0];
+        const ny = colonist.y + dir[1];
+        if (isPassable(game.map, nx, ny) && manhattanDist(nx, ny, post.x, post.y) <= WORK_CONFIG.guardPatrolRadius) {
+            colonist.x = nx;
+            colonist.y = ny;
+        }
+    }
+}
+
+function moveTowardPoint(colonist, tx, ty, map) {
+    const dx = Math.sign(tx - colonist.x);
+    const dy = Math.sign(ty - colonist.y);
+    if (Math.random() < 0.5 && dx !== 0 && isPassable(map, colonist.x + dx, colonist.y)) {
+        colonist.x += dx;
+    } else if (dy !== 0 && isPassable(map, colonist.x, colonist.y + dy)) {
+        colonist.y += dy;
+    } else if (dx !== 0 && isPassable(map, colonist.x + dx, colonist.y)) {
+        colonist.x += dx;
     }
 }
 
@@ -815,8 +908,17 @@ function completeTask(colonist, task, game) {
         }
         case 'tame': {
             if (task.targetAnimalId) {
-                if (completeTame(game, task.targetAnimalId)) {
-                    applyThought(colonist, 'tamed_animal', game.tick);
+                const wildAnimal = game.wildlife.find(a => a.id === task.targetAnimalId);
+                const tamedDef = wildAnimal ? TAMED_ANIMALS[wildAnimal.type] : null;
+                if (tamedDef && tamedDef.dangerousTame) {
+                    const result = attemptDangerousTame(game, colonist, task.targetAnimalId);
+                    if (result === 'success') {
+                        applyThought(colonist, 'tamed_animal', game.tick);
+                    }
+                } else {
+                    if (completeTame(game, task.targetAnimalId)) {
+                        applyThought(colonist, 'tamed_animal', game.tick);
+                    }
                 }
             }
             break;

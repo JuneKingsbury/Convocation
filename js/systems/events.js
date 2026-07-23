@@ -1,4 +1,4 @@
-import { CONFIG, EVENTS, CARAVAN_TRADES, WEATHER_TYPES, THOUGHTS, SKILLS } from '../core/config.js';
+import { CONFIG, EVENTS, CARAVAN_TRADES, WEATHER_TYPES, THOUGHTS, SKILLS, TRADE_VALUES, TRADER_MARKUP, TRADER_DISCOUNT, TRADER_EXCLUSIVE_ITEMS } from '../core/config.js';
 import { createColonist, addThought } from '../entities/colonist.js';
 import { createAnimal } from '../entities/wildlife.js';
 
@@ -146,7 +146,7 @@ export class EventSystem {
     // ========================================================================
 
     eventWanderer(game) {
-        const aliveColonists = game.colonists.filter(c => c.hp > 0);
+        const aliveColonists = game.colonists.filter(c => c.hp > 0 && !c.golem);
         const cap = game.waves.getColonistCap();
         if (aliveColonists.length >= cap) {
             return;
@@ -173,7 +173,7 @@ export class EventSystem {
 
     resolveWanderer(game, accept) {
         if (accept && this.pendingEvent?.data) {
-            const aliveColonists = game.colonists.filter(c => c.hp > 0);
+            const aliveColonists = game.colonists.filter(c => c.hp > 0 && !c.golem);
             const cap = game.waves.getColonistCap();
             if (aliveColonists.length >= cap) {
                 game.notifications.push({ text: `Colony is at capacity (${cap})! Complete more waves to expand.`, tick: game.tick, type: 'danger' });
@@ -194,18 +194,25 @@ export class EventSystem {
     }
 
     eventCaravan(game) {
-        const choices = CARAVAN_TRADES.map(t => {
-            const giveStr = Object.entries(t.give).map(([r, n]) => `${n} ${r}`).join(', ');
-            const recvStr = Object.entries(t.receive).map(([r, n]) => `${n} ${r}`).join(', ');
-            return `Trade ${giveStr} for ${recvStr}`;
-        });
-        choices.push('Dismiss');
+        const traderResources = {};
+        const available = Object.keys(TRADE_VALUES);
+        const numItems = 3 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < numItems; i++) {
+            const res = available[Math.floor(Math.random() * available.length)];
+            traderResources[res] = (traderResources[res] || 0) + 3 + Math.floor(Math.random() * 8);
+        }
+
+        let exclusiveItem = null;
+        if (Math.random() < 0.3) {
+            const keys = Object.keys(TRADER_EXCLUSIVE_ITEMS);
+            exclusiveItem = keys[Math.floor(Math.random() * keys.length)];
+        }
 
         this.pendingEvent = {
-            type: 'caravan',
-            text: 'A trade caravan arrives! Trade resources?',
-            choices,
-            data: {},
+            type: 'trade',
+            text: 'A trade caravan arrives! Barter resources with the merchant.',
+            choices: ['Open Trade', 'Dismiss'],
+            data: { traderResources, exclusiveItem, traderCredit: 0 },
         };
         game.notifications.push({ text: 'Trade caravan arrived!', tick: game.tick, type: 'event' });
         game.eventLog.add(game, 'Trade caravan arrived', 'event', null);
@@ -215,15 +222,63 @@ export class EventSystem {
     }
 
     resolveCaravan(game, choice) {
-        if (choice >= 0 && choice < CARAVAN_TRADES.length) {
-            const trade = CARAVAN_TRADES[choice];
-            const canAfford = Object.entries(trade.give).every(([r, n]) => game.resources.stockpile[r] >= n);
-            if (canAfford) {
-                game.resources.deduct(trade.give);
-                game.resources.add(trade.receive);
+        if (choice === 1 || choice === 'Dismiss') {
+            this.pendingEvent = null;
+            return;
+        }
+        // choice 0 = Open Trade — handled by UI, keep event open
+    }
+
+    executeBarterTrade(game, offering, requesting) {
+        if (!this.pendingEvent || this.pendingEvent.type !== 'trade') return false;
+        const data = this.pendingEvent.data;
+
+        let offerValue = 0;
+        for (const [res, amt] of Object.entries(offering)) {
+            if (amt <= 0) continue;
+            if ((game.resources.stockpile[res] || 0) < amt) return false;
+            offerValue += (TRADE_VALUES[res] || 1) * amt * TRADER_DISCOUNT;
+        }
+
+        let requestValue = 0;
+        for (const [res, amt] of Object.entries(requesting)) {
+            if (amt <= 0) continue;
+            if (res === '__exclusive') {
+                if (!data.exclusiveItem) return false;
+                requestValue += TRADER_EXCLUSIVE_ITEMS[data.exclusiveItem].tradeValue;
+            } else {
+                if ((data.traderResources[res] || 0) < amt) return false;
+                requestValue += (TRADE_VALUES[res] || 1) * amt * TRADER_MARKUP;
             }
         }
-        this.pendingEvent = null;
+
+        if (offerValue < requestValue) return false;
+
+        for (const [res, amt] of Object.entries(offering)) {
+            if (amt > 0) game.resources.deduct({ [res]: amt });
+        }
+        for (const [res, amt] of Object.entries(requesting)) {
+            if (res === '__exclusive') {
+                const item = TRADER_EXCLUSIVE_ITEMS[data.exclusiveItem];
+                if (item.type === 'weapon') game.resources.addWeapon({ ...item, key: data.exclusiveItem });
+                else if (item.type === 'armor') game.resources.addArmor({ ...item, key: data.exclusiveItem });
+                else if (item.type === 'artifact') game.resources.addArtifact({ ...item, key: data.exclusiveItem });
+                data.exclusiveItem = null;
+            } else {
+                game.resources.add({ [res]: amt });
+                data.traderResources[res] -= amt;
+                if (data.traderResources[res] <= 0) delete data.traderResources[res];
+            }
+        }
+
+        game.notifications.push({ text: 'Trade complete!', tick: game.tick, type: 'success' });
+        return true;
+    }
+
+    dismissTrader() {
+        if (this.pendingEvent?.type === 'trade') {
+            this.pendingEvent = null;
+        }
     }
 
     eventFire(game) {

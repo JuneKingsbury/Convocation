@@ -1,9 +1,9 @@
-import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS } from './config.js';
+import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS, GOLEM_TYPES } from './config.js';
 import { generateMap } from '../world/map.js';
 import { Camera } from '../ui/camera.js';
 import { Renderer } from '../ui/renderer.js';
 import { InputHandler } from '../ui/input.js';
-import { createColonist, updateColonist, addThought, grantCastXp } from '../entities/colonist.js';
+import { createColonist, createGolem, updateColonist, addThought, grantCastXp } from '../entities/colonist.js';
 import { TaskQueue } from './tasks.js';
 import { ResourceManager } from '../systems/resources.js';
 import { detectRooms } from '../world/rooms.js';
@@ -26,6 +26,7 @@ import { initResizeHandles } from '../ui/resize.js';
 import { SpatialHash } from '../world/spatial.js';
 import { MapIndex } from '../world/mapindex.js';
 import { renderGlossaryHTML } from '../ui/glossary.js';
+import { checkComplexStructures } from '../systems/complexBuildings.js';
 
 class Game {
     constructor() {
@@ -61,6 +62,7 @@ class Game {
         this.tamedAnimals = [];
         this.combatEffects = [];
         this.divinationModifiers = [];
+        this.activeComplexStructures = [];
         this.overlays = [];
         this.notifications = [];
         this.cursor = null;
@@ -180,6 +182,7 @@ class Game {
         if (this.roomsDirty) {
             detectRooms(this.map);
             this.mapIndex.rebuild(this.map);
+            checkComplexStructures(this);
             this.roomsDirty = false;
         }
 
@@ -277,6 +280,30 @@ class Game {
         } else {
             c.state = 'idle';
             c.draftTarget = null;
+        }
+        if (this.selectedColonists.length > 1) {
+            this.ui.showMultiColonistInfo(this.selectedColonists);
+        } else {
+            this.ui.showColonistInfo(c);
+        }
+    }
+
+    toggleGuard(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c || c.hp <= 0) return;
+        c.guardMode = !c.guardMode;
+        if (c.guardMode) {
+            c.guardPost = { x: c.x, y: c.y };
+            c.drafted = false;
+            c.draftTarget = null;
+            if (c.currentTaskId) {
+                this.taskQueue.release(c.currentTaskId);
+                c.currentTaskId = null;
+            }
+            c.state = 'idle';
+        } else {
+            c.guardPost = null;
+            c.state = 'idle';
         }
         if (this.selectedColonists.length > 1) {
             this.ui.showMultiColonistInfo(this.selectedColonists);
@@ -407,7 +434,7 @@ class Game {
         if (evt.type === 'wanderer') {
             this.events.resolveWanderer(this, choice === 0);
             if (this.paused) this.togglePause();
-        } else if (evt.type === 'caravan') {
+        } else if (evt.type === 'caravan' || evt.type === 'trade') {
             this.events.resolveCaravan(this, choice);
             if (this.paused) this.togglePause();
         } else if (evt.type === 'raid') {
@@ -416,6 +443,65 @@ class Game {
             }
             this.events.pendingEvent = null;
         }
+    }
+
+    openTradePanel() {
+        this.ui._tradeOpen = true;
+        this.ui._tradeOffer = {};
+        this.ui._tradeRequest = {};
+        this.ui._lastEventId = null;
+    }
+
+    tradeOffer(resource, amount) {
+        if (!this.ui._tradeOffer) this.ui._tradeOffer = {};
+        const max = this.resources.stockpile[resource] || 0;
+        this.ui._tradeOffer[resource] = Math.min((this.ui._tradeOffer[resource] || 0) + amount, max);
+        this.ui._lastEventId = null;
+    }
+
+    tradeRequest(resource, amount) {
+        if (!this.ui._tradeRequest) this.ui._tradeRequest = {};
+        if (resource === '__exclusive') {
+            this.ui._tradeRequest.__exclusive = 1;
+        } else {
+            const evt = this.events.pendingEvent;
+            const max = evt?.data?.traderResources?.[resource] || 0;
+            this.ui._tradeRequest[resource] = Math.min((this.ui._tradeRequest[resource] || 0) + amount, max);
+        }
+        this.ui._lastEventId = null;
+    }
+
+    confirmTrade() {
+        const success = this.events.executeBarterTrade(this, this.ui._tradeOffer || {}, this.ui._tradeRequest || {});
+        if (success) {
+            this.ui._tradeOffer = {};
+            this.ui._tradeRequest = {};
+        }
+        this.ui._lastEventId = null;
+    }
+
+    clearTradeSelection() {
+        this.ui._tradeOffer = {};
+        this.ui._tradeRequest = {};
+        this.ui._lastEventId = null;
+    }
+
+    dismissTrader() {
+        this.events.dismissTrader();
+        this.ui._tradeOpen = false;
+        this.ui._tradeOffer = {};
+        this.ui._tradeRequest = {};
+    }
+
+    toggleSettingsPanel() {
+        this.ui.toggleSettingsPanel();
+    }
+
+    showGlossary() {
+        const panel = document.getElementById('glossary-panel');
+        const backdrop = document.getElementById('modal-backdrop');
+        if (panel) panel.style.display = 'block';
+        if (backdrop) backdrop.style.display = 'block';
     }
 
     togglePeaceful() {
@@ -732,6 +818,33 @@ class Game {
 
     tameWildAnimal(animalId) {
         designateTame(this, animalId);
+    }
+
+    craftGolem(golemType) {
+        if (!this.research.isResearched('golem_craft')) return;
+        const def = GOLEM_TYPES[golemType];
+        if (!def) return;
+        if (!this.resources.has(def.cost)) {
+            this.notifications.push({ text: 'Not enough resources for golem', tick: this.tick, type: 'warning' });
+            return;
+        }
+        this.resources.deduct(def.cost);
+        const forge = this.findBuilding('golem_forge');
+        const x = forge ? forge.x : this.colonists[0]?.x || 128;
+        const y = forge ? forge.y : this.colonists[0]?.y || 128;
+        const golem = createGolem(golemType, x, y);
+        this.colonists.push(golem);
+        this.notifications.push({ text: `${def.name} animated!`, tick: this.tick, type: 'success' });
+        this.eventLog.add(this, `Crafted a ${def.name}`, 'success', { type: 'position', x, y });
+    }
+
+    findBuilding(type) {
+        for (let y = 0; y < this.map.length; y++) {
+            for (let x = 0; x < this.map[y].length; x++) {
+                if (this.map[y][x].structure === type) return { x, y };
+            }
+        }
+        return null;
     }
 
     logEvent(text, type, linkedEntity) {
