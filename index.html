@@ -13,12 +13,6 @@
             Oversee a growing colony of settlers in a world of magic. Assign priorities, build structures,
             channel leylines, brew potions, and survive the seasons.
         </p>
-        <p style="font-size:12px; color:#777;">
-            Controls: WASD/Arrows=Pan | B=Build | Z=Zone | G=Gather | P=Priorities<br>
-            C=Craft | R=Research | T=Tame | I=Inventory | ,=Settings<br>
-            Tab=Toggle Chop/Mine | Space=Pause | &lt;/&gt;=Speed | +/-=Zoom<br>
-            Click=Select/Place | Click+Drag=Area select | Right-click=Cancel | Esc=Close/Normal
-        </p>
         <div class="start-btn-grid">
             <div class="start-btn-row">
                 <button id="start-game">New Game</button>
@@ -36,7 +30,16 @@
                 <button id="start-credits">Credits</button>
                 <button id="start-changelog">Changelog</button>
             </div>
+            <div class="start-btn-row">
+                <button id="start-blueprint">Blueprint Editor</button>
+            </div>
         </div>
+        <p style="font-size:12px; color:#777;">
+            Controls: WASD/Arrows=Pan | B=Build | Z=Zone | G=Gather | P=Priorities<br>
+            C=Craft | R=Research | T=Tame | I=Inventory | ,=Settings<br>
+            Tab=Toggle Chop/Mine | Space=Pause | &lt;/&gt;=Speed | +/-=Zoom<br>
+            Click=Select/Place | Click+Drag=Area select | Right-click=Cancel | Esc=Close/Normal
+        </p>
         <div id="version-label"></div>
         <input type="file" id="import-file" accept=".json" style="display:none">
         <div id="start-settings-panel" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); padding:20px; border:1px solid #555; border-radius:8px; background:#1e1e32; text-align:left; width:360px; max-width:90vw; max-height:80vh; overflow-y:auto; z-index:1000; box-shadow:0 8px 32px rgba(0,0,0,0.7);">
@@ -121,6 +124,8 @@
         </div>
         <div id="changelog-body"></div>
     </div>
+
+    <div id="blueprint-editor" style="display:none;"></div>
 
     <div id="game-container">
         <div id="status-bar">

@@ -1678,3 +1678,280 @@ body {
         font-size: 9px;
     }
 }
+
+/* Blueprint Editor */
+#blueprint-editor {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: #0d0d1a;
+    color: #ccc;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    z-index: 2000;
+}
+
+#bp-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #1a1a2e;
+    border-bottom: 1px solid #333;
+    flex-wrap: wrap;
+}
+
+#bp-toolbar button {
+    background: #2a2a3e;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+}
+
+#bp-toolbar button:hover { background: #3a3a4e; }
+#bp-toolbar button.active, #bp-toolbar .bp-tool.active { background: #445588; border-color: #6688bb; color: #fff; }
+
+#bp-toolbar input, #bp-toolbar select {
+    background: #1a1a2e;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 3px 6px;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+}
+
+#bp-toolbar label { display: flex; align-items: center; gap: 4px; }
+.bp-sep { width: 1px; height: 20px; background: #444; margin: 0 4px; }
+
+#bp-workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+#bp-canvas-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+#bp-canvas {
+    flex: 1;
+    display: block;
+    cursor: crosshair;
+}
+
+#bp-coords {
+    padding: 4px 12px;
+    background: #1a1a2e;
+    border-top: 1px solid #333;
+    color: #888;
+    font-size: 11px;
+    height: 20px;
+}
+
+#bp-sidebar {
+    width: 280px;
+    overflow-y: auto;
+    border-left: 1px solid #333;
+    background: #141422;
+    padding: 0;
+}
+
+.bp-section {
+    padding: 10px;
+    border-bottom: 1px solid #2a2a3e;
+}
+
+.bp-section-title {
+    color: #ffcc00;
+    font-weight: bold;
+    font-size: 11px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+#bp-category-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-bottom: 8px;
+}
+
+.bp-cat {
+    background: #2a2a3e;
+    color: #aaa;
+    border: 1px solid #333;
+    padding: 2px 6px;
+    font-size: 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-family: inherit;
+}
+
+.bp-cat:hover { background: #3a3a4e; }
+.bp-cat.active { background: #445588; color: #fff; border-color: #6688bb; }
+
+#bp-palette {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #2a2a3e;
+    border-radius: 3px;
+    margin-bottom: 8px;
+}
+
+.bp-palette-item {
+    padding: 3px 8px;
+    cursor: pointer;
+    font-size: 11px;
+    border-bottom: 1px solid #1a1a2e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bp-palette-item:hover { background: #2a2a3e; }
+.bp-palette-item.active { background: #334466; border-left: 3px solid #6688bb; }
+
+.bp-custom-tag { color: #ffcc00; font-size: 9px; margin-right: 2px; }
+
+#bp-new-building {
+    width: 100%;
+    background: #2a3a2a;
+    color: #8c8;
+    border: 1px solid #4a4;
+    padding: 5px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+}
+
+#bp-new-building:hover { background: #3a4a3a; }
+
+#bp-cell-props label, #bp-struct-props label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+}
+
+#bp-cell-props select, #bp-cell-props input,
+#bp-struct-props select, #bp-struct-props input, #bp-struct-props textarea {
+    width: 100%;
+    background: #1a1a2e;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 3px 6px;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+    margin-top: 2px;
+}
+
+#bp-struct-props textarea { resize: vertical; }
+
+.bp-core-badge {
+    background: #ffcc00;
+    color: #000;
+    padding: 1px 5px;
+    font-size: 9px;
+    font-weight: bold;
+    border-radius: 3px;
+    margin-left: 4px;
+}
+
+.bp-muted { color: #666; font-size: 11px; font-style: italic; }
+
+/* Blueprint modals */
+.bp-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3000;
+}
+
+.bp-modal-content {
+    background: #1e1e32;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.bp-modal-content h3 {
+    color: #ffcc00;
+    margin: 0 0 12px;
+    font-size: 14px;
+}
+
+.bp-modal-content label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: #ccc;
+}
+
+.bp-modal-content input, .bp-modal-content select {
+    background: #1a1a2e;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 3px 6px;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+    margin-top: 2px;
+}
+
+.bp-modal-content input[type="text"], .bp-modal-content select { width: 100%; }
+.bp-modal-content input[type="number"] { width: 60px; }
+.bp-modal-content input[type="color"] { width: 40px; height: 22px; padding: 0; cursor: pointer; }
+
+.bp-modal-content button {
+    background: #2a2a3e;
+    color: #ccc;
+    border: 1px solid #444;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+    margin-right: 6px;
+}
+
+.bp-modal-content button:hover { background: #3a3a4e; }
+
+.bp-form-passable {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 11px;
+}
+
+.bp-form-passable label { display: inline-flex; align-items: center; gap: 3px; margin-bottom: 0; }
+
+.bp-export-content { max-width: 700px; }
+.bp-export-content textarea {
+    width: 100%;
+    background: #0d0d1a;
+    color: #8f8;
+    border: 1px solid #444;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 8px;
+    border-radius: 3px;
+    resize: vertical;
+}

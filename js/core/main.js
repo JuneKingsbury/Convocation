@@ -1423,6 +1423,12 @@ document.addEventListener('DOMContentLoaded', () => {
         launchGame(game => game.load());
     });
 
+    document.getElementById('start-blueprint').addEventListener('click', () => {
+        import('../editor/blueprint-editor.js').then(({ launchBlueprintEditor }) => {
+            launchBlueprintEditor();
+        });
+    });
+
     const importFileInput = document.getElementById('import-file');
     document.getElementById('import-game').addEventListener('click', () => {
         importFileInput.click();
