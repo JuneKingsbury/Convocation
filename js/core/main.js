@@ -449,14 +449,14 @@ class Game {
         this.ui._tradeOpen = true;
         this.ui._tradeOffer = {};
         this.ui._tradeRequest = {};
-        this.ui._lastEventId = null;
+        this.ui._tradeDirty = true;
     }
 
     tradeOffer(resource, amount) {
         if (!this.ui._tradeOffer) this.ui._tradeOffer = {};
         const max = this.resources.stockpile[resource] || 0;
         this.ui._tradeOffer[resource] = Math.min((this.ui._tradeOffer[resource] || 0) + amount, max);
-        this.ui._lastEventId = null;
+        this.ui._tradeDirty = true;
     }
 
     tradeRequest(resource, amount) {
@@ -468,7 +468,7 @@ class Game {
             const max = evt?.data?.traderResources?.[resource] || 0;
             this.ui._tradeRequest[resource] = Math.min((this.ui._tradeRequest[resource] || 0) + amount, max);
         }
-        this.ui._lastEventId = null;
+        this.ui._tradeDirty = true;
     }
 
     confirmTrade() {
@@ -477,13 +477,13 @@ class Game {
             this.ui._tradeOffer = {};
             this.ui._tradeRequest = {};
         }
-        this.ui._lastEventId = null;
+        this.ui._tradeDirty = true;
     }
 
     clearTradeSelection() {
         this.ui._tradeOffer = {};
         this.ui._tradeRequest = {};
-        this.ui._lastEventId = null;
+        this.ui._tradeDirty = true;
     }
 
     dismissTrader() {
@@ -571,6 +571,8 @@ class Game {
         const result = this.exploration.sendExpedition(this, dimensionKey, ids, packIds);
         if (result) {
             this.notifications.push({ text: `Expedition launched to ${result.dimensionName}!`, tick: this.tick, type: 'success' });
+            this.ui._viewingRiftGate = true;
+            this.ui._viewingColonistId = null;
         } else {
             this.notifications.push({ text: 'Cannot launch expedition', tick: this.tick, type: 'danger' });
         }
@@ -1124,9 +1126,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameContainer = document.getElementById('game-container');
     const settingsPanel = document.getElementById('start-settings-panel');
     const loadBtn = document.getElementById('load-game');
+    const exportBtn = document.getElementById('export-game');
 
     if (hasSave()) {
-        loadBtn.style.display = '';
+        loadBtn.disabled = false;
+        exportBtn.disabled = false;
     }
 
     const glossaryPanel = document.getElementById('glossary-panel');
@@ -1207,12 +1211,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('import-game').addEventListener('click', () => {
         importFileInput.click();
     });
+    exportBtn.addEventListener('click', () => {
+        exportSave();
+    });
+
     importFileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const success = await importSave(file);
         if (success) {
-            loadBtn.style.display = '';
+            loadBtn.disabled = false;
+            exportBtn.disabled = false;
             startScreen.style.display = 'none';
             gameContainer.style.display = 'grid';
             initFooterTabs();

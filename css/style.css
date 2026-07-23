@@ -67,6 +67,17 @@ body {
     line-height: 1.6;
 }
 
+.start-btn-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+.start-btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
 #start-screen button {
     padding: 12px 24px;
     font-family: inherit;
@@ -77,9 +88,14 @@ body {
     background: #2a2a4a;
     color: #e0e0e0;
     transition: background 0.2s;
+    min-width: 140px;
 }
 
-#start-screen button:hover {
+#start-screen button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+#start-screen button:hover:not(:disabled) {
     background: #3a3a6a;
     border-color: #888;
 }

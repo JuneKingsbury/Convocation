@@ -235,10 +235,10 @@ export class UI {
         const alerts = CONFIG.STOCKPILE_ALERTS || {};
         const resStyle = (key, val) => (alerts[key] && val <= alerts[key]) ? ' style="color:#ff4444;font-weight:bold"' : '';
         const html =
-            `<span class="res"${resStyle('wood', r.wood)}>Wood:${r.wood}</span>` +
-            `<span class="res"${resStyle('stone', r.stone)}>Stone:${r.stone}</span>` +
-            `<span class="res"${resStyle('food', r.food)}>Food:${r.food}</span>` +
-            (voidEssence > 0 ? `<span class="res" style="color:#9933ff">Void:${voidEssence}</span>` : '') +
+            `<span class="res"${resStyle('wood', r.wood)}>Wood:${Math.round(r.wood)}</span>` +
+            `<span class="res"${resStyle('stone', r.stone)}>Stone:${Math.round(r.stone)}</span>` +
+            `<span class="res"${resStyle('food', r.food)}>Food:${Math.round(r.food)}</span>` +
+            (voidEssence > 0 ? `<span class="res" style="color:#9933ff">Void:${Math.round(voidEssence)}</span>` : '') +
             (manaStr ? `<span class="res" style="color:${power.hasPower() ? '#aa44ff' : '#ff6666'}">${manaStr}</span>` : '') +
             `<span class="sep">|</span>` +
             `<span class="info">${season}</span>` +
@@ -410,9 +410,9 @@ export class UI {
                         const hpPct = Math.max(0, Math.round((p.hp / p.maxHp) * 100));
                         const color = p.hp <= 0 ? '#664444' : hpPct < 30 ? '#ff4444' : hpPct < 60 ? '#ffaa44' : '#88cc88';
                         const status = p.hp <= 0 ? ' [DOWN]' : '';
-                        const manaStr = p.maxMana > 0 ? ` | ${p.mana}/${p.maxMana} MP` : '';
+                        const manaStr = p.maxMana > 0 ? ` | ${Math.round(p.mana)}/${p.maxMana} MP` : '';
                         const shieldStr = p.shieldActive ? ' 🛡' : '';
-                        html += `<div class="info-row" style="color:${color}; padding-left:8px;">${p.name} — ${Math.max(0, p.hp)}/${p.maxHp} HP${manaStr}${shieldStr}${status}</div>`;
+                        html += `<div class="info-row" style="color:${color}; padding-left:8px;">${p.name} — ${Math.max(0, Math.round(p.hp))}/${p.maxHp} HP${manaStr}${shieldStr}${status}</div>`;
                     }
 
                     if (exp.combat) {
@@ -545,7 +545,7 @@ export class UI {
 
         const nc = colonist.nameColor || '#ffff00';
         let html = `<div class="info-header" style="cursor:pointer;color:${nc}" onclick="window.game.selectColonistById(${colonist.id})">${colonist.name} ${colonist.drafted ? '[DRAFTED]' : ''}${colonist.guardMode ? '[GUARDING]' : ''}</div>`;
-        html += `<div class="info-row">HP: ${colonist.hp}/${colonist.maxHp}</div>`;
+        html += `<div class="info-row">HP: ${Math.round(colonist.hp)}/${colonist.maxHp}</div>`;
         html += `<div class="info-row">Mood: <span class="mood-${moodLevel}">${colonist.mood.toFixed(0)} (${moodLevel})</span></div>`;
         html += `<div class="info-row">State: ${colonist.state}</div>`;
         html += `<div class="info-row">Task: ${this.getColonistTaskDescription(colonist)}</div>`;
@@ -1020,7 +1020,7 @@ export class UI {
             html += `<span class="info-header" style="font-size:12px;cursor:pointer;color:${c.nameColor || '#ffff00'}" onclick="window.game.selectColonistById(${c.id})">${c.name}</span>`;
             html += ` <span class="mood-${moodLevel}">${c.mood.toFixed(0)}</span>`;
             html += ` <span style="color:#888">${c.state}${c.drafted ? ' [D]' : ''}${c.guardMode ? ' [G]' : ''}${c.golem ? ' [Golem]' : ''}</span>`;
-            html += `<div class="info-row">HP:${c.hp} H:${c.needs.hunger.toFixed(0)} R:${c.needs.rest.toFixed(0)}</div>`;
+            html += `<div class="info-row">HP:${Math.round(c.hp)} H:${c.needs.hunger.toFixed(0)} R:${c.needs.rest.toFixed(0)}</div>`;
             html += `<div class="info-actions">`;
             html += `<button onclick="window.game.selectColonistById(${c.id})">Focus</button>`;
             html += `<button onclick="window.game.toggleDraft(${c.id})">${c.drafted ? 'Undraft' : 'Draft'}</button>`;
@@ -1190,7 +1190,7 @@ export class UI {
             html += `<div class="hud-colonist" data-colonist-id="${c.id}">`;
             const needsDots = `<span class="hud-dots"><span style="color:${moodColor}">●</span><span style="color:${hungerColor}">●</span><span style="color:${restColor}">●</span><span style="color:${hpColor}">●</span></span>`;
             html += `<span class="hud-name" style="color:${c.nameColor || '#ffff00'}">${c.name}</span> ${needsDots} <span class="hud-weapon">${weapon}</span> <span class="hud-state">${c.state}${c.drafted ? ' [D]' : ''}${c.guardMode ? ' [G]' : ''}</span>`;
-            html += `<div class="hud-bars">Mood: <span style="color:${moodColor}">${c.mood.toFixed(0)} (${moodLevel})</span> | Hunger: <span style="color:${hungerColor}">${c.needs.hunger.toFixed(0)}</span> | Rest: <span style="color:${restColor}">${c.needs.rest.toFixed(0)}</span> | HP: <span style="color:${hpColor}">${c.hp}/${c.maxHp}</span></div>`;
+            html += `<div class="hud-bars">Mood: <span style="color:${moodColor}">${c.mood.toFixed(0)} (${moodLevel})</span> | Hunger: <span style="color:${hungerColor}">${c.needs.hunger.toFixed(0)}</span> | Rest: <span style="color:${restColor}">${c.needs.rest.toFixed(0)}</span> | HP: <span style="color:${hpColor}">${Math.round(c.hp)}/${c.maxHp}</span></div>`;
             html += `</div>`;
         }
         if (html !== this._lastHudHtml) {
@@ -1573,7 +1573,7 @@ export class UI {
                 const cls = isReserved ? 'inv-reserve active' : 'inv-reserve';
                 extra = `<button class="${cls}" data-reserve-food="${key}" title="${isReserved ? 'Unreserve — allow cooking' : 'Reserve — protect from cooking'}">${isReserved ? '🔒' : '🔓'}</button>`;
             }
-            html += `<div class="inv-row"><span class="inv-name">${key.replace(/_/g, ' ')}</span>${extra}<span class="inv-amount">${amount}</span></div>`;
+            html += `<div class="inv-row"><span class="inv-name">${key.replace(/_/g, ' ')}</span>${extra}<span class="inv-amount">${Math.round(amount)}</span></div>`;
         }
         if (!html) html = '<div class="info-row" style="color:#666;">No resources.</div>';
         return html;
@@ -1833,7 +1833,10 @@ export class UI {
         }
 
         if (evt.type === 'trade' && this._tradeOpen) {
-            this._updateTradePanel(evt);
+            if (this._tradeDirty) {
+                this._tradeDirty = false;
+                this._updateTradePanel(evt);
+            }
             return;
         }
 
