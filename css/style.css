@@ -522,25 +522,23 @@ body {
 
 .info-row { margin: 3px 0; color: #ccc; }
 .info-row.fire { color: #ff4400; font-weight: bold; }
-.skill-tip { position: relative; cursor: help; border-bottom: 1px dotted #666; }
-.skill-tip::after {
-    content: attr(data-tip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #222;
+.skill-tip { cursor: help; border-bottom: 1px dotted #666; }
+#ui-tooltip {
+    position: fixed;
+    background: #1a1a2e;
     color: #eee;
-    padding: 4px 8px;
+    padding: 5px 10px;
     border-radius: 4px;
+    border: 1px solid #555;
     font-size: 11px;
     white-space: nowrap;
-    opacity: 0;
     pointer-events: none;
-    transition: opacity 0.15s;
-    z-index: 20;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.12s;
+    max-width: 400px;
+    white-space: normal;
 }
-.skill-tip:hover::after { opacity: 1; }
 .info-thoughts { margin-top: 8px; font-size: 0.92em; line-height: 1.5; }
 .info-thoughts .positive { color: #66cc66; }
 .info-thoughts .negative { color: #cc6666; }
@@ -1248,9 +1246,57 @@ body {
 .inv-reserve.active { border-color: #cc8844; }
 .inv-reserve:hover { background: #333; }
 
+.inv-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.inv-tab-btn {
+    padding: 4px 8px;
+    background: #2a2a4a;
+    border: 1px solid #444;
+    border-radius: 3px;
+    color: #888;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.inv-tab-btn.active {
+    background: #446;
+    color: #88ccff;
+    border-color: #668;
+}
+
+.inv-tab-btn:hover:not(.active) {
+    background: #333;
+    color: #aaa;
+}
+
+.inv-tab-content {
+    min-height: 60px;
+}
 
 #inventory-panel {
     min-width: min(250px, 85vw);
+}
+
+.exp-log-container {
+    margin-top: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 4px 6px;
+    background: #111122;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.exp-log-entry {
+    margin: 1px 0;
 }
 
 #settings-panel {

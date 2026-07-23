@@ -1,4 +1,4 @@
-import { DIMENSIONS, EXPLORATION_CONFIG, TAMED_ANIMALS } from '../core/config.js';
+import { DIMENSIONS, EXPLORATION_CONFIG, EXPLORATION_EVENTS, TAMED_ANIMALS, SPELLS } from '../core/config.js';
 import { findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 
 let nextExpeditionId = 1;
@@ -94,8 +94,10 @@ export class ExplorationSystem {
             loot: {},
             defeated: [],
             log: packAnimals.length > 0
-                ? [`Party heading to Rift Gate (${packAnimals.length} pack animal${packAnimals.length > 1 ? 's' : ''})`]
-                : [`Party heading to Rift Gate`],
+                ? [{ tick: 0, text: `Party heading to Rift Gate (${packAnimals.length} pack animal${packAnimals.length > 1 ? 's' : ''})`, type: 'info' }]
+                : [{ tick: 0, text: `Party heading to Rift Gate`, type: 'info' }],
+            combat: null,
+            lastMicroEventTick: 0,
         };
 
         this.expeditions.push(expedition);
@@ -122,22 +124,32 @@ export class ExplorationSystem {
             const elapsed = game.tick - exp.startTick;
 
             if (exp.status === 'exploring') {
+                if (exp.combat) {
+                    this._updateCombat(exp, game);
+                    continue;
+                }
+
+                this._regenMana(exp, game);
+                this._tryHealSpells(exp, game);
+
                 if (game.tick >= exp.nextEncounterTick && exp.currentEncounter < exp.encounters.length) {
-                    this._resolveEncounter(exp, game);
+                    this._startEncounter(exp, game);
                     exp.currentEncounter++;
                     exp.nextEncounterTick = game.tick + Math.floor(exp.duration * EXPLORATION_CONFIG.encounterSpacing);
+                } else {
+                    this._tryMicroEvent(exp, game);
                 }
 
                 const allDefeated = exp.partySnapshot.every(p => p.hp <= 0);
                 if (allDefeated) {
                     exp.status = 'returning';
-                    exp.log.push('All explorers defeated — retreating empty-handed');
+                    this._addLog(exp, game, 'All explorers defeated — retreating empty-handed', 'danger');
                     exp.loot = {};
                 }
 
                 if (elapsed >= exp.duration && exp.status === 'exploring') {
                     exp.status = 'returning';
-                    exp.log.push('Expedition complete — returning home');
+                    this._addLog(exp, game, 'Expedition complete — returning home', 'success');
                 }
             }
 
@@ -150,6 +162,12 @@ export class ExplorationSystem {
         }
 
         this.expeditions = this.expeditions.filter(e => e.status !== 'complete');
+    }
+
+    _addLog(exp, game, text, type = 'info') {
+        const tick = game ? game.tick : 0;
+        exp.log.push({ tick, text, type });
+        if (exp.log.length > 50) exp.log.shift();
     }
 
     _updateGathering(exp, game) {
@@ -189,10 +207,21 @@ export class ExplorationSystem {
             exp.nextEncounterTick = game.tick + Math.floor(exp.duration * EXPLORATION_CONFIG.encounterSpacing);
             exp.partySnapshot = exp.partyIds.map(id => {
                 const c = game.colonists.find(col => col.id === id);
-                return { id: c.id, name: c.name, hp: c.hp, maxHp: c.maxHp, weapon: c.weapon, armor: c.armor };
+                return {
+                    id: c.id, name: c.name, hp: c.hp, maxHp: c.maxHp,
+                    weapon: c.weapon, armor: c.armor,
+                    knownSpells: c.knownSpells ? [...c.knownSpells] : [],
+                    mana: c.mana || 0,
+                    maxMana: c.maxMana || 0,
+                    spellCooldowns: {},
+                    spellDamageBonus: c.weapon && c.weapon.spellDamageBonus ? c.weapon.spellDamageBonus : 0,
+                    shieldActive: false,
+                    shieldReduction: 0,
+                };
             });
-            exp.log.push(`Party entered ${DIMENSIONS[exp.dimension].name}`);
+            this._addLog(exp, game, `Party entered ${DIMENSIONS[exp.dimension].name}`, 'info');
             game.eventLog.add(game, `Expedition entered ${exp.dimensionName}`, 'event', null);
+            exp.lastMicroEventTick = game.tick;
         }
     }
 
@@ -206,9 +235,11 @@ export class ExplorationSystem {
                 for (let j = 0; j < count; j++) {
                     enemies.push({
                         hp: randInt(dim.enemies.hp[0], dim.enemies.hp[1]),
+                        maxHp: 0,
                         damage: randInt(dim.enemies.damage[0], dim.enemies.damage[1]),
                     });
                 }
+                for (const e of enemies) e.maxHp = e.hp;
                 encounters.push({ type: 'combat', enemies });
             } else {
                 const lootEntry = this._rollLoot(dim);
@@ -231,54 +262,270 @@ export class ExplorationSystem {
         return { resource: fallback.resource, amount: randInt(fallback.amount[0], fallback.amount[1]) };
     }
 
-    _resolveEncounter(exp, game) {
+    _tryMicroEvent(exp, game) {
+        if (game.tick - exp.lastMicroEventTick < 12) return;
+        if (Math.random() > EXPLORATION_CONFIG.microEventChance) return;
+
+        exp.lastMicroEventTick = game.tick;
+        const alive = exp.partySnapshot.filter(p => p.hp > 0);
+        if (alive.length === 0) return;
+
+        const member = alive[randInt(0, alive.length - 1)];
+        const dim = DIMENSIONS[exp.dimension];
+        const dimEvents = dim.events;
+
+        if (dimEvents && dimEvents.rare) {
+            for (const rare of dimEvents.rare) {
+                if (Math.random() < rare.chance) {
+                    const msg = rare.text.replace('{name}', member.name);
+                    const amount = randInt(rare.loot.amount[0], rare.loot.amount[1]);
+                    exp.loot[rare.loot.resource] = (exp.loot[rare.loot.resource] || 0) + amount;
+                    this._addLog(exp, game, `${msg} (+${amount} ${rare.loot.resource.replace(/_/g, ' ')})`, 'loot');
+                    return;
+                }
+            }
+        }
+
+        const roll = Math.random();
+
+        if (roll < EXPLORATION_CONFIG.trapChance) {
+            const dmg = randInt(EXPLORATION_CONFIG.trapDamageRange[0], EXPLORATION_CONFIG.trapDamageRange[1]);
+            member.hp -= dmg;
+            const trapPool = (dimEvents && dimEvents.traps) || EXPLORATION_EVENTS.traps;
+            const msg = pickRandom(trapPool).replace('{name}', member.name);
+            this._addLog(exp, game, `${msg} (${dmg} dmg)`, 'danger');
+            if (member.hp <= 0) {
+                exp.defeated.push(member.id);
+                this._addLog(exp, game, pickRandom(EXPLORATION_EVENTS.combatDefeat).replace('{name}', member.name), 'danger');
+            }
+        } else if (roll < EXPLORATION_CONFIG.trapChance + EXPLORATION_CONFIG.findItemChance) {
+            const lootEntry = this._rollLoot(dim);
+            exp.loot[lootEntry.resource] = (exp.loot[lootEntry.resource] || 0) + lootEntry.amount;
+            const discPool = (dimEvents && dimEvents.discoveries) || EXPLORATION_EVENTS.discoveries;
+            const msg = pickRandom(discPool).replace('{name}', member.name);
+            this._addLog(exp, game, `${msg} (+${lootEntry.amount} ${lootEntry.resource.replace(/_/g, ' ')})`, 'loot');
+        } else {
+            const ambientPool = (dimEvents && dimEvents.ambient) || EXPLORATION_EVENTS.ambient;
+            const msg = pickRandom(ambientPool).replace('{name}', member.name);
+            this._addLog(exp, game, msg, 'ambient');
+        }
+    }
+
+    _startEncounter(exp, game) {
         const encounter = exp.encounters[exp.currentEncounter];
         if (!encounter) return;
 
         if (encounter.type === 'loot') {
             exp.loot[encounter.resource] = (exp.loot[encounter.resource] || 0) + encounter.amount;
-            exp.log.push(`Found ${encounter.amount} ${encounter.resource}`);
+            const member = exp.partySnapshot.find(p => p.hp > 0) || exp.partySnapshot[0];
+            const dim = DIMENSIONS[exp.dimension];
+            const discPool = (dim.events && dim.events.discoveries) || EXPLORATION_EVENTS.discoveries;
+            const msg = pickRandom(discPool).replace('{name}', member.name);
+            this._addLog(exp, game, `${msg} (+${encounter.amount} ${encounter.resource.replace(/_/g, ' ')})`, 'loot');
             return;
         }
 
-        const alive = exp.partySnapshot.filter(p => p.hp > 0);
-        if (alive.length === 0) return;
-
         const enemies = encounter.enemies.map(e => ({ ...e }));
-        exp.log.push(`Combat: ${enemies.length} enemies`);
+        const startMsg = pickRandom(EXPLORATION_EVENTS.combatStart);
+        this._addLog(exp, game, `${startMsg} (${enemies.length} foes)`, 'combat');
 
-        while (alive.some(p => p.hp > 0) && enemies.some(e => e.hp > 0)) {
-            for (const member of alive) {
-                if (member.hp <= 0) continue;
-                const target = enemies.find(e => e.hp > 0);
-                if (!target) break;
-                const weaponDmg = member.weapon ? member.weapon.damage : EXPLORATION_CONFIG.baseFistDamage;
-                const dmg = weaponDmg + randInt(0, 3);
+        exp.combat = {
+            enemies,
+            roundTick: game.tick + EXPLORATION_CONFIG.combatRoundTicks,
+            round: 0,
+            encounterIndex: exp.currentEncounter,
+        };
+    }
+
+    _updateCombat(exp, game) {
+        const combat = exp.combat;
+        if (game.tick < combat.roundTick) return;
+
+        combat.roundTick = game.tick + EXPLORATION_CONFIG.combatRoundTicks;
+        combat.round++;
+
+        const alive = exp.partySnapshot.filter(p => p.hp > 0);
+        const enemiesAlive = combat.enemies.filter(e => e.hp > 0);
+
+        if (alive.length === 0 || enemiesAlive.length === 0) {
+            this._finishCombat(exp, game);
+            return;
+        }
+
+        for (const member of alive) {
+            if (member.hp <= 0) continue;
+            const target = combat.enemies.find(e => e.hp > 0);
+            if (!target) break;
+            const weaponDmg = member.weapon ? member.weapon.damage : EXPLORATION_CONFIG.baseFistDamage;
+            const dmg = weaponDmg + randInt(0, 3);
+
+            if (Math.random() < 0.15) {
+                const msg = pickRandom(EXPLORATION_EVENTS.combatMiss)
+                    .replace('{attacker}', member.name)
+                    .replace('{target}', 'an enemy');
+                this._addLog(exp, game, msg, 'combat');
+            } else {
                 target.hp -= dmg;
+                const msg = pickRandom(EXPLORATION_EVENTS.combatHit)
+                    .replace('{attacker}', member.name)
+                    .replace('{target}', 'an enemy')
+                    .replace('{dmg}', dmg);
+                this._addLog(exp, game, msg, 'combat');
+                if (target.hp <= 0) {
+                    this._addLog(exp, game, `${member.name} slays a foe!`, 'success');
+                }
+            }
+        }
+
+        this._tryCombatSpells(exp, game, alive, combat);
+
+        for (const enemy of combat.enemies) {
+            if (enemy.hp <= 0) continue;
+            const target = alive.find(p => p.hp > 0);
+            if (!target) break;
+            let dmg = enemy.damage + randInt(0, 2);
+            if (target.armor) {
+                dmg = Math.max(1, Math.floor(dmg * (1 - target.armor.damageReduction)));
+            }
+            if (target.shieldActive) {
+                dmg = Math.max(1, Math.floor(dmg * (1 - target.shieldReduction)));
             }
 
-            for (const enemy of enemies) {
-                if (enemy.hp <= 0) continue;
-                const target = alive.find(p => p.hp > 0);
-                if (!target) break;
-                let dmg = enemy.damage + randInt(0, 2);
-                if (target.armor) {
-                    dmg = Math.max(1, Math.floor(dmg * (1 - target.armor.damageReduction)));
-                }
+            if (Math.random() < 0.15) {
+                const msg = pickRandom(EXPLORATION_EVENTS.combatMiss)
+                    .replace('{attacker}', 'An enemy')
+                    .replace('{target}', target.name);
+                this._addLog(exp, game, msg, 'combat');
+            } else {
                 target.hp -= dmg;
+                const msg = pickRandom(EXPLORATION_EVENTS.combatHit)
+                    .replace('{attacker}', 'An enemy')
+                    .replace('{target}', target.name)
+                    .replace('{dmg}', dmg);
+                this._addLog(exp, game, msg, 'combat');
                 if (target.hp <= 0) {
                     exp.defeated.push(target.id);
-                    exp.log.push(`${target.name} was defeated`);
+                    this._addLog(exp, game, pickRandom(EXPLORATION_EVENTS.combatDefeat).replace('{name}', target.name), 'danger');
                 }
             }
         }
 
-        const survived = alive.filter(p => p.hp > 0).length;
-        if (survived > 0) {
-            const lootEntry = this._rollLoot(DIMENSIONS[exp.dimension]);
-            exp.loot[lootEntry.resource] = (exp.loot[lootEntry.resource] || 0) + lootEntry.amount;
-            exp.log.push(`Victory! Found ${lootEntry.amount} ${lootEntry.resource}`);
+        if (combat.enemies.every(e => e.hp <= 0) || alive.every(p => p.hp <= 0)) {
+            this._finishCombat(exp, game);
         }
+    }
+
+    _canCastSpell(member, spellKey, game) {
+        const spell = SPELLS[spellKey];
+        if (!spell) return false;
+        if (member.mana < spell.manaCost) return false;
+        const lastCast = member.spellCooldowns[spellKey] || 0;
+        if (game.tick - lastCast < spell.cooldown) return false;
+        return true;
+    }
+
+    _tryCombatSpells(exp, game, alive, combat) {
+        for (const member of alive) {
+            if (member.hp <= 0 || member.knownSpells.length === 0) continue;
+
+            for (const spellKey of member.knownSpells) {
+                const spell = SPELLS[spellKey];
+                if (!spell || spell.trigger !== 'inCombat') continue;
+                if (!this._canCastSpell(member, spellKey, game)) continue;
+
+                member.mana -= spell.manaCost;
+                member.spellCooldowns[spellKey] = game.tick;
+
+                if (spell.effect === 'ranged_damage' || spell.effect === 'ranged_damage_aoe') {
+                    let dmg = spell.damage;
+                    if (member.spellDamageBonus) {
+                        dmg = Math.floor(dmg * (1 + member.spellDamageBonus));
+                    }
+                    if (spell.effect === 'ranged_damage_aoe') {
+                        const targets = combat.enemies.filter(e => e.hp > 0).slice(0, 3);
+                        for (const t of targets) {
+                            t.hp -= dmg;
+                        }
+                        this._addLog(exp, game, `${member.name} casts ${spell.name}! Hits ${targets.length} foes for ${dmg} each.`, 'combat');
+                        for (const t of targets) {
+                            if (t.hp <= 0) this._addLog(exp, game, `An enemy is destroyed by the blast!`, 'success');
+                        }
+                    } else {
+                        const target = combat.enemies.find(e => e.hp > 0);
+                        if (target) {
+                            target.hp -= dmg;
+                            this._addLog(exp, game, `${member.name} casts ${spell.name} at an enemy for ${dmg} damage!`, 'combat');
+                            if (target.hp <= 0) this._addLog(exp, game, `${member.name}'s spell slays a foe!`, 'success');
+                        }
+                    }
+                    break;
+                } else if (spell.effect === 'buff_defense' && !member.shieldActive) {
+                    member.shieldActive = true;
+                    member.shieldReduction = spell.damageReduction;
+                    this._addLog(exp, game, `${member.name} casts ${spell.name} — shielded!`, 'combat');
+                    break;
+                } else if (spell.effect === 'summon') {
+                    const summonDmg = spell.summonDamage || 8;
+                    const target = combat.enemies.find(e => e.hp > 0);
+                    if (target) {
+                        target.hp -= summonDmg;
+                        this._addLog(exp, game, `${member.name} summons a familiar that attacks for ${summonDmg}!`, 'combat');
+                        if (target.hp <= 0) this._addLog(exp, game, `The familiar finishes off a foe!`, 'success');
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    _tryHealSpells(exp, game) {
+        const alive = exp.partySnapshot.filter(p => p.hp > 0);
+        for (const member of alive) {
+            if (member.knownSpells.length === 0) continue;
+            const hpRatio = member.hp / member.maxHp;
+
+            for (const spellKey of member.knownSpells) {
+                const spell = SPELLS[spellKey];
+                if (!spell || spell.effect !== 'heal') continue;
+                const threshold = spell.hpThreshold || 0.5;
+                if (hpRatio >= threshold) continue;
+                if (!this._canCastSpell(member, spellKey, game)) continue;
+
+                member.mana -= spell.manaCost;
+                member.spellCooldowns[spellKey] = game.tick;
+                const healed = Math.min(spell.healAmount, member.maxHp - member.hp);
+                member.hp += healed;
+                this._addLog(exp, game, `${member.name} casts ${spell.name} and heals for ${healed} HP.`, 'success');
+                break;
+            }
+        }
+    }
+
+    _regenMana(exp, game) {
+        if (game.tick % 10 !== 0) return;
+        for (const member of exp.partySnapshot) {
+            if (member.hp <= 0) continue;
+            if (member.mana < member.maxMana) {
+                member.mana = Math.min(member.maxMana, member.mana + 1);
+            }
+        }
+    }
+
+    _finishCombat(exp, game) {
+        const survived = exp.partySnapshot.filter(p => p.hp > 0).length;
+        if (survived > 0) {
+            const dim = DIMENSIONS[exp.dimension];
+            const lootEntry = this._rollLoot(dim);
+            exp.loot[lootEntry.resource] = (exp.loot[lootEntry.resource] || 0) + lootEntry.amount;
+            this._addLog(exp, game, `Victory! Looted ${lootEntry.amount} ${lootEntry.resource.replace(/_/g, ' ')}.`, 'success');
+        } else {
+            this._addLog(exp, game, 'The party has been overwhelmed...', 'danger');
+        }
+        for (const member of exp.partySnapshot) {
+            member.shieldActive = false;
+            member.shieldReduction = 0;
+        }
+        exp.combat = null;
     }
 
     _completeExpedition(exp, game) {
@@ -299,6 +546,7 @@ export class ExplorationSystem {
             } else {
                 colonist.hp = Math.min(colonist.maxHp, snapshot.hp);
             }
+            colonist.mana = Math.min(colonist.maxMana, snapshot.mana);
             colonist.state = 'idle';
         }
 
@@ -312,8 +560,10 @@ export class ExplorationSystem {
         if (!allDefeated) {
             game.resources.add(exp.loot);
             const lootSummary = Object.entries(exp.loot).map(([k, v]) => `${v} ${k}`).join(', ');
+            this._addLog(exp, game, `Returned with: ${lootSummary || 'nothing'}`, 'success');
             game.eventLog.add(game, `Expedition returned from ${exp.dimensionName}: ${lootSummary || 'nothing'}`, 'event', null);
         } else {
+            this._addLog(exp, game, 'Party retreated empty-handed.', 'danger');
             game.eventLog.add(game, `Expedition to ${exp.dimensionName} failed — party retreated`, 'warning', null);
         }
 
@@ -326,4 +576,8 @@ export class ExplorationSystem {
 
 function randInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickRandom(arr) {
+    return arr[randInt(0, arr.length - 1)];
 }

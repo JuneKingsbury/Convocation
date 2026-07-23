@@ -191,6 +191,24 @@ export function loadGame(game) {
     if (data.exploration) {
         game.exploration.expeditions = data.exploration.expeditions || [];
         game.exploration.completedExpeditions = data.exploration.completedExpeditions || [];
+        for (const exp of [...game.exploration.expeditions, ...game.exploration.completedExpeditions]) {
+            if (exp.log && exp.log.length > 0 && typeof exp.log[0] === 'string') {
+                exp.log = exp.log.map(text => ({ tick: 0, text, type: 'info' }));
+            }
+            if (!exp.combat) exp.combat = null;
+            if (!exp.lastMicroEventTick) exp.lastMicroEventTick = 0;
+            if (exp.partySnapshot) {
+                for (const p of exp.partySnapshot) {
+                    if (!p.knownSpells) p.knownSpells = [];
+                    if (p.mana === undefined) p.mana = 0;
+                    if (p.maxMana === undefined) p.maxMana = 0;
+                    if (!p.spellCooldowns) p.spellCooldowns = {};
+                    if (p.spellDamageBonus === undefined) p.spellDamageBonus = 0;
+                    if (p.shieldActive === undefined) p.shieldActive = false;
+                    if (p.shieldReduction === undefined) p.shieldReduction = 0;
+                }
+            }
+        }
     }
 
     game.taskQueue.tasks = data.tasks;

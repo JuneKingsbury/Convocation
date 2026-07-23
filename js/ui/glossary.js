@@ -4,7 +4,7 @@ export const GLOSSARY = [
         entries: [
             ['Priorities', 'Each colonist has skill priorities (1-5, 0=disabled). Lower number = higher priority. Colonists pick tasks based on their priority settings.'],
             ['Needs', 'Hunger and Rest decay over time. When critical (<20), colonists interrupt work to eat or sleep.'],
-            ['Mood', 'Base 50 + sum of active thoughts. Affects work speed: Inspired (75+) = 1.2x, Content (40-74) = 1x, Stressed (20-39) = 0.7x, Breaking (<20) = refuses work.'],
+            ['Mood', 'Base 50 + sum of active thoughts. Affects work speed:\n\n  Inspired  75+     1.2x work speed\n  Content   40-74   1.0x work speed\n  Stressed  20-39   0.7x work speed\n  Breaking  <20     Refuses work'],
             ['Thoughts', 'Temporary mood modifiers from events (good meals, nice rooms, deaths, etc.). Each has a duration before it fades.'],
             ['Traits', 'Permanent modifiers assigned at spawn: Hard Worker, Lazy, Night Owl, Early Bird, Green Thumb, Iron Stomach, Socialite, Loner, Optimist, Pessimist, Tough, Pyromaniac, Gourmand.'],
             ['Drafting', 'Manually control colonists. Drafted colonists ignore AI and move where you right-click. Select multiple with click-drag, then Draft All.'],
@@ -59,11 +59,7 @@ export const GLOSSARY = [
         title: 'Farming',
         entries: [
             ['Farm Zone', 'Designate with Z mode. Select a crop type, drag an area on grass/dirt. Colonists auto-plant and harvest.'],
-            ['Wheat', 'Grows in spring/summer/autumn. 200 ticks. Yields 3. Cook into meals.'],
-            ['Berries', 'Spring/summer/autumn. 150 ticks. Yields 2. Quick to cook.'],
-            ['Corn', 'Summer only. 250 ticks. Yields 4. High output but seasonal.'],
-            ['Potatoes', 'Spring/autumn/winter. 180 ticks. Yields 3. Hardy, grows in cold.'],
-            ['Growth', 'Affected by season multiplier and weather. No outdoor growth in winter (except potatoes). Rain boosts growth.'],
+            ['Crops', 'Plant in Farm Zone mode (Z). Growth affected by season and weather.\n\n  Crop      Seasons              Time  Yield\n  Wheat     Spring/Summer/Autumn  200   3\n  Berries   Spring/Summer/Autumn  150   2\n  Corn      Summer only           250   4\n  Potatoes  Spring/Autumn/Winter  180   3\n\nRain = 1.3x growth. Summer = 1.5x. No outdoor growth in winter (except potatoes).'],
         ]
     },
     {
@@ -95,11 +91,7 @@ export const GLOSSARY = [
     {
         title: 'Seasons & Weather',
         entries: [
-            ['Year', '4 seasons, each ~600 ticks (~2 min real-time at 1x speed).'],
-            ['Spring', 'Normal growth, animals appear. Temp: 10-20°.'],
-            ['Summer', '1.5x crop growth, heat waves possible, fire risk. Temp: 20-35°.'],
-            ['Autumn', '0.8x growth, animal migrations. Temp: 5-15°.'],
-            ['Winter', 'No outdoor crop growth, snow, colonists need warmth (rooms/ember wards). Temp: -10 to 5°.'],
+            ['Seasons', '4 seasons per year, each ~600 ticks (~2 min at 1x speed):\n\n  Season  Temp       Growth  Special\n  Spring  10-20°     1.0x    Animals appear\n  Summer  20-35°     1.5x    Heat waves, fire risk, faster rot\n  Autumn  5-15°      0.8x    Animal migrations\n  Winter  -10 to 5°  None*   Snow, need warmth\n\n* Potatoes still grow in winter.'],
             ['Rain', 'Boosts crop growth 1.3x. Extinguishes fires.'],
             ['Thunderstorm', 'Can start fires via lightning.'],
             ['Blizzard', 'Stops all crop growth. Winter only.'],
@@ -145,11 +137,11 @@ export const GLOSSARY = [
         title: 'Exploration (Rift Gate)',
         entries: [
             ['Rift Gate', '(Ω) Build after researching Planar Rift. Click to open the expedition panel. Consumes 6 mana.'],
-            ['Expeditions', 'Select colonists (and optional pack animals) and a dimension, then launch. Party walks to the gate, explores, and returns with loot.'],
+            ['Expeditions', 'Select colonists (and optional pack animals) and a dimension, then launch. Party walks to the gate, explores, and returns with loot. Watch the live event log to see what happens to your colonists in real-time.'],
+            ['Live Event Log', 'While an expedition is active, click the Rift Gate to see a scrolling log of events: combat rounds, trap encounters, item discoveries, and ambient observations. Each dimension has unique events.'],
             ['Pack Animals', 'Tamed okapi can join expeditions as pack animals, reducing expedition duration by 25% each.'],
-            ['Crystal Caves', 'Difficulty 1. 150-250 ticks. Yields stone, runite. Available by default with Rift Gate.'],
-            ['Verdant Depths', 'Difficulty 1. 100-180 ticks. Yields wood, wheat, berries. Available by default.'],
-            ['Shadow Realm', 'Difficulty 2. 250-400 ticks. Yields void essence, runite. Requires Deep Delving research.'],
+            ['Dimensions', 'Each has unique events, traps, and rare encounters:\n\n  Crystal Caves   Diff 1  150-250t  Stone, Runite\n  Verdant Depths  Diff 1  100-180t  Wood, Wheat, Berries\n  Arcane Library  Diff 1  120-200t  Spell Tomes, Runite  (Arcane Studies)\n  Shadow Realm    Diff 2  250-400t  Void Essence, Runite (Deep Delving)'],
+            ['Encounters', 'Combat encounters resolve round-by-round in real-time. Colonists attack with equipped weapons; enemies strike back. Traps deal damage to random party members. Discoveries provide bonus loot.'],
             ['No Permadeath', 'Defeated colonists return at 1 HP. Entire party defeated = return empty-handed.'],
         ]
     },
@@ -157,7 +149,7 @@ export const GLOSSARY = [
         title: 'Events',
         entries: [
             ['Wanderer', 'A new colonist wants to join. More likely when colony is happy. Accept or reject.'],
-            ['Trade Caravan', 'Exchange resources at set rates (wood→food, stone→wood, food→planks).'],
+            ['Trade Caravan', 'A merchant arrives with random inventory. Open barter panel to trade any resources. Trader buys at 70% value, sells at 140%. May carry exclusive items.'],
             ['Crop Blight', 'Destroys ~40% of growing crops. Summer/autumn.'],
             ['Mineral Windfall', 'New stone deposits appear on the map.'],
             ['Fire', 'Spreads to adjacent flammable tiles. Colonists auto-extinguish. Rain puts fires out.'],
@@ -169,26 +161,14 @@ export const GLOSSARY = [
     {
         title: 'Research (Arcanum required)',
         entries: [
-            ['Arcanum required', 'Colonists study at the Arcanum to generate study points. Spend points to unlock research.'],
-            ['Runecraft', '→ Etched Axe, unlocks Runeforging & Warding'],
-            ['Druidcraft', '→ Corn, Potatoes, unlocks Beast Binding'],
-            ['Ley Channeling', '→ Mana Crystal, unlocks Luminance/Ember Magic/Arcane Infusion'],
-            ['Alchemy', '→ +2 bonus food per cooked meal'],
-            ['Runeforging', '→ Runic Blade, Runic Pick, Runic Pickaxe, Boots of Haste'],
-            ['Warding', '→ Arcane Sentinel'],
-            ['Ember Magic', '→ Ember Ward'],
-            ['Luminance', '→ Glowstone'],
-            ['Arcane Infusion', '→ Enchanting Table'],
-            ['Void Summoning', '(Ley Channeling + Warding) → Void Nexus'],
-            ['Void Forging', '(Void Summoning + Runeforging) → Void Blade, Void Armor, Void Wall, Void Turret, Void Door'],
-            ['Planar Rift', '(Void Summoning + Ley Channeling) → Rift Gate'],
-            ['Deep Delving', '(Planar Rift) → Shadow Realm dimension'],
+            ['How Research Works', 'Colonists study at the Arcanum to generate study points. Spend points to unlock research.'],
+            ['Research Tree', 'Each research requires prerequisites and unlocks new content:\n\n  Research         Requires              Unlocks\n  Runecraft        —                     Etched Axe → Runeforging, Warding\n  Druidcraft       —                     Corn, Potatoes → Beast Binding\n  Ley Channeling   —                     Mana Crystal → Luminance, Ember, Arcane\n  Alchemy          —                     +2 bonus food per cooked meal\n  Runeforging      Runecraft             Runic Blade, Pick, Pickaxe, Boots\n  Warding          Runecraft             Arcane Sentinel\n  Ember Magic      Ley Channeling        Ember Ward\n  Luminance        Ley Channeling        Glowstone\n  Arcane Infusion  Ley Channeling        Enchanting Table\n  Void Summoning   Ley Chan. + Warding   Void Nexus\n  Void Forging     Void Sum. + Runeforg  Void Blade/Armor/Wall/Turret/Door\n  Golem Craft      Arcane Inf + Void F   Golem Forge, all golems\n  Planar Rift      Void Sum. + Ley Chan  Rift Gate\n  Deep Delving     Planar Rift           Shadow Realm dimension'],
         ]
     },
     {
         title: 'Mana (Leylines)',
         entries: [
-            ['Net Mana', 'Generation (mana crystals) minus consumption (glowstones, enchanting tables, ember wards, arcane sentinels, void turrets, rift gates, ice boxes). If negative, all mana-powered buildings stop working.'],
+            ['Net Mana', 'Generation minus consumption. If negative, all mana buildings shut off.\n\n  Building           Mana\n  Mana Crystal       +10 (generates)\n  Ice Box            -1\n  Glowstone          -2\n  Arcane Sentinel    -3\n  Ember Ward         -3\n  Enchanting Table   -4\n  Void Turret        -5\n  Rift Gate          -6'],
         ]
     },
     {
@@ -205,7 +185,7 @@ export const GLOSSARY = [
         entries: [
             ['Overview', 'Golems are animated stone workers. They never eat, sleep, or have mood swings. Each specializes in one skill.'],
             ['Golem Forge', 'Build a Golem Forge (requires Golem Craft research) and click it to craft golems. Costs stone, runite, and void essence.'],
-            ['Types', 'Farmer (farming 6), Miner (building 6), Combat (dmg 20, auto-fights), Hauler (hauling 8, fast speed).'],
+            ['Types', 'Craft at the Golem Forge:\n\n  Type     Specialty  Skill  HP   Cost\n  Farmer   Farming    6      150  10 stone, 3 runite, 2 void\n  Miner    Building   6      180  12 stone, 4 runite, 2 void\n  Combat   Fighting   —      250  15 stone, 5 runite, 4 void\n  Hauler   Hauling    8      120  8 stone, 2 runite, 1 void'],
             ['Limitations', 'Cannot equip tomes or learn spells. Cannot be drafted. Do not count toward colonist cap.'],
         ]
     },
@@ -213,8 +193,8 @@ export const GLOSSARY = [
         title: 'Complex Structures',
         entries: [
             ['Pattern Activation', 'Build the core piece, then surround it with the required pattern. Activation is automatic when the pattern is complete. Destroying any piece deactivates the bonus.'],
-            ['Great Forge', '3×3 room: Forge Core (⚒) at center, walls on all sides except one door. Effect: 2.5x equipment crafting speed for colonists within 3 tiles. Requires: Masterwork research.'],
-            ['Ritual Circle', '5×5 diamond: Ritual Core (◎) at center, walls at 8 positions forming a diamond. Effect: -30% spell cooldowns within radius 6. Requires: Advanced Arcana research.'],
+            ['Great Forge Layout', '3×3 room. Effect: 2.5x equipment crafting speed within 3 tiles. Requires: Masterwork research.\n\n  ███\n  █⚒█    █ = Wall (any material)\n  █+█    ⚒ = Forge Core (center)\n            + = Door (any side)\n\nWalls on all sides except one door.'],
+            ['Ritual Circle Layout', '5×5 diamond. Effect: -30% spell cooldowns within radius 6. Requires: Advanced Arcana research.\n\n    █\n   █ █\n  █ ◎ █   █ = Wall (any material)\n   █ █    ◎ = Ritual Core (center)\n    █\n\nWalls at 4 cardinal (dist 2) + 4 diagonal (dist 1) positions.'],
         ]
     },
     {
@@ -285,19 +265,106 @@ export const GLOSSARY = [
 
 export function renderGlossaryHTML() {
     let html = '';
-    for (const section of GLOSSARY) {
-        html += `<div style="color:#88ccff; font-weight:bold; margin-top:${html ? '12' : '10'}px;">-- ${section.title} --</div>`;
+    html += `<input type="text" id="glossary-search" placeholder="Search glossary..." style="width:100%; padding:6px 10px; margin-bottom:10px; background:#2a2a4a; border:1px solid #555; border-radius:4px; color:#eee; font-size:12px; font-family:inherit; outline:none;">`;
+
+    html += `<div id="glossary-tabs" style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:10px;">`;
+    for (let i = 0; i < GLOSSARY.length; i++) {
+        html += `<button class="glossary-tab-btn" data-tab="${i}" style="padding:3px 8px; background:${i === 0 ? '#446' : '#2a2a4a'}; border:1px solid #555; border-radius:3px; color:${i === 0 ? '#88ccff' : '#888'}; font-size:11px; cursor:pointer; font-family:inherit;">${GLOSSARY[i].title}</button>`;
+    }
+    html += `</div>`;
+
+    html += `<div id="glossary-content">`;
+    for (let i = 0; i < GLOSSARY.length; i++) {
+        const section = GLOSSARY[i];
+        html += `<div class="glossary-section" data-section="${i}" style="display:${i === 0 ? 'block' : 'none'}">`;
         if (section.symbols) {
-            html += '<div style="font-family:monospace; color:#aaa;">';
+            html += '<div style="font-family:monospace; color:#aaa; line-height:2;">';
             for (const [char, label, color] of section.symbols) {
-                html += `<span style="color:${color}">${char}</span> ${label} &nbsp; `;
+                html += `<span class="glossary-entry"><span style="color:${color}; font-size:14px;">${char}</span> ${label} &nbsp;&nbsp;</span>`;
             }
             html += '</div>';
         } else {
             for (const [term, desc] of section.entries) {
-                html += `<div><b style="color:#fff">${term}</b> — ${desc}</div>`;
+                if (desc.includes('\n')) {
+                    const parts = desc.split('\n');
+                    html += `<div class="glossary-entry" style="margin:4px 0;"><b style="color:#fff">${term}</b> — ${parts[0]}</div>`;
+                    html += `<pre style="margin:2px 0 8px 12px; color:#aaa; font-size:11px; line-height:1.4;">${parts.slice(1).join('\n')}</pre>`;
+                } else {
+                    html += `<div class="glossary-entry" style="margin:4px 0;"><b style="color:#fff">${term}</b> — ${desc}</div>`;
+                }
             }
         }
+        html += `</div>`;
     }
+    html += `</div>`;
+
+    html += `<div id="glossary-search-results" style="display:none;"></div>`;
+
     return html;
+}
+
+export function initGlossaryInteraction() {
+    const search = document.getElementById('glossary-search');
+    const tabs = document.getElementById('glossary-tabs');
+    const content = document.getElementById('glossary-content');
+    const results = document.getElementById('glossary-search-results');
+    if (!search || !tabs || !content || !results) return;
+
+    const tabBtns = tabs.querySelectorAll('.glossary-tab-btn');
+    const sections = content.querySelectorAll('.glossary-section');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (search.value.trim()) return;
+            const idx = btn.dataset.tab;
+            tabBtns.forEach(b => { b.style.background = '#2a2a4a'; b.style.color = '#888'; });
+            btn.style.background = '#446';
+            btn.style.color = '#88ccff';
+            sections.forEach(s => { s.style.display = s.dataset.section === idx ? 'block' : 'none'; });
+        });
+    });
+
+    search.addEventListener('input', () => {
+        const query = search.value.trim().toLowerCase();
+        if (!query) {
+            results.style.display = 'none';
+            content.style.display = 'block';
+            tabs.style.display = 'flex';
+            return;
+        }
+
+        content.style.display = 'none';
+        tabs.style.display = 'none';
+        results.style.display = 'block';
+
+        let html = '';
+        for (const section of GLOSSARY) {
+            const matches = [];
+            if (section.symbols) {
+                for (const [char, label, color] of section.symbols) {
+                    if (`${char} ${label}`.toLowerCase().includes(query)) {
+                        matches.push(`<span style="color:${color}; font-size:14px;">${char}</span> ${label}`);
+                    }
+                }
+            } else {
+                for (const [term, desc] of section.entries) {
+                    if (`${term} ${desc}`.toLowerCase().includes(query)) {
+                        if (desc.includes('\n')) {
+                            const parts = desc.split('\n');
+                            matches.push(`<b style="color:#fff">${term}</b> — ${parts[0]}<pre style="margin:2px 0 4px 12px; color:#aaa; font-size:11px; line-height:1.4;">${parts.slice(1).join('\n')}</pre>`);
+                        } else {
+                            matches.push(`<b style="color:#fff">${term}</b> — ${desc}`);
+                        }
+                    }
+                }
+            }
+            if (matches.length > 0) {
+                html += `<div style="color:#88ccff; font-weight:bold; margin-top:8px; margin-bottom:4px; font-size:11px;">${section.title}</div>`;
+                for (const m of matches) {
+                    html += `<div style="margin:3px 0;">${m}</div>`;
+                }
+            }
+        }
+        results.innerHTML = html || '<div style="color:#888; margin-top:10px;">No results found.</div>';
+    });
 }

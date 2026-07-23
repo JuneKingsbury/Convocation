@@ -25,7 +25,7 @@ import { saveGame, loadGame, hasSave, exportSave, importSave } from './save.js';
 import { initResizeHandles } from '../ui/resize.js';
 import { SpatialHash } from '../world/spatial.js';
 import { MapIndex } from '../world/mapindex.js';
-import { renderGlossaryHTML } from '../ui/glossary.js';
+import { renderGlossaryHTML, initGlossaryInteraction } from '../ui/glossary.js';
 import { checkComplexStructures } from '../systems/complexBuildings.js';
 
 class Game {
@@ -502,6 +502,8 @@ class Game {
         const backdrop = document.getElementById('modal-backdrop');
         if (panel) panel.style.display = 'block';
         if (backdrop) backdrop.style.display = 'block';
+        const search = document.getElementById('glossary-search');
+        if (search) search.focus();
     }
 
     togglePeaceful() {
@@ -894,6 +896,27 @@ class Game {
         }
         this.notifications.push({ text: '[DEBUG] 999 resources + all research granted', tick: this.tick, type: 'success' });
     }
+
+    cheatGrantStarterSpells() {
+        const starterSpells = Object.entries(SPELLS)
+            .filter(([, spell]) => spell.minLevel === 0)
+            .map(([key]) => key);
+        let count = 0;
+        for (const c of this.colonists) {
+            if (c.golem || c.hp <= 0) continue;
+            if (!c.knownSpells) c.knownSpells = [];
+            for (const spellKey of starterSpells) {
+                if (!c.knownSpells.includes(spellKey)) {
+                    c.knownSpells.push(spellKey);
+                }
+            }
+            for (const school of Object.keys(c.magicSkills || {})) {
+                if (c.magicSkills[school] < 1) c.magicSkills[school] = 1;
+            }
+            count++;
+        }
+        this.notifications.push({ text: `[DEBUG] ${count} colonists granted ${starterSpells.length} starter spells + magic skills set to 1`, tick: this.tick, type: 'success' });
+    }
 }
 
 function updateAutoRepair(game) {
@@ -1109,7 +1132,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const glossaryPanel = document.getElementById('glossary-panel');
     const modalBackdrop = document.getElementById('modal-backdrop');
     const glossaryBody = document.getElementById('glossary-body');
-    if (glossaryBody) glossaryBody.innerHTML = renderGlossaryHTML();
+    if (glossaryBody) {
+        glossaryBody.innerHTML = renderGlossaryHTML();
+        initGlossaryInteraction();
+    }
 
     function closeModals() {
         settingsPanel.style.display = 'none';

@@ -11,6 +11,7 @@ export class UI {
         this.craftPanelVisible = false;
         this.researchPanelVisible = false;
         this.inventoryVisible = false;
+        this._invTab = 'resources';
         this.tamingPanelVisible = false;
         this.settingsPanelVisible = false;
         this.elements = {};
@@ -130,6 +131,13 @@ export class UI {
         });
 
         this.elements.inventoryPanel.addEventListener('click', (e) => {
+            const tabBtn = e.target.closest('[data-inv-tab]');
+            if (tabBtn) {
+                this._invTab = tabBtn.dataset.invTab;
+                this._lastInvHtml = null;
+                this.updateInventoryPanel();
+                return;
+            }
             const btn = e.target.closest('[data-reserve-food]');
             if (btn) {
                 const food = btn.dataset.reserveFood;
@@ -152,6 +160,28 @@ export class UI {
                 case 'taming': this.toggleTamingPanel(); break;
                 case 'settings': this.toggleSettingsPanel(); break;
             }
+        });
+
+        const uiTooltip = document.getElementById('ui-tooltip');
+        document.addEventListener('mouseover', (e) => {
+            const tip = e.target.closest('.skill-tip[data-tip]');
+            if (!tip) return;
+            uiTooltip.textContent = tip.dataset.tip;
+            uiTooltip.style.opacity = '1';
+            const rect = tip.getBoundingClientRect();
+            let left = rect.left + rect.width / 2 - uiTooltip.offsetWidth / 2;
+            let top = rect.top - uiTooltip.offsetHeight - 6;
+            if (top < 4) top = rect.bottom + 6;
+            if (left < 4) left = 4;
+            if (left + uiTooltip.offsetWidth > window.innerWidth - 4) {
+                left = window.innerWidth - uiTooltip.offsetWidth - 4;
+            }
+            uiTooltip.style.left = left + 'px';
+            uiTooltip.style.top = top + 'px';
+        });
+        document.addEventListener('mouseout', (e) => {
+            const tip = e.target.closest('.skill-tip[data-tip]');
+            if (tip) uiTooltip.style.opacity = '0';
         });
     }
 
@@ -304,12 +334,17 @@ export class UI {
     }
 
     _refreshRiftGateInfo() {
-        if (!this.game.exploration || this.game.exploration.expeditions.length === 0) return;
+        if (!this.game.exploration) return;
+        const hasActive = this.game.exploration.expeditions.length > 0;
+        const hasCompleted = this.game.exploration.completedExpeditions.length > 0;
+        if (!hasActive && !hasCompleted) return;
         const riftSection = this.elements.infoPanel.querySelector('[data-rift-info]');
         if (!riftSection) return;
         const html = this._buildRiftGateInnerHtml();
         if (html !== riftSection.innerHTML) {
             riftSection.innerHTML = html;
+            const logContainer = riftSection.querySelector('.exp-log-container');
+            if (logContainer) logContainer.scrollTop = logContainer.scrollHeight;
         }
     }
 
@@ -367,8 +402,31 @@ export class UI {
                     const elapsed = this.game.tick - exp.startTick;
                     const totalDur = Math.floor(exp.duration * 1.2);
                     const pct = Math.min(100, Math.floor((elapsed / totalDur) * 100));
-                    html += `<div class="info-row" style="color:#aaddff;">${exp.dimensionName} — ${exp.status} (${pct}%)</div>`;
-                    html += `<div class="info-row" style="color:#888;">Party: ${exp.partySnapshot.map(p => p.name).join(', ')}</div>`;
+                    html += `<div class="info-row" style="color:#aaddff;">${exp.dimensionName} — ${exp.status}${exp.combat ? ' [COMBAT]' : ''} (${pct}%)</div>`;
+
+                    const aliveParty = exp.partySnapshot.filter(p => p.hp > 0);
+                    html += `<div class="info-row" style="color:#888;">Party (${aliveParty.length}/${exp.partySnapshot.length} alive):</div>`;
+                    for (const p of exp.partySnapshot) {
+                        const hpPct = Math.max(0, Math.round((p.hp / p.maxHp) * 100));
+                        const color = p.hp <= 0 ? '#664444' : hpPct < 30 ? '#ff4444' : hpPct < 60 ? '#ffaa44' : '#88cc88';
+                        const status = p.hp <= 0 ? ' [DOWN]' : '';
+                        const manaStr = p.maxMana > 0 ? ` | ${p.mana}/${p.maxMana} MP` : '';
+                        const shieldStr = p.shieldActive ? ' 🛡' : '';
+                        html += `<div class="info-row" style="color:${color}; padding-left:8px;">${p.name} — ${Math.max(0, p.hp)}/${p.maxHp} HP${manaStr}${shieldStr}${status}</div>`;
+                    }
+
+                    if (exp.combat) {
+                        const enemiesAlive = exp.combat.enemies.filter(e => e.hp > 0).length;
+                        html += `<div class="info-row" style="color:#ff8844; margin-top:4px;">Enemies remaining: ${enemiesAlive}/${exp.combat.enemies.length}</div>`;
+                    }
+
+                    html += `<div class="exp-log-container">`;
+                    const logSlice = exp.log.slice(-15);
+                    for (const entry of logSlice) {
+                        const color = this._expLogColor(entry.type);
+                        html += `<div class="exp-log-entry" style="color:${color};">${entry.text}</div>`;
+                    }
+                    html += `</div>`;
                 }
             }
         }
@@ -383,12 +441,51 @@ export class UI {
             html += `<div class="info-row" style="color:#ff4444;">No mana — cannot send expeditions</div>`;
         }
 
-        if (expl.completedExpeditions.length > 0) {
+        if (expl.completedExpeditions.length > 0 && expl.expeditions.length === 0) {
             const last = expl.completedExpeditions[expl.completedExpeditions.length - 1];
-            html += `<div class="info-row" style="margin-top:6px;color:#666;">Last: ${last.dimensionName} — ${last.log[last.log.length - 1] || ''}</div>`;
+            html += `<div class="info-row" style="margin-top:6px;color:#88ccff;font-size:0.9em;">Last expedition: ${last.dimensionName}</div>`;
+            html += `<div class="exp-log-container">`;
+            const logSlice = last.log.slice(-10);
+            for (const entry of logSlice) {
+                const color = this._expLogColor(entry.type);
+                html += `<div class="exp-log-entry" style="color:${color};">${entry.text}</div>`;
+            }
+            html += `</div>`;
         }
 
         return html;
+    }
+
+    _expLogColor(type) {
+        switch (type) {
+            case 'danger': return '#ff5555';
+            case 'combat': return '#ff8844';
+            case 'success': return '#88ff88';
+            case 'loot': return '#ffcc44';
+            case 'ambient': return '#777777';
+            default: return '#aaddff';
+        }
+    }
+
+    _spellTooltip(spell) {
+        const parts = [spell.school.charAt(0).toUpperCase() + spell.school.slice(1)];
+        switch (spell.effect) {
+            case 'ranged_damage': parts.push(`${spell.damage} dmg, range ${spell.range}`); break;
+            case 'ranged_damage_aoe': parts.push(`${spell.damage} AoE dmg, range ${spell.range}, radius ${spell.radius}`); break;
+            case 'heal': parts.push(`Heals ${spell.healAmount} HP when below ${Math.round((spell.hpThreshold || 0.5) * 100)}%`); break;
+            case 'buff_defense': parts.push(`-${Math.round(spell.damageReduction * 100)}% dmg taken, ${spell.duration}t`); break;
+            case 'buff_speed': parts.push(`+${spell.workSpeedBonus > 1 ? Math.round((spell.workSpeedBonus - 1) * 100) + '% work speed' : ''}${spell.moveSpeedBonus ? ' +' + spell.moveSpeedBonus + ' move' : ''}, ${spell.duration}t`); break;
+            case 'summon': parts.push(`Summon (${spell.summonHp} HP, ${spell.summonDamage} dmg, ${spell.summonDuration}t)`); break;
+            case 'teleport': parts.push(`Teleport, range ${spell.range}`); break;
+            case 'boost_crops': parts.push(`${spell.growthMult}x growth, radius ${spell.radius}, ${spell.duration}t`); break;
+            case 'terraform': parts.push(`Flatten terrain, radius ${spell.radius}`); break;
+            case 'divination_modifier': parts.push(`Passive divination effect, ${spell.duration}t`); break;
+            default: parts.push(spell.effect.replace(/_/g, ' '));
+        }
+        if (spell.trigger === 'inCombat') parts.push('Trigger: in combat');
+        else if (spell.trigger === 'lowHealth') parts.push('Trigger: low HP');
+        else if (spell.trigger === 'hasTask') parts.push('Trigger: while working');
+        return parts.join(' | ');
     }
 
     getStructureDescription(structure) {
@@ -484,7 +581,8 @@ export class UI {
                     const checked = !isDisabled ? 'checked' : '';
                     spellHtml += `<input type="checkbox" ${checked} onchange="window.game.toggleSpell(${colonist.id},'${spellKey}')" style="margin-right:4px;vertical-align:middle">`;
                 }
-                spellHtml += `<span style="color:${isDisabled ? '#666' : '#bb88ff'}">${spell.name}</span> <span style="color:#666;font-size:0.85em">(${spell.manaCost} mana, ${spell.cooldown}t cd)</span>`;
+                const tipDesc = this._spellTooltip(spell);
+                spellHtml += `<span class="skill-tip" data-tip="${tipDesc}" style="color:${isDisabled ? '#666' : '#bb88ff'}">${spell.name}</span> <span style="color:#666;font-size:0.85em">(${spell.manaCost} mana, ${spell.cooldown}t cd)</span>`;
                 if (spell.castType === 'targeted') {
                     const disabled = onCooldown || !hasMana;
                     const reason = onCooldown ? `${cdRemaining}t` : !hasMana ? 'low mana' : '';
@@ -1411,12 +1509,48 @@ export class UI {
     }
 
     updateInventoryPanel() {
+        const activeTab = this._invTab || 'resources';
         const r = this.game.resources.stockpile;
         const weapons = this.game.resources.weapons;
+        const armors = this.game.resources.armors;
+        const tools = this.game.resources.tools;
+        const artifacts = this.game.resources.artifacts;
+        const potions = this.game.resources.potions;
+        const tomes = this.game.resources.tomes;
+        const tamed = this.game.tamedAnimals;
+
+        const equipCount = weapons.length + armors.length + tools.length + artifacts.length;
+        const consumeCount = potions.length + tomes.length;
+
         let html = '<div class="panel-close" data-panel-close="inventory">&times;</div><h3>Inventory</h3>';
 
-        html += '<div class="info-row" style="color:#88cc88;margin-bottom:4px;"><b>Resources:</b></div>';
+        html += '<div class="inv-tabs">';
+        html += `<button class="inv-tab-btn${activeTab === 'resources' ? ' active' : ''}" data-inv-tab="resources">Resources</button>`;
+        html += `<button class="inv-tab-btn${activeTab === 'equipment' ? ' active' : ''}" data-inv-tab="equipment">Equipment${equipCount ? ` (${equipCount})` : ''}</button>`;
+        html += `<button class="inv-tab-btn${activeTab === 'consumables' ? ' active' : ''}" data-inv-tab="consumables">Consumables${consumeCount ? ` (${consumeCount})` : ''}</button>`;
+        html += `<button class="inv-tab-btn${activeTab === 'animals' ? ' active' : ''}" data-inv-tab="animals">Animals${tamed.length ? ` (${tamed.length})` : ''}</button>`;
+        html += '</div>';
 
+        html += '<div class="inv-tab-content">';
+        if (activeTab === 'resources') {
+            html += this._buildInvResources(r);
+        } else if (activeTab === 'equipment') {
+            html += this._buildInvEquipment(weapons, armors, tools, artifacts);
+        } else if (activeTab === 'consumables') {
+            html += this._buildInvConsumables(potions, tomes);
+        } else if (activeTab === 'animals') {
+            html += this._buildInvAnimals(tamed);
+        }
+        html += '</div>';
+
+        if (html !== this._lastInvHtml) {
+            this._lastInvHtml = html;
+            this.elements.inventoryPanel.innerHTML = html;
+        }
+    }
+
+    _buildInvResources(r) {
+        let html = '';
         const foodChestCount = this.game.mapIndex ? this.game.mapIndex.getStructurePositions('food_chest').size : 0;
         const iceBoxCount = this.game.mapIndex ? this.game.mapIndex.getStructurePositions('ice_box').size : 0;
         const noPower = this.game.power && !this.game.power.powered;
@@ -1441,25 +1575,28 @@ export class UI {
             }
             html += `<div class="inv-row"><span class="inv-name">${key.replace(/_/g, ' ')}</span>${extra}<span class="inv-amount">${amount}</span></div>`;
         }
+        if (!html) html = '<div class="info-row" style="color:#666;">No resources.</div>';
+        return html;
+    }
 
+    _buildInvEquipment(weapons, armors, tools, artifacts) {
+        let html = '';
         if (weapons.length > 0) {
-            html += '<div class="info-row" style="color:#cc8888;margin-top:8px;margin-bottom:4px;"><b>Weapons in Storage:</b></div>';
+            html += '<div class="info-row" style="color:#cc8888;margin-bottom:4px;"><b>Weapons:</b></div>';
             weapons.forEach((w, i) => {
-                html += `<div class="inv-row"><span class="inv-name">${w.name}</span><span class="inv-amount">Dmg: ${w.damage}</span><button class="inv-delete" onclick="if(confirm('Discard ${w.name}?')){window.game.discardWeapon(${i})}">x</button></div>`;
+                let stats = `Dmg: ${w.damage}`;
+                if (w.spellDamageBonus) stats += `, +${Math.round(w.spellDamageBonus * 100)}% spell`;
+                html += `<div class="inv-row"><span class="inv-name">${w.name}</span><span class="inv-amount">${stats}</span><button class="inv-delete" onclick="if(confirm('Discard ${w.name}?')){window.game.discardWeapon(${i})}">x</button></div>`;
             });
         }
-
-        const armors = this.game.resources.armors;
         if (armors.length > 0) {
-            html += '<div class="info-row" style="color:#9966cc;margin-top:8px;margin-bottom:4px;"><b>Armor in Storage:</b></div>';
+            html += '<div class="info-row" style="color:#9966cc;margin-top:8px;margin-bottom:4px;"><b>Armor:</b></div>';
             armors.forEach((a, i) => {
                 html += `<div class="inv-row"><span class="inv-name">${a.name}</span><span class="inv-amount">-${Math.round(a.damageReduction * 100)}% dmg</span><button class="inv-delete" onclick="if(confirm('Discard ${a.name}?')){window.game.discardArmor(${i})}">x</button></div>`;
             });
         }
-
-        const tools = this.game.resources.tools;
         if (tools.length > 0) {
-            html += '<div class="info-row" style="color:#88aacc;margin-top:8px;margin-bottom:4px;"><b>Tools in Storage:</b></div>';
+            html += '<div class="info-row" style="color:#88aacc;margin-top:8px;margin-bottom:4px;"><b>Tools:</b></div>';
             tools.forEach((t, i) => {
                 const stats = [];
                 if (t.miningSpeed) stats.push(`+${Math.round((t.miningSpeed-1)*100)}% mine`);
@@ -1469,10 +1606,8 @@ export class UI {
                 html += `<div class="inv-row"><span class="inv-name">${t.name}</span><span class="inv-amount">${stats.join(', ')}</span><button class="inv-delete" onclick="if(confirm('Discard ${t.name}?')){window.game.discardTool(${i})}">x</button></div>`;
             });
         }
-
-        const artifacts = this.game.resources.artifacts;
         if (artifacts.length > 0) {
-            html += '<div class="info-row" style="color:#ccaa44;margin-top:8px;margin-bottom:4px;"><b>Artifacts in Storage:</b></div>';
+            html += '<div class="info-row" style="color:#ccaa44;margin-top:8px;margin-bottom:4px;"><b>Artifacts:</b></div>';
             artifacts.forEach((a, i) => {
                 const stats = [];
                 if (a.miningSpeed) stats.push(`+${Math.round((a.miningSpeed-1)*100)}% mine`);
@@ -1480,13 +1615,18 @@ export class UI {
                 if (a.farmingSpeed) stats.push(`+${Math.round((a.farmingSpeed-1)*100)}% farm`);
                 if (a.moveSpeedBonus) stats.push(`+${Math.round(a.moveSpeedBonus*100)}% move`);
                 if (a.damageReduction) stats.push(`-${Math.round(a.damageReduction*100)}% dmg`);
+                if (a.xpBonus) stats.push(`+${Math.round(a.xpBonus*100)}% XP`);
                 html += `<div class="inv-row"><span class="inv-name">${a.name}</span><span class="inv-amount">${stats.join(', ')}</span><button class="inv-delete" onclick="if(confirm('Discard ${a.name}?')){window.game.discardArtifact(${i})}">x</button></div>`;
             });
         }
+        if (!html) html = '<div class="info-row" style="color:#666;">No equipment in storage.</div>';
+        return html;
+    }
 
-        const potions = this.game.resources.potions;
+    _buildInvConsumables(potions, tomes) {
+        let html = '';
         if (potions.length > 0) {
-            html += '<div class="info-row" style="color:#cc88aa;margin-top:8px;margin-bottom:4px;"><b>Potions:</b></div>';
+            html += '<div class="info-row" style="color:#cc88aa;margin-bottom:4px;"><b>Potions:</b></div>';
             const potionCounts = {};
             for (const p of potions) {
                 potionCounts[p.type] = (potionCounts[p.type] || 0) + 1;
@@ -1496,8 +1636,6 @@ export class UI {
                 html += `<div class="inv-row"><span class="inv-name">${def ? def.name : type}</span><span class="inv-amount">x${count}</span></div>`;
             }
         }
-
-        const tomes = this.game.resources.tomes;
         if (tomes.length > 0) {
             html += '<div class="info-row" style="color:#bb88ff;margin-top:8px;margin-bottom:4px;"><b>Spell Tomes:</b></div>';
             const tomeCounts = {};
@@ -1511,25 +1649,25 @@ export class UI {
                 html += `<div class="inv-row"><span class="inv-name">${def ? def.name : key}</span><span class="inv-amount">x${count}${schoolName ? ` (${schoolName})` : ''}</span></div>`;
             }
         }
+        if (!html) html = '<div class="info-row" style="color:#666;">No consumables.</div>';
+        return html;
+    }
 
-        const tamed = this.game.tamedAnimals;
+    _buildInvAnimals(tamed) {
+        let html = '';
         if (tamed.length > 0) {
-            html += '<div class="info-row" style="color:#aacc88;margin-top:8px;margin-bottom:4px;"><b>Tamed Animals:</b></div>';
             const counts = {};
             for (const a of tamed) {
                 counts[a.type] = (counts[a.type] || 0) + 1;
             }
             for (const [type, count] of Object.entries(counts)) {
                 const def = TAMED_ANIMALS[type];
-                let role = def.produces ? `produces: ${def.produces}` : def.packAnimal ? 'pack animal' : def.happinessAura ? 'happiness aura' : '';
+                let role = def.produces ? `produces: ${def.produces}` : def.packAnimal ? 'pack animal' : def.happinessAura ? 'happiness aura' : def.guardAnimal ? 'guard' : '';
                 html += `<div class="inv-row"><span class="inv-name">${type}</span><span class="inv-amount">x${count}${role ? ` (${role})` : ''}</span></div>`;
             }
         }
-
-        if (html !== this._lastInvHtml) {
-            this._lastInvHtml = html;
-            this.elements.inventoryPanel.innerHTML = html;
-        }
+        if (!html) html = '<div class="info-row" style="color:#666;">No tamed animals.</div>';
+        return html;
     }
 
     toggleTamingPanel() {
@@ -1624,9 +1762,10 @@ export class UI {
         html += `<div class="settings-row" style="margin-top:12px; border-top:1px solid #444; padding-top:8px;">`;
         html += `<button onclick="window.game.showGlossary()" style="padding:6px 12px;font-family:inherit;font-size:12px;background:#2a2a3a;border:1px solid #66a;color:#aaccff;cursor:pointer;border-radius:3px;">View Glossary</button>`;
         html += `</div>`;
-        html += `<div class="settings-row" style="margin-top:16px; border-top:1px solid #633; padding-top:10px; flex-direction:column; align-items:flex-start;">`;
+        html += `<div class="settings-row" style="margin-top:16px; border-top:1px solid #633; padding-top:10px; flex-direction:column; align-items:flex-start; gap:6px;">`;
         html += `<div style="color:#ff6666; font-size:10px; font-weight:bold; margin-bottom:4px;">⚠ DEBUG / TESTING ONLY ⚠</div>`;
-        html += `<button onclick="window.game.cheatResources()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant 999 of All Resources + Research</button>`;
+        html += `<button onclick="if(confirm('Grant 999 of all resources and complete all research? This cannot be undone.'))window.game.cheatResources()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant 999 of All Resources + Research</button>`;
+        html += `<button onclick="if(confirm('Grant all starter spells (level 0) to every colonist and set magic skills to 1? This cannot be undone.'))window.game.cheatGrantStarterSpells()" style="padding:6px 12px;font-family:inherit;font-size:11px;background:#4a1a1a;border:1px solid #a33;color:#f99;cursor:pointer;border-radius:3px;">Grant All Starter Spells + Magic Lvl 1</button>`;
         html += `</div>`;
         this.elements.settingsPanel.innerHTML = html;
     }

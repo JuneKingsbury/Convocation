@@ -970,6 +970,29 @@ export const DIMENSIONS = {
             { resource: 'void_essence', weight: 10, amount: [1, 3] },
         ],
         enemies: { hp: [40, 60], damage: [5, 8], count: [2, 4] },
+        events: {
+            ambient: [
+                '{name} marvels at crystalline formations pulsing with light.',
+                'The cave walls hum with resonant energy.',
+                '{name} traces veins of glowing runite through the rock.',
+                'Luminescent fungi illuminate a side passage.',
+                'A crystal chime echoes from deep below.',
+            ],
+            discoveries: [
+                '{name} cracks open a geode — raw runite inside!',
+                '{name} finds a vein of pure crystal ore.',
+                'A collapsed mining cart still holds usable stone.',
+            ],
+            traps: [
+                'A crystal shard explodes near {name}!',
+                '{name} slips on smooth crystal — hard landing!',
+                'Unstable ceiling crystals rain down on {name}!',
+            ],
+            rare: [
+                { chance: 0.05, text: '{name} discovers a resonating crystal chamber — bonus runite!', loot: { resource: 'runite', amount: [3, 6] } },
+                { chance: 0.03, text: '{name} finds an ancient dwarven cache!', loot: { resource: 'stone', amount: [8, 15] } },
+            ],
+        },
     },
     verdant_depths: {
         name: 'Verdant Depths', difficulty: 1,
@@ -980,6 +1003,29 @@ export const DIMENSIONS = {
             { resource: 'berries', weight: 20, amount: [4, 8] },
         ],
         enemies: { hp: [30, 50], damage: [4, 6], count: [1, 3] },
+        events: {
+            ambient: [
+                '{name} pushes through thick vine curtains.',
+                'Bioluminescent flowers line the path.',
+                '{name} hears birdsong from an impossible direction.',
+                'Giant mushrooms tower overhead, releasing spores.',
+                'A stream of crystal-clear water crosses the trail.',
+            ],
+            discoveries: [
+                '{name} finds a grove bursting with ripe fruit.',
+                'Fallen timber lies ready for harvest.',
+                '{name} discovers a hidden garden still bearing crops.',
+            ],
+            traps: [
+                'A thorny vine snaps around {name}\'s leg!',
+                '{name} stumbles into a pitcher plant — acid burns!',
+                'Toxic pollen bursts from a flower near {name}!',
+            ],
+            rare: [
+                { chance: 0.06, text: '{name} discovers a fertile seed cache — rare crops!', loot: { resource: 'potatoes', amount: [6, 10] } },
+                { chance: 0.04, text: '{name} finds a druid\'s abandoned herb stash!', loot: { resource: 'berries', amount: [8, 12] } },
+            ],
+        },
     },
     shadow_realm: {
         name: 'Shadow Realm', difficulty: 2,
@@ -990,6 +1036,31 @@ export const DIMENSIONS = {
         ],
         enemies: { hp: [80, 120], damage: [8, 14], count: [3, 6] },
         research: 'deep_delving',
+        events: {
+            ambient: [
+                'Reality flickers — {name} sees double for a moment.',
+                'Whispers from nowhere fill {name}\'s ears.',
+                'The shadows themselves seem to breathe.',
+                '{name} feels the void pulling at their mana.',
+                'A rift in space opens briefly, showing another world.',
+                'The ground shifts underfoot — nothing is solid here.',
+            ],
+            discoveries: [
+                '{name} finds crystallized void essence on a dead creature.',
+                'A pocket dimension collapses, dropping its contents.',
+                '{name} absorbs residual energy from a fading rift.',
+            ],
+            traps: [
+                'A void tendril lashes out at {name}!',
+                '{name} steps through a spatial fold — disorienting impact!',
+                'Shadow claws rake at {name} from the darkness!',
+                'A gravity inversion slams {name} into the ceiling!',
+            ],
+            rare: [
+                { chance: 0.04, text: '{name} absorbs a collapsing void crystal — pure essence!', loot: { resource: 'void_essence', amount: [4, 8] } },
+                { chance: 0.02, text: '{name} finds a sealed void reliquary!', loot: { resource: 'void_essence', amount: [6, 10] } },
+            ],
+        },
     },
     arcane_library: {
         name: 'Arcane Library', difficulty: 1,
@@ -1004,6 +1075,30 @@ export const DIMENSIONS = {
         ],
         enemies: { hp: [30, 50], damage: [4, 7], count: [1, 3] },
         research: 'arcane_studies',
+        events: {
+            ambient: [
+                '{name} reads a passage from a floating book.',
+                'Spectral librarians drift silently between shelves.',
+                '{name} feels arcane knowledge pressing at the edges of their mind.',
+                'A book flies off its shelf as the party passes.',
+                'The smell of ancient parchment fills the air.',
+                '{name} spots equations writing themselves on a chalkboard.',
+            ],
+            discoveries: [
+                '{name} finds a scroll hidden between two heavy tomes.',
+                'A secret shelf clicks open, revealing stored materials.',
+                '{name} deciphers a map leading to a hidden alcove.',
+            ],
+            traps: [
+                'A warded book shocks {name} upon touch!',
+                '{name} triggers a glyph on the floor — arcane blast!',
+                'An animated tome attacks {name} with paper cuts!',
+            ],
+            rare: [
+                { chance: 0.05, text: '{name} discovers a sealed headmaster\'s vault — rare tome inside!', loot: { resource: 'tome_magic_missile', amount: [1, 1] } },
+                { chance: 0.04, text: '{name} finds a cache of enchanting runite!', loot: { resource: 'runite', amount: [3, 5] } },
+            ],
+        },
     },
 };
 
@@ -1011,6 +1106,63 @@ export const EXPLORATION_CONFIG = {
     returnTimeMult: 1.2,
     encounterSpacing: 0.2,
     baseFistDamage: 5,
+    combatRoundTicks: 8,
+    microEventChance: 0.04,
+    trapDamageRange: [5, 15],
+    trapChance: 0.3,
+    findItemChance: 0.3,
+    ambientChance: 0.4,
+};
+
+export const EXPLORATION_EVENTS = {
+    ambient: [
+        '{name} notices strange runes on the walls.',
+        '{name} hears distant echoes ahead.',
+        'The party passes through a narrow passage.',
+        '{name} spots glowing crystals in the ceiling.',
+        'A cold draft blows from deeper in.',
+        '{name} finds old bones scattered on the ground.',
+        'The air grows thick with arcane energy.',
+        '{name} pauses to study an ancient mural.',
+        'Water drips from the ceiling above.',
+        'The path splits — the party chooses the left fork.',
+        '{name} feels a strange presence watching them.',
+        'Faint music drifts from somewhere ahead.',
+    ],
+    traps: [
+        '{name} triggers a hidden spike trap!',
+        'A burst of arcane fire singes {name}!',
+        '{name} steps on a pressure plate — darts fly!',
+        'The floor gives way under {name}!',
+        '{name} walks into a magical ward — shock!',
+        'Poisoned needles spring from the wall at {name}!',
+    ],
+    discoveries: [
+        '{name} finds a small cache behind a loose stone.',
+        'The party discovers an old supply stash.',
+        '{name} pries a gem from a wall socket.',
+        'An abandoned pack contains useful supplies.',
+        '{name} spots something glinting in the rubble.',
+    ],
+    combatStart: [
+        'Hostile creatures emerge from the darkness!',
+        'The party is ambushed!',
+        'Enemies block the path ahead!',
+        'Shadows coalesce into hostile forms!',
+    ],
+    combatHit: [
+        '{attacker} strikes {target} for {dmg} damage.',
+        '{attacker} lands a blow on {target} ({dmg} dmg).',
+        '{attacker} hits {target} hard ({dmg} dmg).',
+    ],
+    combatMiss: [
+        '{attacker} swings at {target} but misses.',
+        '{target} dodges {attacker}\'s attack.',
+    ],
+    combatDefeat: [
+        '{name} collapses from their wounds!',
+        '{name} is knocked unconscious!',
+    ],
 };
 
 // Wave defense (void nexus) tuning. Used by waves.js.
