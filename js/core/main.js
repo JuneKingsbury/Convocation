@@ -1,4 +1,4 @@
-import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS } from './config.js';
+import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS, TAMED_ANIMALS } from './config.js';
 import { generateMap } from '../world/map.js';
 import { Camera } from '../ui/camera.js';
 import { Renderer } from '../ui/renderer.js';
@@ -455,6 +455,17 @@ class Game {
             const weaponInfo = c.weapon ? ` (${c.weapon.name})` : ' (unarmed)';
             html += `<div class="info-row"><label><input type="checkbox" class="exp-check" value="${c.id}"> ${c.name}${weaponInfo} HP:${c.hp}/${c.maxHp}</label></div>`;
         }
+        const packAnimals = (this.tamedAnimals || []).filter(a => {
+            const def = TAMED_ANIMALS[a.type];
+            return def && def.packAnimal && a.hp > 0 && !a.onExpedition;
+        });
+        if (packAnimals.length > 0) {
+            html += `<div class="info-row" style="color:#bbaa44;margin-top:6px;"><b>Pack Animals:</b></div>`;
+            for (const a of packAnimals) {
+                const def = TAMED_ANIMALS[a.type];
+                html += `<div class="info-row"><label><input type="checkbox" class="exp-pack-check" value="${a.id}"> ${a.type} (+${Math.round(def.expeditionSpeedBonus * 100)}% speed)</label></div>`;
+            }
+        }
         html += `<div class="info-actions"><button onclick="window.game.launchExpedition('${dimensionKey}')" style="background:#1a4466;color:#88ddff;">Launch</button></div>`;
         this.ui.elements.infoPanel.innerHTML = html;
     }
@@ -466,7 +477,9 @@ class Game {
             this.notifications.push({ text: 'Select at least one colonist', tick: this.tick, type: 'danger' });
             return;
         }
-        const result = this.exploration.sendExpedition(this, dimensionKey, ids);
+        const packChecks = this.ui.elements.infoPanel.querySelectorAll('.exp-pack-check:checked');
+        const packIds = Array.from(packChecks).map(cb => parseInt(cb.value));
+        const result = this.exploration.sendExpedition(this, dimensionKey, ids, packIds);
         if (result) {
             this.notifications.push({ text: `Expedition launched to ${result.dimensionName}!`, tick: this.tick, type: 'success' });
         } else {

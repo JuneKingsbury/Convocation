@@ -847,20 +847,19 @@ for (const [name, c] of Object.entries(CROPS)) {
 // tameable: true enables taming. tamed sub-object: what the animal produces once tamed.
 // speed: movement rate (lower = slower). fleeRange/aggroRange: detection distance for behavior.
 export const ANIMALS = {
-    deer: { char: 'd', color: '#bb8855', hp: 40, speed: 0.5, hostile: false, meatYield: 3, fleeRange: 5 },
-    rabbit: { char: 'r', color: '#ccaa88', hp: 10, speed: 0.7, hostile: false, meatYield: 1, fleeRange: 4 },
-    wolf: { char: 'w', color: '#555555', hp: 60, speed: 0.6, hostile: true, meatYield: 2, damage: 8, aggroRange: 6 },
-    chicken: { char: 'c', color: '#ddaa44', hp: 15, speed: 0.4, hostile: false, meatYield: 1, fleeRange: 3, tameable: true, tamed: { produces: 'eggs', produceRate: 80, produceAmount: 1, foodToTame: 2 } },
-    cow: { char: 'C', color: '#aa7744', hp: 80, speed: 0.3, hostile: false, meatYield: 4, fleeRange: 4, tameable: true, tamed: { produces: 'milk', produceRate: 100, produceAmount: 2, foodToTame: 4 } },
-    sheep: { char: 's', color: '#cccccc', hp: 40, speed: 0.35, hostile: false, meatYield: 2, fleeRange: 4, tameable: true, tamed: { produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 3 } },
-    okapi: { char: 'O', color: '#b3562e', hp: 100, speed: 0.8, hostile: false, meatYield: 5, fleeRange: 4, tameable: true, tamed: { produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 5 } },
-    tapir: { char: 't', color: '#f2e6e6', hp: 60, speed: 0.25, hostile: false, meatYield: 4, fleeRange: 4, tameable: true, tamed: { produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 3 } },
+    deer:    { char: 'd', color: '#bb8855', hp: 40, speed: 0.5, hostile: false, meatYield: 3, fleeRange: 5, spawnWeight: 20 },
+    rabbit:  { char: 'r', color: '#ccaa88', hp: 10, speed: 0.7, hostile: false, meatYield: 1, fleeRange: 4, spawnWeight: 20 },
+    wolf:    { char: 'w', color: '#555555', hp: 60, speed: 0.6, hostile: true, meatYield: 2, damage: 8, aggroRange: 6, spawnWeight: 0, spawnCondition: 'hostileNight' },
+    chicken: { char: 'c', color: '#ddaa44', hp: 15, speed: 0.4, hostile: false, meatYield: 1, fleeRange: 3, spawnWeight: 10, tameable: true, tamed: { produces: 'eggs', produceRate: 80, produceAmount: 1, foodToTame: 2 } },
+    cow:     { char: 'C', color: '#aa7744', hp: 80, speed: 0.3, hostile: false, meatYield: 4, fleeRange: 4, spawnWeight: 15, tameable: true, tamed: { produces: 'milk', produceRate: 100, produceAmount: 2, foodToTame: 4 } },
+    sheep:   { char: 's', color: '#cccccc', hp: 40, speed: 0.35, hostile: false, meatYield: 2, fleeRange: 4, spawnWeight: 15, tameable: true, tamed: { produces: 'wool', produceRate: 120, produceAmount: 1, foodToTame: 3 } },
+    okapi:   { char: 'O', color: '#b3562e', hp: 100, speed: 0.8, hostile: false, meatYield: 5, fleeRange: 4, spawnWeight: 5, tameable: true, tamed: { packAnimal: true, expeditionSpeedBonus: 0.25, foodToTame: 5 } },
+    tapir:   { char: 't', color: '#f2e6e6', hp: 60, speed: 0.25, hostile: false, meatYield: 4, fleeRange: 4, spawnWeight: 5, tameable: true, tamed: { happinessAura: true, auraRadius: 4, auraMoodBonus: 5, foodToTame: 3 } },
 };
 
 // Wildlife spawning and behavior. Used by wildlife.js.
 export const WILDLIFE_CONFIG = {
     maxCount: 15,                // max wild animals on map at once
-    spawnWeights: { deer: 0.20, rabbit: 0.40, chicken: 0.50, sheep: 0.65, cow: 0.80, okapi: 0.85, tapir: 0.90 }, // cumulative probability thresholds - TODO: make this part of the ANIMALS object instead of a separate config
     passiveMoveChance: 0.3,      // chance per tick a passive animal moves randomly
     hostileIdleMoveChance: 0.2,  // chance per tick a hostile animal moves when no target nearby
     animalSearchRadius: 20,      // how far animals scan for colonists (flee/aggro)

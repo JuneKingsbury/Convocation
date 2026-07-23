@@ -57,18 +57,27 @@ function maybeSpawnAnimal(game) {
     game.wildlife.push(animal);
 }
 
+const _spawnTable = (() => {
+    const entries = [];
+    let total = 0;
+    for (const [type, def] of Object.entries(ANIMALS)) {
+        if (def.spawnWeight > 0 && !def.spawnCondition) {
+            total += def.spawnWeight;
+            entries.push({ type, cumulative: total });
+        }
+    }
+    return { entries, total };
+})();
+
 function pickAnimalType(game) {
-    const roll = Math.random();
-    const w = WILDLIFE_CONFIG.spawnWeights;
-    if (roll < w.deer) return 'deer';
-    if (roll < w.rabbit) return 'rabbit';
-    if (roll < w.chicken) return 'chicken';
-    if (roll < w.sheep) return 'sheep';
-    if (roll < w.cow) return 'cow';
-    if (roll < w.okapi) return 'okapi';
-    if (roll < w.tapir) return 'tapir';
-    if (!CONFIG.PEACEFUL_MODE && (game.weather.season === 'winter' || game.timeOfDay / CONFIG.TICKS_PER_DAY > WILDLIFE_CONFIG.wolfNightThreshold)) return 'wolf';
-    return 'rabbit';
+    if (!CONFIG.PEACEFUL_MODE && (game.weather.season === 'winter' || game.timeOfDay / CONFIG.TICKS_PER_DAY > WILDLIFE_CONFIG.wolfNightThreshold)) {
+        if (Math.random() < 0.3) return 'wolf';
+    }
+    const roll = Math.random() * _spawnTable.total;
+    for (const entry of _spawnTable.entries) {
+        if (roll < entry.cumulative) return entry.type;
+    }
+    return _spawnTable.entries[0]?.type || 'rabbit';
 }
 
 function getRandomEdge() {

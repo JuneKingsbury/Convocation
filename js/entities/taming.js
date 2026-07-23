@@ -17,7 +17,7 @@ export function createTamedAnimal(type, x, y) {
         maxHp: def.hp,
         char: def.char,
         color: def.color,
-        produceCooldown: def.produceRate,
+        produceCooldown: def.produceRate || 0,
         penX: x,
         penY: y,
     };
@@ -27,19 +27,33 @@ export function updateTamedAnimals(game) {
     if (!game.research.isResearched('beast_binding')) return;
 
     for (const animal of game.tamedAnimals) {
-        animal.produceCooldown--;
-        if (animal.produceCooldown <= 0) {
-            const def = TAMED_ANIMALS[animal.type];
-            const output = {};
-            output[def.produces] = def.produceAmount;
-            game.resources.add(output);
-            animal.produceCooldown = def.produceRate;
+        if (animal.onExpedition) continue;
+        const def = TAMED_ANIMALS[animal.type];
+        if (def.produces) {
+            animal.produceCooldown--;
+            if (animal.produceCooldown <= 0) {
+                const output = {};
+                output[def.produces] = def.produceAmount;
+                game.resources.add(output);
+                animal.produceCooldown = def.produceRate;
+            }
         }
 
         if (Math.random() < WORK_CONFIG.tamedMoveChance) {
             const pen = findNearestPen(game, animal);
             if (pen) {
                 wanderInPen(animal, pen, game.map);
+            }
+        }
+
+        if (def.happinessAura) {
+            const radius = def.auraRadius || 4;
+            for (const c of game.colonists) {
+                if (c.hp <= 0) continue;
+                const dist = Math.abs(c.x - animal.x) + Math.abs(c.y - animal.y);
+                if (dist <= radius) {
+                    c.mood = Math.min(100, c.mood + (def.auraMoodBonus || 5) * 0.01);
+                }
             }
         }
     }

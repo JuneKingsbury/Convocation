@@ -755,7 +755,9 @@ export class UI {
             if (a.hostile && def?.damage) html += `<div class="info-row">Damage: ${def.damage}</div>`;
             if (def?.tameable) {
                 const tamedDef = TAMED_ANIMALS[a.type];
-                if (tamedDef) html += `<div class="info-row" style="color:#88cc88">Produces: ${tamedDef.produces} (every ${tamedDef.produceRate} ticks)</div>`;
+                if (tamedDef?.produces) html += `<div class="info-row" style="color:#88cc88">Produces: ${tamedDef.produces} (every ${tamedDef.produceRate} ticks)</div>`;
+                if (tamedDef?.packAnimal) html += `<div class="info-row" style="color:#bbaa44">Pack animal (+${Math.round(tamedDef.expeditionSpeedBonus * 100)}% expedition speed)</div>`;
+                if (tamedDef?.happinessAura) html += `<div class="info-row" style="color:#ff88cc">Happiness aura (radius ${tamedDef.auraRadius})</div>`;
             }
             html += `<div class="info-row">Speed: ${def?.speed || a.speed}</div>`;
             html += `<div class="info-actions">`;
@@ -774,10 +776,13 @@ export class UI {
             html += `<div style="border-bottom:1px solid #444;margin-bottom:6px;padding-bottom:6px;">`;
             html += `<div class="info-header" style="color:${color};">${a.type} (tamed)</div>`;
             html += `<div class="info-row">HP: ${a.hp}/${a.maxHp}</div>`;
-            if (def) {
+            if (def?.produces) {
                 html += `<div class="info-row">Produces: ${def.produces} (every ${def.produceRate} ticks)</div>`;
                 html += `<div class="info-row">Next in: ${a.produceCooldown} ticks</div>`;
             }
+            if (def?.packAnimal) html += `<div class="info-row" style="color:#bbaa44">Pack animal (+${Math.round(def.expeditionSpeedBonus * 100)}% expedition speed)</div>`;
+            if (def?.happinessAura) html += `<div class="info-row" style="color:#ff88cc">Happiness aura (radius ${def.auraRadius})</div>`;
+            if (a.onExpedition) html += `<div class="info-row" style="color:#33ccff">On expedition</div>`;
             html += `</div>`;
         }
 
@@ -1458,7 +1463,8 @@ export class UI {
             }
             for (const [type, count] of Object.entries(counts)) {
                 const def = TAMED_ANIMALS[type];
-                html += `<div class="inv-row"><span class="inv-name">${type}</span><span class="inv-amount">x${count} (produces: ${def.produces})</span></div>`;
+                let role = def.produces ? `produces: ${def.produces}` : def.packAnimal ? 'pack animal' : def.happinessAura ? 'happiness aura' : '';
+                html += `<div class="inv-row"><span class="inv-name">${type}</span><span class="inv-amount">x${count}${role ? ` (${role})` : ''}</span></div>`;
             }
         }
 
@@ -1494,7 +1500,10 @@ export class UI {
         html += '<div class="info-row" style="margin-top:6px;color:#aaa;"><b>Tameable species:</b></div>';
         for (const [type, def] of Object.entries(TAMED_ANIMALS)) {
             html += `<div class="info-row" style="color:${ANIMALS[type]?.color || '#ccc'}">`;
-            html += `${type} — Cost: ${def.foodToTame} food | Produces: ${def.produces} (every ${def.produceRate} ticks)`;
+            html += `${type} — Cost: ${def.foodToTame} food`;
+            if (def.produces) html += ` | Produces: ${def.produces} (every ${def.produceRate} ticks)`;
+            if (def.packAnimal) html += ` | Pack animal (+${Math.round(def.expeditionSpeedBonus * 100)}% expedition speed)`;
+            if (def.happinessAura) html += ` | Happiness aura (radius ${def.auraRadius})`;
             html += `</div>`;
         }
 
@@ -1503,7 +1512,12 @@ export class UI {
             html += '<div class="info-row" style="margin-top:8px;color:#88cc88"><b>Your Animals:</b></div>';
             for (const a of tamed) {
                 const def = TAMED_ANIMALS[a.type];
-                html += `<div class="info-row" style="color:${def?.color || '#ccc'}">${a.type} — HP:${a.hp}/${a.maxHp} | Next ${def?.produces}: ${a.produceCooldown} ticks</div>`;
+                let status = `HP:${a.hp}/${a.maxHp}`;
+                if (a.onExpedition) status += ' | <span style="color:#33ccff">ON EXPEDITION</span>';
+                else if (def?.produces) status += ` | Next ${def.produces}: ${a.produceCooldown} ticks`;
+                else if (def?.packAnimal) status += ' | <span style="color:#bbaa44">Pack animal</span>';
+                else if (def?.happinessAura) status += ' | <span style="color:#ff88cc">Happiness aura</span>';
+                html += `<div class="info-row" style="color:${def?.color || '#ccc'}">${a.type} — ${status}</div>`;
             }
         } else {
             html += '<div class="info-row" style="margin-top:8px;color:#666">No tamed animals yet.</div>';

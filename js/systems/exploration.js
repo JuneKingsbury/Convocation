@@ -1,4 +1,4 @@
-import { DIMENSIONS, EXPLORATION_CONFIG } from '../core/config.js';
+import { DIMENSIONS, EXPLORATION_CONFIG, TAMED_ANIMALS } from '../core/config.js';
 import { findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 
 let nextExpeditionId = 1;
@@ -27,7 +27,7 @@ export class ExplorationSystem {
         return results;
     }
 
-    sendExpedition(game, dimensionKey, colonistIds) {
+    sendExpedition(game, dimensionKey, colonistIds, packAnimalIds = []) {
         if (!this.canSend(game, dimensionKey)) return null;
         if (colonistIds.length === 0) return null;
 
@@ -45,6 +45,17 @@ export class ExplorationSystem {
         const gatePos = this._findRiftGatePosition(game);
         if (!gatePos) return null;
 
+        const packAnimals = [];
+        for (const id of packAnimalIds) {
+            const a = game.tamedAnimals.find(ta => ta.id === id);
+            if (!a || a.hp <= 0) continue;
+            const def = TAMED_ANIMALS[a.type];
+            if (def && def.packAnimal) {
+                packAnimals.push({ id: a.id, type: a.type, speedBonus: def.expeditionSpeedBonus || 0 });
+                a.onExpedition = true;
+            }
+        }
+
         for (const c of party) {
             c.expeditionPending = true;
             if (c.currentTaskId) {
@@ -59,7 +70,11 @@ export class ExplorationSystem {
             }
         }
 
-        const duration = randInt(dim.duration[0], dim.duration[1]);
+        let duration = randInt(dim.duration[0], dim.duration[1]);
+        const totalSpeedBonus = packAnimals.reduce((sum, pa) => sum + pa.speedBonus, 0);
+        if (totalSpeedBonus > 0) {
+            duration = Math.max(Math.floor(duration * (1 - totalSpeedBonus)), Math.floor(duration * 0.5));
+        }
         const encounters = this._generateEncounters(dim);
 
         const expedition = {
@@ -67,6 +82,7 @@ export class ExplorationSystem {
             dimension: dimensionKey,
             dimensionName: dim.name,
             partyIds: party.map(c => c.id),
+            packAnimals,
             partySnapshot: [],
             gatePos,
             startTick: null,
@@ -77,7 +93,9 @@ export class ExplorationSystem {
             status: 'gathering',
             loot: {},
             defeated: [],
-            log: [`Party heading to Rift Gate`],
+            log: packAnimals.length > 0
+                ? [`Party heading to Rift Gate (${packAnimals.length} pack animal${packAnimals.length > 1 ? 's' : ''})`]
+                : [`Party heading to Rift Gate`],
         };
 
         this.expeditions.push(expedition);
@@ -282,6 +300,13 @@ export class ExplorationSystem {
                 colonist.hp = Math.min(colonist.maxHp, snapshot.hp);
             }
             colonist.state = 'idle';
+        }
+
+        if (exp.packAnimals) {
+            for (const pa of exp.packAnimals) {
+                const animal = game.tamedAnimals.find(a => a.id === pa.id);
+                if (animal) animal.onExpedition = false;
+            }
         }
 
         if (!allDefeated) {
