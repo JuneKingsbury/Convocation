@@ -1,4 +1,4 @@
-import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, BUILDINGS, SKILLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG, TASK_CONFIG } from '../core/config.js';
+import { CONFIG, COLONIST_NAMES, COLONIST_CONFIG, TRAITS, NEED_DECAY, MOOD_THRESHOLDS, MOOD_SPEED_MULT, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, BUILDINGS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, MAGIC_STUDY_CONFIG, SPELL_TOMES, SPELLS, RESOURCES, THOUGHTS, IMPASSABLE_STRUCTURES, COMBAT_VISUALS, WORK_CONFIG, TASK_CONFIG } from '../core/config.js';
 import { findPath, findPathAdjacent, manhattanDist } from '../world/pathfinding.js';
 import { isPassable, getMoveCost } from '../world/map.js';
 import { FOODSTUFFS } from '../systems/resources.js';
@@ -38,14 +38,34 @@ export function createColonist(x, y, skillBias, existingNames = []) {
         skills[skillBias] = Math.min(10, skills[skillBias] + (SKILLS[skillBias].biasBonus || 3));
     }
 
+    const magicSkills = {};
+    for (const [key, def] of Object.entries(MAGIC_SKILLS)) {
+        const [min, max] = def.baseLevel;
+        magicSkills[key] = min + Math.floor(Math.random() * (max - min + 1));
+    }
+    let magicBias = null;
+    if (Math.random() < COLONIST_CONFIG.magicBiasChance) {
+        const magicKeys = Object.keys(MAGIC_SKILLS);
+        magicBias = magicKeys[Math.floor(Math.random() * magicKeys.length)];
+        magicSkills[magicBias] = Math.min(10, magicSkills[magicBias] + (MAGIC_SKILLS[magicBias].biasBonus || 2));
+    }
+
+    const combinedMagicLevel = Object.values(magicSkills).reduce((sum, lvl) => sum + lvl, 0);
+    const maxMana = MANA_CONFIG.baseMana + combinedMagicLevel * MANA_CONFIG.manaPerMagicLevel;
+
     return {
-        id, name, x, y, skills, traits,
+        id, name, x, y, skills, magicSkills, magicBias, traits,
         nameColor: COLONIST_CONFIG.nameColors[(id - 1) % COLONIST_CONFIG.nameColors.length],
         priorities: { ...Object.fromEntries(Object.keys(SKILLS).map(k => [k, 3])), hauling: 4 },
         needs: { hunger: COLONIST_CONFIG.initialHunger[0] + Math.random() * (COLONIST_CONFIG.initialHunger[1] - COLONIST_CONFIG.initialHunger[0]), rest: COLONIST_CONFIG.initialRest[0] + Math.random() * (COLONIST_CONFIG.initialRest[1] - COLONIST_CONFIG.initialRest[0]) },
         mood: COLONIST_CONFIG.initialMood,
         thoughts: [],
         hp: COLONIST_CONFIG.maxHp, maxHp: COLONIST_CONFIG.maxHp,
+        mana: maxMana, maxMana,
+        knownSpells: [],
+        disabledSpells: [],
+        equippedTome: null,
+        tomeProgress: {},
         state: 'idle',
         currentTaskId: null,
         path: [],
@@ -74,6 +94,8 @@ export function updateColonist(colonist, game) {
 
     tryUsePotions(colonist, game);
     tickPotionEffects(colonist, game);
+    updateMana(colonist);
+    tryAutocastSpells(colonist, game);
 
     if (!CONFIG.PEACEFUL_MODE && colonist.traits.includes('pyromaniac') && Math.random() < TRAITS.pyromaniac.fireChance) {
         const tile = game.map[colonist.y][colonist.x];
@@ -108,6 +130,56 @@ function updateNeeds(colonist, game) {
         if (!warmed) {
             applyThought(colonist, 'freezing', game.tick);
         }
+    }
+}
+
+function updateMana(colonist) {
+    if (colonist.mana >= colonist.maxMana) return;
+    const combinedLevel = Object.values(colonist.magicSkills).reduce((sum, lvl) => sum + lvl, 0);
+    let regen = MANA_CONFIG.baseRegen + combinedLevel * MANA_CONFIG.regenPerMagicLevel;
+    if (colonist.state === 'sleeping') regen *= MANA_CONFIG.regenWhileSleeping;
+    else if (colonist.state === 'idle') regen *= MANA_CONFIG.regenWhileIdle;
+    colonist.mana = Math.min(colonist.maxMana, colonist.mana + regen);
+}
+
+export function recalcMaxMana(colonist) {
+    const combinedLevel = Object.values(colonist.magicSkills).reduce((sum, lvl) => sum + lvl, 0);
+    colonist.maxMana = MANA_CONFIG.baseMana + combinedLevel * MANA_CONFIG.manaPerMagicLevel;
+}
+
+function advanceTomeStudy(colonist, game) {
+    if (!colonist.equippedTome) return;
+    const tomeKey = colonist.equippedTome;
+    const tomeDef = SPELL_TOMES[tomeKey];
+    if (!tomeDef) return;
+    const spellDef = SPELLS[tomeDef.spell];
+    if (!spellDef) return;
+    if (colonist.knownSpells.includes(tomeDef.spell)) return;
+
+    const school = spellDef.school;
+    const currentLevel = colonist.magicSkills[school] || 0;
+    if (currentLevel < tomeDef.minSchoolLevel) return;
+
+    if (!colonist.tomeProgress) colonist.tomeProgress = {};
+    if (!colonist.tomeProgress[tomeKey]) colonist.tomeProgress[tomeKey] = 0;
+    colonist.tomeProgress[tomeKey] += MAGIC_STUDY_CONFIG.studyTicksPerProgress;
+
+    if (!colonist._magicXpAccumulator) colonist._magicXpAccumulator = {};
+    if (!colonist._magicXpAccumulator[school]) colonist._magicXpAccumulator[school] = 0;
+    colonist._magicXpAccumulator[school] += MAGIC_STUDY_CONFIG.xpPerStudyTick;
+    if (colonist._magicXpAccumulator[school] >= 1.0) {
+        colonist._magicXpAccumulator[school] -= 1.0;
+        colonist.magicSkills[school] = Math.min(10, colonist.magicSkills[school] + 1);
+        recalcMaxMana(colonist);
+        game.notifications.push({ text: `${colonist.name}'s ${MAGIC_SKILLS[school].name} increased to ${colonist.magicSkills[school]}`, tick: game.tick, type: 'success' });
+    }
+
+    if (colonist.tomeProgress[tomeKey] >= tomeDef.learningWork) {
+        colonist.knownSpells.push(tomeDef.spell);
+        colonist.equippedTome = null;
+        delete colonist.tomeProgress[tomeKey];
+        applyThought(colonist, 'learned_spell', game.tick);
+        game.notifications.push({ text: `${colonist.name} learned ${spellDef.name}!`, tick: game.tick, type: 'success' });
     }
 }
 
@@ -259,6 +331,143 @@ function tryUsePotions(colonist, game) {
 function tickPotionEffects(colonist, game) {
     if (!colonist.activeEffects) return;
     colonist.activeEffects = colonist.activeEffects.filter(e => game.tick < e.expiresAt);
+}
+
+export function grantCastXp(colonist, spell, game) {
+    const school = spell.school;
+    if (!school || colonist.magicSkills[school] >= 10) return;
+    if (!colonist._magicXpAccumulator) colonist._magicXpAccumulator = {};
+    if (!colonist._magicXpAccumulator[school]) colonist._magicXpAccumulator[school] = 0;
+    colonist._magicXpAccumulator[school] += MAGIC_STUDY_CONFIG.xpPerCast;
+    if (colonist._magicXpAccumulator[school] >= 1.0) {
+        colonist._magicXpAccumulator[school] -= 1.0;
+        colonist.magicSkills[school] = Math.min(10, colonist.magicSkills[school] + 1);
+        recalcMaxMana(colonist);
+        game.notifications.push({ text: `${colonist.name}'s ${MAGIC_SKILLS[school].name} increased to ${colonist.magicSkills[school]}`, tick: game.tick, type: 'success' });
+    }
+}
+
+function tryAutocastSpells(colonist, game) {
+    if (!colonist.knownSpells || colonist.knownSpells.length === 0) return;
+    if (!colonist._spellCooldowns) colonist._spellCooldowns = {};
+
+    for (const spellKey of colonist.knownSpells) {
+        const spell = SPELLS[spellKey];
+        if (!spell || spell.castType !== 'auto') continue;
+        if (colonist.disabledSpells && colonist.disabledSpells.includes(spellKey)) continue;
+        if (colonist._spellCooldowns[spellKey] && game.tick - colonist._spellCooldowns[spellKey] < spell.cooldown) continue;
+        if (colonist.mana < spell.manaCost) continue;
+
+        if (!shouldCastSpell(colonist, spell, game)) continue;
+
+        colonist.mana -= spell.manaCost;
+        colonist._spellCooldowns[spellKey] = game.tick;
+        applySpellEffect(colonist, spell, game);
+        grantCastXp(colonist, spell, game);
+        applyThought(colonist, 'cast_spell', game.tick);
+    }
+}
+
+function shouldCastSpell(colonist, spell, game) {
+    switch (spell.trigger) {
+        case 'inCombat': {
+            const hostile = findNearestHostile(colonist, game);
+            if (!hostile) return false;
+            const dist = manhattanDist(colonist.x, colonist.y, hostile.x, hostile.y);
+            return dist <= (spell.range || COLONIST_CONFIG.fightEngageDistance);
+        }
+        case 'lowHealth':
+            return colonist.hp < colonist.maxHp * (spell.hpThreshold || 0.5);
+        case 'allyLowHealth': {
+            const range = spell.range || COLONIST_CONFIG.hostileSearchRadius;
+            return game.colonists.some(c => c.id !== colonist.id && c.hp > 0 &&
+                c.hp < c.maxHp * (spell.hpThreshold || 0.5) &&
+                manhattanDist(colonist.x, colonist.y, c.x, c.y) <= range);
+        }
+        case 'hasTask':
+            if (spell.idleExclude && colonist.state === 'idle') return false;
+            return colonist.currentTaskId !== null && (colonist.state === 'moving' || colonist.state === 'working');
+        case 'always':
+            if (spell.idleExclude && colonist.state === 'idle') return false;
+            return true;
+        default:
+            return false;
+    }
+}
+
+function applySpellEffect(colonist, spell, game) {
+    switch (spell.effect) {
+        case 'ranged_damage': {
+            const target = findNearestHostile(colonist, game);
+            if (!target) return;
+            const dist = manhattanDist(colonist.x, colonist.y, target.x, target.y);
+            if (dist > spell.range) return;
+            target.hp -= spell.damage;
+            game.combatEffects.push({ x: target.x, y: target.y, char: spell.projectileChar || '*', color: spell.projectileColor || '#ff44ff', ttl: 3 });
+            break;
+        }
+        case 'ranged_damage_aoe': {
+            const target = findNearestHostile(colonist, game);
+            if (!target) return;
+            const dist = manhattanDist(colonist.x, colonist.y, target.x, target.y);
+            if (dist > spell.range) return;
+            const allHostiles = [...game.raiders, ...(game.waves ? game.waves.enemies : []), ...game.wildlife.filter(w => w.hostile)];
+            for (const h of allHostiles) {
+                if (h.hp <= 0) continue;
+                if (manhattanDist(target.x, target.y, h.x, h.y) <= spell.radius) {
+                    h.hp -= spell.damage;
+                    game.combatEffects.push({ x: h.x, y: h.y, char: spell.projectileChar || '●', color: spell.projectileColor || '#ff6600', ttl: 3 });
+                }
+            }
+            break;
+        }
+        case 'heal':
+            if (spell.targetSelf) {
+                colonist.hp = Math.min(colonist.maxHp, colonist.hp + spell.healAmount);
+            }
+            game.combatEffects.push({ x: colonist.x, y: colonist.y, char: COMBAT_VISUALS.spellHealChar, color: COMBAT_VISUALS.spellHealColor, ttl: 3 });
+            break;
+        case 'buff_speed': {
+            if (!colonist.activeEffects) colonist.activeEffects = [];
+            colonist.activeEffects.push({
+                type: 'speed',
+                source: 'spell',
+                moveSpeedBonus: spell.moveSpeedBonus || 0,
+                workSpeedBonus: spell.workSpeedBonus || 1.0,
+                expiresAt: game.tick + spell.duration,
+            });
+            game.combatEffects.push({ x: colonist.x, y: colonist.y, char: COMBAT_VISUALS.spellBuffChar, color: COMBAT_VISUALS.spellBuffColor, ttl: 2 });
+            break;
+        }
+        case 'buff_defense': {
+            if (!colonist.activeEffects) colonist.activeEffects = [];
+            colonist.activeEffects.push({
+                type: 'shield',
+                source: 'spell',
+                damageReduction: spell.damageReduction || 0.3,
+                expiresAt: game.tick + spell.duration,
+            });
+            game.combatEffects.push({ x: colonist.x, y: colonist.y, char: COMBAT_VISUALS.spellShieldChar, color: COMBAT_VISUALS.spellShieldColor, ttl: 3 });
+            break;
+        }
+        case 'summon': {
+            if (!game.summons) game.summons = [];
+            game.summons.push({
+                x: colonist.x + (Math.random() > 0.5 ? 1 : -1),
+                y: colonist.y + (Math.random() > 0.5 ? 1 : -1),
+                ownerId: colonist.id,
+                hp: spell.summonHp,
+                maxHp: spell.summonHp,
+                damage: spell.summonDamage,
+                char: spell.summonChar || 'f',
+                color: spell.summonColor || '#9966ff',
+                expiresAt: game.tick + spell.summonDuration,
+                hostile: false,
+            });
+            game.combatEffects.push({ x: colonist.x, y: colonist.y, char: spell.summonChar || 'f', color: spell.summonColor || '#9966ff', ttl: 3 });
+            break;
+        }
+    }
 }
 
 function updateIdle(colonist, game) {
@@ -532,6 +741,9 @@ function completeTask(colonist, task, game) {
                     } else if (POTIONS[key]) {
                         game.resources.addPotion({ ...POTIONS[key], type: key });
                         handled = true;
+                    } else if (SPELL_TOMES[key]) {
+                        game.resources.addTome({ ...SPELL_TOMES[key], key });
+                        handled = true;
                     }
                 }
                 if (!handled) {
@@ -581,6 +793,7 @@ function completeTask(colonist, task, game) {
         }
         case 'research': {
             game.research.addProgress(colonist.skills.research + 2);
+            advanceTomeStudy(colonist, game);
             break;
         }
         case 'tame': {
@@ -829,6 +1042,11 @@ export function colonistTakeDamage(colonist, damage, game) {
     let mult = 1;
     if (colonist.traits.includes('tough')) mult = TRAITS.tough.damageTakenMult;
     if (colonist.armor) mult *= (1 - colonist.armor.damageReduction);
+    if (colonist.activeEffects) {
+        for (const e of colonist.activeEffects) {
+            if (e.type === 'shield' && e.damageReduction) mult *= (1 - e.damageReduction);
+        }
+    }
     const actualDmg = Math.floor(damage * mult);
     colonist.hp -= actualDmg;
     game.combatEffects.push({ x: colonist.x, y: colonist.y, char: COMBAT_VISUALS.hitChar, color: COMBAT_VISUALS.damageTakenColor, ttl: COMBAT_VISUALS.hitTtl });

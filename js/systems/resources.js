@@ -1,4 +1,4 @@
-import { CONFIG, FOODSTUFFS, FOOD_DECAY_CONFIG, WORK_CONFIG } from '../core/config.js';
+import { CONFIG, FOODSTUFFS, FOOD_DECAY_CONFIG, WORK_CONFIG, SPELL_TOMES } from '../core/config.js';
 
 export { FOODSTUFFS };
 
@@ -14,6 +14,7 @@ export class ResourceManager {
         this.tools = [];
         this.artifacts = [];
         this.potions = [];
+        this.tomes = [];
         this._decayAccumulators = {};
         this.reservedFoodstuffs = {};
     }
@@ -70,7 +71,13 @@ export class ResourceManager {
 
     add(resources) {
         for (const [resource, amount] of Object.entries(resources)) {
-            this.stockpile[resource] = (this.stockpile[resource] || 0) + amount;
+            if (SPELL_TOMES[resource]) {
+                for (let i = 0; i < amount; i++) {
+                    this.addTome({ ...SPELL_TOMES[resource], key: resource });
+                }
+            } else {
+                this.stockpile[resource] = (this.stockpile[resource] || 0) + amount;
+            }
         }
     }
 
@@ -110,6 +117,15 @@ export class ResourceManager {
     takeArtifact() {
         if (this.artifacts.length === 0) return null;
         return this.artifacts.shift();
+    }
+
+    addTome(tome) {
+        this.tomes.push(tome);
+    }
+
+    takeTome(index) {
+        if (index < 0 || index >= this.tomes.length) return null;
+        return this.tomes.splice(index, 1)[0];
     }
 
     addPotion(potion) {

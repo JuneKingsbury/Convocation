@@ -70,6 +70,25 @@ export class Renderer {
         const cw = this.charWidth;
         const ch = this.charHeight;
         const selectionRect = game.input.getSelectionRect();
+        const spellTargeting = game.input.spellTargeting;
+        let spellRangeSet = null;
+        if (spellTargeting) {
+            const caster = colonists.find(c => c.id === spellTargeting.colonistId);
+            if (caster && caster.hp > 0) {
+                spellRangeSet = new Set();
+                const range = spellTargeting.spell.range || 1;
+                for (let dy = -range; dy <= range; dy++) {
+                    for (let dx = -range; dx <= range; dx++) {
+                        if (Math.abs(dx) + Math.abs(dy) > range) continue;
+                        const tx = caster.x + dx;
+                        const ty = caster.y + dy;
+                        if (tx >= 0 && ty >= 0 && tx < CONFIG.MAP_WIDTH && ty < CONFIG.MAP_HEIGHT) {
+                            spellRangeSet.add(ty * CONFIG.MAP_WIDTH + tx);
+                        }
+                    }
+                }
+            }
+        }
 
         ctx.fillStyle = RENDER_CONFIG.bgColor;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -96,7 +115,15 @@ export class Renderer {
             if (c.hp > 0 && !c.onExpedition) {
                 const drafted = c.drafted;
                 const pulse = drafted && (game.tick % 20 < 10);
-                entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color: drafted ? (pulse ? '#ff4444' : '#ff8888') : (c.nameColor || TILE_COLORS.colonist) });
+                let color;
+                if (drafted) {
+                    color = pulse ? '#ff4444' : '#ff8888';
+                } else if (c.activeEffects && c.activeEffects.some(e => e.source === 'spell') && game.tick % 16 < 8) {
+                    color = COMBAT_VISUALS.spellBuffColor;
+                } else {
+                    color = c.nameColor || TILE_COLORS.colonist;
+                }
+                entityMap.set(c.y * CONFIG.MAP_WIDTH + c.x, { char: '@', color });
                 if (drafted && c.draftTarget) {
                     rallySet.set(c.draftTarget.y * CONFIG.MAP_WIDTH + c.draftTarget.x, true);
                 }
@@ -190,6 +217,10 @@ export class Renderer {
                 if (effect) {
                     char = effect.char;
                     color = effect.color;
+                }
+
+                if (spellRangeSet && spellRangeSet.has(tileKey)) {
+                    bg = COMBAT_VISUALS.spellRangePreviewBg;
                 }
 
                 const inSelection = selectionRect &&

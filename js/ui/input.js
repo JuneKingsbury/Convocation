@@ -1,4 +1,4 @@
-import { CONFIG, CROPS, BUILDINGS, BUILD_CATEGORIES, DRAG_BUILD_TYPES, SINGLE_PLACE_TYPES } from '../core/config.js';
+import { CONFIG, CROPS, BUILDINGS, BUILD_CATEGORIES, DRAG_BUILD_TYPES, SINGLE_PLACE_TYPES, SPELLS } from '../core/config.js';
 import { designateBuild, designateChop, designateMine, cancelDesignation } from '../systems/building.js';
 import { designateFarmZone, removeFarmZone, CROP_RESEARCH_REQS } from '../systems/farming.js';
 import { isPassable } from '../world/map.js';
@@ -23,6 +23,7 @@ export class InputHandler {
         this.singlePlaceTypes = SINGLE_PLACE_TYPES;
         this.cropOptions = Object.keys(CROPS);
         this.designateMode = 'chop';
+        this.spellTargeting = null;
 
         this.charWidth = 0;
         this.charHeight = 0;
@@ -113,6 +114,10 @@ export class InputHandler {
             case 'z': this.setMode(this.mode === 'zone' ? 'normal' : 'zone'); break;
             case 'g': this.setMode(this.mode === 'designate' ? 'normal' : 'designate'); break;
             case 'escape': {
+                if (this.spellTargeting) {
+                    this.cancelSpellTargeting();
+                    break;
+                }
                 const ui = this.game.ui;
                 const hadPanel = ui.priorityPanelVisible || ui.craftPanelVisible ||
                     ui.researchPanelVisible || ui.inventoryVisible ||
@@ -219,6 +224,15 @@ export class InputHandler {
 
         const pos = this.getMouseTile(e);
         if (pos.x < 0 || pos.x >= CONFIG.MAP_WIDTH || pos.y < 0 || pos.y >= CONFIG.MAP_HEIGHT) return;
+
+        if (this.spellTargeting) {
+            if (e.button === 0) {
+                this.executeSpellTarget(pos);
+            } else {
+                this.cancelSpellTargeting();
+            }
+            return;
+        }
 
         if (e.button === 2) {
             if (this.mode === 'build') {
@@ -498,6 +512,10 @@ export class InputHandler {
     }
 
     handleLeftClick(pos) {
+        if (this.spellTargeting) {
+            this.executeSpellTarget(pos);
+            return;
+        }
         switch (this.mode) {
             case 'normal':
                 this.selectAt(pos);
@@ -511,6 +529,54 @@ export class InputHandler {
                 }
                 break;
         }
+    }
+
+    startSpellTargeting(colonistId, spellKey) {
+        const spell = SPELLS[spellKey];
+        if (!spell || spell.castType !== 'targeted') return;
+        this.spellTargeting = { colonistId, spellKey, spell };
+        this.game.notifications.push({ text: `Select target for ${spell.name} (Esc to cancel)`, tick: this.game.tick, type: 'event' });
+        this.game.ui.updateModeDisplay(this);
+    }
+
+    cancelSpellTargeting() {
+        this.spellTargeting = null;
+        this.game.notifications.push({ text: 'Spell targeting cancelled', tick: this.game.tick, type: 'event' });
+        this.game.ui.updateModeDisplay(this);
+    }
+
+    executeSpellTarget(pos) {
+        const { colonistId, spellKey, spell } = this.spellTargeting;
+        const colonist = this.game.colonists.find(c => c.id === colonistId);
+        if (!colonist || colonist.hp <= 0) {
+            this.spellTargeting = null;
+            return;
+        }
+
+        if (colonist.mana < spell.manaCost) {
+            this.game.notifications.push({ text: `${colonist.name} doesn't have enough mana`, tick: this.game.tick, type: 'danger' });
+            this.spellTargeting = null;
+            return;
+        }
+
+        if (!colonist._spellCooldowns) colonist._spellCooldowns = {};
+        if (colonist._spellCooldowns[spellKey] && this.game.tick - colonist._spellCooldowns[spellKey] < spell.cooldown) {
+            this.game.notifications.push({ text: `${spell.name} is on cooldown`, tick: this.game.tick, type: 'danger' });
+            this.spellTargeting = null;
+            return;
+        }
+
+        const dist = Math.abs(colonist.x - pos.x) + Math.abs(colonist.y - pos.y);
+        if (spell.range && dist > spell.range) {
+            this.game.notifications.push({ text: `Target out of range (max ${spell.range})`, tick: this.game.tick, type: 'danger' });
+            return;
+        }
+
+        colonist.mana -= spell.manaCost;
+        colonist._spellCooldowns[spellKey] = this.game.tick;
+        this.game.castTargetedSpell(colonist, spell, pos);
+        this.spellTargeting = null;
+        this.game.ui.updateModeDisplay(this);
     }
 
     handleRightClick(pos) {

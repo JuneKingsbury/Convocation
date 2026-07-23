@@ -87,7 +87,11 @@ function updateFarmTile(game, x, y, season, growthMult) {
         }
     } else if (tile.zone.state === 'growing') {
         if (growthMult > 0) {
-            tile.zone.growth += growthMult;
+            let effectiveMult = growthMult;
+            if (tile.zone._growthBoost && game.tick < tile.zone._growthBoost.expiresAt) {
+                effectiveMult *= tile.zone._growthBoost.mult;
+            }
+            tile.zone.growth += effectiveMult;
             if (tile.zone.growth >= crop.growthTicks) {
                 tile.zone.state = 'ready';
                 const existingTask = game.taskQueue.getByPosition(x, y);

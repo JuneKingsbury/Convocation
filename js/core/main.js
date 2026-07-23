@@ -1,9 +1,9 @@
-import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG } from './config.js';
+import { CONFIG, RESEARCH, BUILDINGS, FOOD_DECAY_CONFIG, SPELL_TOMES, SPELLS, COMBAT_VISUALS } from './config.js';
 import { generateMap } from '../world/map.js';
 import { Camera } from '../ui/camera.js';
 import { Renderer } from '../ui/renderer.js';
 import { InputHandler } from '../ui/input.js';
-import { createColonist, updateColonist } from '../entities/colonist.js';
+import { createColonist, updateColonist, addThought, grantCastXp } from '../entities/colonist.js';
 import { TaskQueue } from './tasks.js';
 import { ResourceManager } from '../systems/resources.js';
 import { detectRooms } from '../world/rooms.js';
@@ -549,6 +549,98 @@ class Game {
         c.artifact = null;
         this.notifications.push({ text: `${c.name} unequipped artifact`, tick: this.tick, type: 'success' });
         this.ui.showColonistInfo(c);
+    }
+
+    equipTome(colonistId, index) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c) return;
+        const tome = this.resources.takeTome(index);
+        if (!tome) return;
+        if (c.equippedTome) this.resources.addTome({ ...SPELL_TOMES[c.equippedTome], key: c.equippedTome });
+        c.equippedTome = tome.key;
+        this.notifications.push({ text: `${c.name} began studying ${tome.name}`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    unequipTome(colonistId) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c || !c.equippedTome) return;
+        this.resources.addTome({ ...SPELL_TOMES[c.equippedTome], key: c.equippedTome });
+        c.equippedTome = null;
+        this.notifications.push({ text: `${c.name} stopped studying`, tick: this.tick, type: 'success' });
+        this.ui.showColonistInfo(c);
+    }
+
+    startSpellTargeting(colonistId, spellKey) {
+        this.input.startSpellTargeting(colonistId, spellKey);
+    }
+
+    toggleSpell(colonistId, spellKey) {
+        const c = this.colonists.find(col => col.id === colonistId);
+        if (!c) return;
+        if (!c.disabledSpells) c.disabledSpells = [];
+        const idx = c.disabledSpells.indexOf(spellKey);
+        if (idx >= 0) {
+            c.disabledSpells.splice(idx, 1);
+        } else {
+            c.disabledSpells.push(spellKey);
+        }
+        this.ui.showColonistInfo(c);
+    }
+
+    castTargetedSpell(colonist, spell, pos) {
+        switch (spell.effect) {
+            case 'teleport': {
+                colonist.x = pos.x;
+                colonist.y = pos.y;
+                colonist.path = [];
+                this.combatEffects.push({ x: pos.x, y: pos.y, char: COMBAT_VISUALS.spellTeleportChar, color: COMBAT_VISUALS.spellTeleportColor, ttl: 3 });
+                this.notifications.push({ text: `${colonist.name} warped!`, tick: this.tick, type: 'success' });
+                break;
+            }
+            case 'boost_crops': {
+                let boosted = 0;
+                for (let dy = -spell.radius; dy <= spell.radius; dy++) {
+                    for (let dx = -spell.radius; dx <= spell.radius; dx++) {
+                        const tx = pos.x + dx;
+                        const ty = pos.y + dy;
+                        if (tx < 0 || ty < 0 || tx >= CONFIG.MAP_WIDTH || ty >= CONFIG.MAP_HEIGHT) continue;
+                        const tile = this.map[ty][tx];
+                        if (tile.zone && tile.zone.state === 'growing') {
+                            if (!tile.zone._growthBoost) tile.zone._growthBoost = { mult: 1, expiresAt: 0 };
+                            tile.zone._growthBoost.mult = spell.growthMult;
+                            tile.zone._growthBoost.expiresAt = this.tick + spell.duration;
+                            boosted++;
+                        }
+                        this.combatEffects.push({ x: tx, y: ty, char: COMBAT_VISUALS.spellGrowthChar, color: COMBAT_VISUALS.spellGrowthColor, ttl: 4 });
+                    }
+                }
+                this.notifications.push({ text: `${colonist.name} cast ${spell.name} — ${boosted} crops boosted!`, tick: this.tick, type: 'success' });
+                break;
+            }
+            case 'terraform': {
+                let changed = 0;
+                for (let dy = -spell.radius; dy <= spell.radius; dy++) {
+                    for (let dx = -spell.radius; dx <= spell.radius; dx++) {
+                        const tx = pos.x + dx;
+                        const ty = pos.y + dy;
+                        if (tx < 0 || ty < 0 || tx >= CONFIG.MAP_WIDTH || ty >= CONFIG.MAP_HEIGHT) continue;
+                        const tile = this.map[ty][tx];
+                        if (tile.terrain !== spell.targetTerrain && !tile.structure) {
+                            tile.terrain = spell.targetTerrain;
+                            tile.resource = null;
+                            tile.passable = true;
+                            changed++;
+                        }
+                        this.combatEffects.push({ x: tx, y: ty, char: COMBAT_VISUALS.spellTerraformChar, color: COMBAT_VISUALS.spellTerraformColor, ttl: 4 });
+                    }
+                }
+                this.notifications.push({ text: `${colonist.name} cast ${spell.name} — ${changed} tiles transformed!`, tick: this.tick, type: 'success' });
+                break;
+            }
+        }
+        grantCastXp(colonist, spell, this);
+        addThought(colonist, 'Cast a spell', 3, 80, this.tick);
     }
 
     discardArtifact(index) {

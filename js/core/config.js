@@ -114,6 +114,11 @@ export const CARAVAN_TRADES = [
     { give: { food: 4 }, receive: { planks: 3 } },
     { give: { food: 6 }, receive: { stone: 5 } },
     { give: { stone: 8 }, receive: { runite: 2 } },
+    { give: { runite: 3, food: 5 }, receive: { tome_magic_missile: 1 } },
+    { give: { runite: 3, food: 6 }, receive: { tome_heal: 1 } },
+    { give: { runite: 4, food: 8 }, receive: { tome_haste: 1 } },
+    { give: { void_essence: 2, runite: 3 }, receive: { tome_shield: 1 } },
+    { give: { void_essence: 3, runite: 4 }, receive: { tome_warp: 1 } },
 ];
 
 // Pathfinding tuning. Used by pathfinding.js and combat.js.
@@ -158,6 +163,8 @@ export const THOUGHTS = {
     cold_snap:         { text: 'Freezing cold snap', moodEffect: -12, duration: 300 },
     inspired:          { text: 'Feeling inspired!', moodEffect: 25, duration: 300 },
     food_spoiled:      { text: 'Food is rotting', moodEffect: -5, duration: 150 },
+    learned_spell:     { text: 'Learned a new spell!', moodEffect: 8, duration: 200 },
+    cast_spell:        { text: 'Cast a spell', moodEffect: 3, duration: 80 },
 };
 
 // To add a trait: add entry here. Trait effects are checked in colonist.js updateNeeds/getWorkSpeed.
@@ -224,6 +231,27 @@ export const COLONIST_CONFIG = {
     deathMoodPenalty: -40,           // mood penalty other colonists get when someone dies
     deathMoodDuration: 2000,         // how long grief lasts (ticks)
     nameColors: ['#ffff00', '#00ffff', '#00ff00'], // cycling colors for colonist names
+    magicBiasChance: 0.3,           // probability a new colonist gets a magic school bias
+};
+
+// To add a magic school: add entry here. Colonists auto-get it, info panel shows it, spells reference it.
+// baseLevel: starting range [min, max]. biasBonus: added when this is the colonist's magic bias.
+export const MAGIC_SKILLS = {
+    evocation:     { name: 'Evocation', baseLevel: [0, 0], biasBonus: 2, description: 'Ranged combat magic' },
+    enchantment:   { name: 'Enchantment', baseLevel: [0, 0], biasBonus: 2, description: 'Support spells and golem animation' },
+    abjuration:    { name: 'Abjuration', baseLevel: [0, 0], biasBonus: 2, description: 'Healing and protective magic' },
+    conjuration:   { name: 'Conjuration', baseLevel: [0, 0], biasBonus: 2, description: 'Summoning and teleportation' },
+    transmutation: { name: 'Transmutation', baseLevel: [0, 0], biasBonus: 2, description: 'Environmental and growth magic' },
+};
+
+// Mana system tuning. Max mana and regen scale with combined magic school levels.
+export const MANA_CONFIG = {
+    baseMana: 20,                   // every colonist starts with this max mana
+    manaPerMagicLevel: 5,           // +5 max mana per combined magic school level
+    baseRegen: 0.05,                // mana recovered per tick
+    regenPerMagicLevel: 0.01,       // +0.01 regen per combined magic school level
+    regenWhileIdle: 2.0,            // multiplier to regen when colonist is idle
+    regenWhileSleeping: 3.0,        // multiplier to regen when sleeping
 };
 
 // How fast needs drain per tick. Applied every tick in colonist.js updateNeeds().
@@ -268,6 +296,14 @@ export const WORK_CONFIG = {
     wealthPerWeapon: 10,         // wealth value added per weapon in stockpile (affects raid scaling)
     penWanderRadius: 3,          // max tiles a tamed animal wanders from its pen
     tamedMoveChance: 0.1,        // probability per tick a tamed animal moves
+};
+
+// Spell tome study tuning. Used by colonist.js when studying at a research desk with a tome equipped.
+export const MAGIC_STUDY_CONFIG = {
+    studyTicksPerProgress: 1,       // tome learning progress gained per study tick
+    xpPerStudyTick: 0.05,           // magic school XP gained per study tick (level-up at 1.0 per level)
+    xpPerCast: 0.02,                // magic school XP gained per successful spell cast
+    researchPointsWhileStudying: 1, // research points still generated per study cycle while learning a tome
 };
 
 // Task reachability. When all colonists fail to path to a task this many times, auto-cancel it.
@@ -353,7 +389,7 @@ export const SINGLE_PLACE_TYPES = new Set(
 
 // To add a recipe: add entry here. Set 'research' field to gate behind tech.
 // Station must exist as a buildable structure. Equipment outputs auto-detected from WEAPONS/ARMORS/TOOLS.
-export const RECIPE_CATEGORIES = ['Materials', 'Equipment', 'Tools', 'Artifacts', 'Food & Potions'];
+export const RECIPE_CATEGORIES = ['Materials', 'Equipment', 'Tools', 'Artifacts', 'Food & Potions', 'Tomes'];
 
 export const RECIPES = {
     craft_planks: { input: { wood: 2 }, output: { planks: 3 }, skill: 'crafting', ticks: 10, station: 'workbench', category: 'Materials' },
@@ -371,6 +407,20 @@ export const RECIPES = {
     brew_health_potion: { input: { berries: 3, wheat: 1 }, output: { health_potion: 1 }, skill: 'cooking', ticks: 12, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
     brew_speed_potion: { input: { corn: 2, potatoes: 2, berries: 1 }, output: { speed_potion: 1 }, skill: 'cooking', ticks: 15, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
     cook_meal: { input: { foodstuffs: 5 }, output: { food: 4 }, skill: 'cooking', ticks: 8, station: 'cauldron', category: 'Food & Potions' },
+    craft_tome_spark: { input: { planks: 2, stone: 1 }, output: { tome_spark: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_mend: { input: { planks: 2, berries: 2 }, output: { tome_mend: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_quicken: { input: { planks: 2, stone: 1 }, output: { tome_quicken: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_phase_step: { input: { planks: 2, stone: 1 }, output: { tome_phase_step: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_nurture: { input: { planks: 2, wheat: 2 }, output: { tome_nurture: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_magic_missile: { input: { planks: 3, runite: 1 }, output: { tome_magic_missile: 1 }, skill: 'crafting', ticks: 20, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_heal: { input: { planks: 3, runite: 1, berries: 2 }, output: { tome_heal: 1 }, skill: 'crafting', ticks: 22, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_haste: { input: { planks: 4, runite: 2 }, output: { tome_haste: 1 }, skill: 'crafting', ticks: 25, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_warp: { input: { planks: 4, runite: 2, void_essence: 1 }, output: { tome_warp: 1 }, skill: 'crafting', ticks: 25, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_fireball: { input: { planks: 5, runite: 3, void_essence: 2 }, output: { tome_fireball: 1 }, skill: 'crafting', ticks: 30, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_shield: { input: { planks: 4, runite: 3, stone: 3 }, output: { tome_shield: 1 }, skill: 'crafting', ticks: 28, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_summon_familiar: { input: { planks: 5, runite: 3, void_essence: 3 }, output: { tome_summon_familiar: 1 }, skill: 'crafting', ticks: 32, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_circle_of_growth: { input: { planks: 4, runite: 2, wheat: 3 }, output: { tome_circle_of_growth: 1 }, skill: 'crafting', ticks: 26, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_level_field: { input: { planks: 5, runite: 4, void_essence: 3 }, output: { tome_level_field: 1 }, skill: 'crafting', ticks: 35, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
 };
 
 // To add a weapon: add entry here + a recipe with output: { <key>: 1 }. Auto-detected on craft.
@@ -425,6 +475,214 @@ export const POTIONS = {
         duration: 100,                // ticks the effect lasts
         cooldown: 400,                // ticks between uses
     },
+};
+
+// To add a spell: add entry here. castType determines auto vs player-targeted behavior.
+// Triggers (for auto-cast): 'inCombat', 'hasTask', 'lowHealth', 'allyLowHealth', 'always'.
+// castType: 'auto' = colonist decides when to cast. 'targeted' = player clicks map tile.
+export const SPELLS = {
+    spark: {
+        name: 'Spark',
+        school: 'evocation',
+        minLevel: 0,
+        manaCost: 4,
+        cooldown: 25,
+        castType: 'auto',
+        trigger: 'inCombat',
+        effect: 'ranged_damage',
+        damage: 6,
+        range: 4,
+        projectileColor: '#ffaa33',
+        projectileChar: '.',
+    },
+    mend: {
+        name: 'Mend',
+        school: 'abjuration',
+        minLevel: 0,
+        manaCost: 5,
+        cooldown: 60,
+        castType: 'auto',
+        trigger: 'lowHealth',
+        effect: 'heal',
+        healAmount: 8,
+        targetSelf: true,
+    },
+    quicken: {
+        name: 'Quicken',
+        school: 'enchantment',
+        minLevel: 0,
+        manaCost: 6,
+        cooldown: 80,
+        castType: 'auto',
+        trigger: 'hasTask',
+        effect: 'buff_speed',
+        moveSpeedBonus: 0,
+        workSpeedBonus: 1.2,
+        duration: 40,
+    },
+    phase_step: {
+        name: 'Phase Step',
+        school: 'conjuration',
+        minLevel: 0,
+        manaCost: 6,
+        cooldown: 50,
+        castType: 'auto',
+        trigger: 'inCombat',
+        effect: 'buff_speed',
+        moveSpeedBonus: 2,
+        workSpeedBonus: 1.0,
+        duration: 20,
+    },
+    nurture: {
+        name: 'Nurture',
+        school: 'transmutation',
+        minLevel: 0,
+        manaCost: 8,
+        cooldown: 200,
+        castType: 'targeted',
+        effect: 'boost_crops',
+        range: 5,
+        radius: 1,
+        growthMult: 1.5,
+        duration: 100,
+    },
+    magic_missile: {
+        name: 'Magic Missile',
+        school: 'evocation',
+        minLevel: 1,
+        manaCost: 8,
+        cooldown: 30,
+        castType: 'auto',
+        trigger: 'inCombat',
+        effect: 'ranged_damage',
+        damage: 15,
+        range: 6,
+        projectileColor: '#ff44ff',
+        projectileChar: '*',
+    },
+    fireball: {
+        name: 'Fireball',
+        school: 'evocation',
+        minLevel: 3,
+        manaCost: 18,
+        cooldown: 60,
+        castType: 'auto',
+        trigger: 'inCombat',
+        effect: 'ranged_damage_aoe',
+        damage: 12,
+        range: 7,
+        radius: 2,
+        projectileColor: '#ff6600',
+        projectileChar: '●',
+    },
+    haste: {
+        name: 'Haste',
+        school: 'enchantment',
+        minLevel: 2,
+        manaCost: 12,
+        cooldown: 200,
+        castType: 'auto',
+        trigger: 'hasTask',
+        effect: 'buff_speed',
+        moveSpeedBonus: 0.4,
+        workSpeedBonus: 1.2,
+        duration: 80,
+        idleExclude: true,
+    },
+    heal: {
+        name: 'Heal',
+        school: 'abjuration',
+        minLevel: 1,
+        manaCost: 10,
+        cooldown: 60,
+        castType: 'auto',
+        trigger: 'lowHealth',
+        hpThreshold: 0.5,
+        effect: 'heal',
+        healAmount: 30,
+        targetSelf: true,
+    },
+    shield: {
+        name: 'Shield',
+        school: 'abjuration',
+        minLevel: 3,
+        manaCost: 15,
+        cooldown: 150,
+        castType: 'auto',
+        trigger: 'inCombat',
+        effect: 'buff_defense',
+        damageReduction: 0.3,
+        duration: 60,
+    },
+    warp: {
+        name: 'Warp',
+        school: 'conjuration',
+        minLevel: 2,
+        manaCost: 15,
+        cooldown: 100,
+        castType: 'targeted',
+        effect: 'teleport',
+        range: 20,
+    },
+    summon_familiar: {
+        name: 'Summon Familiar',
+        school: 'conjuration',
+        minLevel: 3,
+        manaCost: 25,
+        cooldown: 400,
+        castType: 'auto',
+        trigger: 'inCombat',
+        effect: 'summon',
+        summonHp: 40,
+        summonDamage: 8,
+        summonDuration: 80,
+        summonChar: 'f',
+        summonColor: '#9966ff',
+    },
+    circle_of_growth: {
+        name: 'Circle of Growth',
+        school: 'transmutation',
+        minLevel: 2,
+        manaCost: 20,
+        cooldown: 400,
+        castType: 'targeted',
+        effect: 'boost_crops',
+        range: 10,
+        radius: 3,
+        growthMult: 2.0,
+        duration: 200,
+    },
+    level_field: {
+        name: 'Level Field',
+        school: 'transmutation',
+        minLevel: 4,
+        manaCost: 30,
+        cooldown: 600,
+        castType: 'targeted',
+        effect: 'terraform',
+        range: 8,
+        radius: 3,
+        targetTerrain: 'grass',
+    },
+};
+
+// To add a spell tome: add entry here + a recipe or loot source. Colonists study tomes at research desks.
+// learningWork: ticks of study required. minSchoolLevel: minimum magic school level to begin studying.
+export const SPELL_TOMES = {
+    tome_spark: { name: 'Tome: Spark', spell: 'spark', learningWork: 60, minSchoolLevel: 0 },
+    tome_mend: { name: 'Tome: Mend', spell: 'mend', learningWork: 60, minSchoolLevel: 0 },
+    tome_quicken: { name: 'Tome: Quicken', spell: 'quicken', learningWork: 60, minSchoolLevel: 0 },
+    tome_phase_step: { name: 'Tome: Phase Step', spell: 'phase_step', learningWork: 60, minSchoolLevel: 0 },
+    tome_nurture: { name: 'Tome: Nurture', spell: 'nurture', learningWork: 60, minSchoolLevel: 0 },
+    tome_magic_missile: { name: 'Tome: Magic Missile', spell: 'magic_missile', learningWork: 100, minSchoolLevel: 1 },
+    tome_fireball: { name: 'Tome: Fireball', spell: 'fireball', learningWork: 220, minSchoolLevel: 3 },
+    tome_haste: { name: 'Tome: Haste', spell: 'haste', learningWork: 180, minSchoolLevel: 2 },
+    tome_heal: { name: 'Tome: Heal', spell: 'heal', learningWork: 120, minSchoolLevel: 1 },
+    tome_shield: { name: 'Tome: Shield', spell: 'shield', learningWork: 200, minSchoolLevel: 3 },
+    tome_warp: { name: 'Tome: Warp', spell: 'warp', learningWork: 150, minSchoolLevel: 2 },
+    tome_summon_familiar: { name: 'Tome: Summon Familiar', spell: 'summon_familiar', learningWork: 240, minSchoolLevel: 3 },
+    tome_circle_of_growth: { name: 'Tome: Circle of Growth', spell: 'circle_of_growth', learningWork: 160, minSchoolLevel: 2 },
+    tome_level_field: { name: 'Tome: Level Field', spell: 'level_field', learningWork: 280, minSchoolLevel: 4 },
 };
 
 // Raw food ingredients usable in cooking. Add new ones here rather than in resources.js.
@@ -492,6 +750,8 @@ export const RESEARCH = {
     void_forging: { name: 'Void Forging', cost: 180, requires: ['void_summoning', 'runeforging'], description: 'Forge void essence into powerful gear' },
     planar_rift: { name: 'Planar Rift', cost: 200, requires: ['void_summoning', 'ley_channeling'], description: 'Open stable rifts for exploration expeditions' },
     deep_delving: { name: 'Deep Delving', cost: 250, requires: ['planar_rift'], description: 'Access deeper, more dangerous dimensions' },
+    arcane_studies: { name: 'Arcane Studies', cost: 80, requires: ['runecraft'], description: 'Study and craft basic spell tomes' },
+    advanced_arcana: { name: 'Advanced Arcana', cost: 160, requires: ['arcane_studies', 'arcane_infusion'], description: 'Craft advanced spell tomes' },
 };
 
 // Auto-derive unlocks from the 'research' field on buildings, recipes, and crops.
@@ -590,6 +850,20 @@ export const DIMENSIONS = {
         ],
         enemies: { hp: [80, 120], damage: [8, 14], count: [3, 6] },
         research: 'deep_delving',
+    },
+    arcane_library: {
+        name: 'Arcane Library', difficulty: 1,
+        duration: [120, 200], encounters: 2,
+        loot: [
+            { resource: 'tome_magic_missile', weight: 20, amount: [1, 1] },
+            { resource: 'tome_heal', weight: 20, amount: [1, 1] },
+            { resource: 'tome_haste', weight: 15, amount: [1, 1] },
+            { resource: 'tome_warp', weight: 15, amount: [1, 1] },
+            { resource: 'tome_circle_of_growth', weight: 10, amount: [1, 1] },
+            { resource: 'runite', weight: 20, amount: [2, 4] },
+        ],
+        enemies: { hp: [30, 50], damage: [4, 7], count: [1, 3] },
+        research: 'arcane_studies',
     },
 };
 
@@ -848,4 +1122,17 @@ export const COMBAT_VISUALS = {
     portalPathBg: '#1a001a',     // path preview background
     shotColorArcane: '#ff4444',  // arcane sentinel shot color
     shotColorVoid: '#cc00ff',    // void turret shot color
+    spellHealChar: '+',
+    spellHealColor: '#44ff44',
+    spellBuffChar: '>',
+    spellBuffColor: '#88ffff',
+    spellShieldChar: 'O',
+    spellShieldColor: '#4488ff',
+    spellTeleportChar: '@',
+    spellTeleportColor: '#33ccff',
+    spellGrowthChar: '%',
+    spellGrowthColor: '#44ff44',
+    spellTerraformChar: '.',
+    spellTerraformColor: '#88ff88',
+    spellRangePreviewBg: '#1a0033', // background for targeting range preview tiles
 };

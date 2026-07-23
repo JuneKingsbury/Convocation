@@ -1,4 +1,4 @@
-import { CONFIG, SKILLS } from './config.js';
+import { CONFIG, SKILLS, MAGIC_SKILLS, MANA_CONFIG, COLONIST_CONFIG } from './config.js';
 import { syncColonistIdCounter } from '../entities/colonist.js';
 import { syncAnimalIdCounter } from '../entities/wildlife.js';
 import { syncTamedIdCounter } from '../entities/taming.js';
@@ -29,6 +29,7 @@ export function saveGame(game) {
             tools: game.resources.tools,
             artifacts: game.resources.artifacts,
             potions: game.resources.potions,
+            tomes: game.resources.tomes,
             _decayAccumulators: game.resources._decayAccumulators,
             reservedFoodstuffs: game.resources.reservedFoodstuffs,
         },
@@ -110,6 +111,27 @@ export function loadGame(game) {
             }
             if (c.priorities && c.priorities[key] === undefined) c.priorities[key] = 3;
         }
+        if (!c.magicSkills) {
+            c.magicSkills = {};
+            for (const [key, def] of Object.entries(MAGIC_SKILLS)) {
+                const [min, max] = def.baseLevel;
+                c.magicSkills[key] = min + Math.floor(Math.random() * (max - min + 1));
+            }
+            if (Math.random() < COLONIST_CONFIG.magicBiasChance) {
+                const magicKeys = Object.keys(MAGIC_SKILLS);
+                c.magicBias = magicKeys[Math.floor(Math.random() * magicKeys.length)];
+                c.magicSkills[c.magicBias] = Math.min(10, c.magicSkills[c.magicBias] + (MAGIC_SKILLS[c.magicBias].biasBonus || 2));
+            }
+        }
+        if (c.mana === undefined || c.maxMana === undefined) {
+            const combinedLevel = Object.values(c.magicSkills).reduce((sum, lvl) => sum + lvl, 0);
+            c.maxMana = MANA_CONFIG.baseMana + combinedLevel * MANA_CONFIG.manaPerMagicLevel;
+            c.mana = c.maxMana;
+        }
+        if (!c.knownSpells) c.knownSpells = [];
+        if (!c.disabledSpells) c.disabledSpells = [];
+        if (c.equippedTome === undefined) c.equippedTome = null;
+        if (!c.tomeProgress || typeof c.tomeProgress === 'number') c.tomeProgress = {};
     }
     game.wildlife = data.wildlife;
     game.raiders = data.raiders;
@@ -121,6 +143,7 @@ export function loadGame(game) {
     game.resources.tools = data.resources.tools || [];
     game.resources.artifacts = data.resources.artifacts || [];
     game.resources.potions = data.resources.potions || [];
+    game.resources.tomes = data.resources.tomes || [];
     game.resources._decayAccumulators = data.resources._decayAccumulators || {};
     game.resources.reservedFoodstuffs = data.resources.reservedFoodstuffs || {};
 

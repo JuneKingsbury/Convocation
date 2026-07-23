@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, FOODSTUFFS } from '../core/config.js';
+import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, SPELL_TOMES, SPELLS, FOODSTUFFS } from '../core/config.js';
 import { getAvailableRecipes } from '../systems/crafting.js';
 import { CROP_RESEARCH_REQS } from '../systems/farming.js';
 
@@ -18,12 +18,27 @@ export class UI {
     initElements() {
         this.elements.statusBar = document.getElementById('status-bar');
         this.elements.infoPanel = document.getElementById('info-content');
+        this.elements.infoPanel.addEventListener('mouseleave', () => {
+            if (this._pendingColonistInfoHtml) {
+                this.elements.infoPanel.innerHTML = this._pendingColonistInfoHtml;
+                this._pendingColonistInfoHtml = null;
+            }
+        });
         this.elements.modeBar = document.getElementById('mode-bar');
         this.elements.notifications = document.getElementById('notifications');
         this.elements.priorityPanel = document.getElementById('priority-panel');
         this.elements.craftPanel = document.getElementById('craft-panel');
         this.elements.eventPanel = document.getElementById('event-panel');
         this.elements.colonistHud = document.getElementById('colonist-hud');
+        this._colonistHudHovered = false;
+        this.elements.colonistHud.addEventListener('mouseenter', () => { this._colonistHudHovered = true; });
+        this.elements.colonistHud.addEventListener('mouseleave', () => {
+            this._colonistHudHovered = false;
+            if (this._pendingHudHtml) {
+                this.elements.colonistHud.innerHTML = this._pendingHudHtml;
+                this._pendingHudHtml = null;
+            }
+        });
         this.elements.researchPanel = document.getElementById('research-panel');
         this.elements.eventLog = document.getElementById('event-log');
         this.elements.inventoryPanel = document.getElementById('inventory-panel');
@@ -147,6 +162,7 @@ export class UI {
         if (this.inventoryVisible) this.updateInventoryPanel();
         if (this.tamingPanelVisible) this.updateTamingPanel();
         if (this._viewingRiftGate) this._refreshRiftGateInfo();
+        if (this._viewingColonistId != null) this._refreshColonistInfo();
     }
 
     updateMinimapControls() {
@@ -202,6 +218,13 @@ export class UI {
     }
 
     updateModeDisplay(input) {
+        if (input.spellTargeting) {
+            const { spell } = input.spellTargeting;
+            let html = `<span class="mode-label" style="color:#bb88ff">SPELL TARGET: ${spell.name}</span>`;
+            html += `<span class="mode-hint" style="color:#aa88ff">Click target tile (range: ${spell.range || '∞'}) | [Esc] Cancel</span>`;
+            this.elements.modeBar.innerHTML = html;
+            return;
+        }
         let html = `<span class="mode-label">Mode: ${input.mode.toUpperCase()}</span>`;
         if (input.mode === 'build') {
             html += '<span class="mode-opt mode-back" data-mode-action="back">[Esc]Back</span>';
@@ -276,6 +299,24 @@ export class UI {
         const html = this._buildRiftGateInnerHtml();
         if (html !== riftSection.innerHTML) {
             riftSection.innerHTML = html;
+        }
+    }
+
+    _refreshColonistInfo() {
+        const colonist = this.game.colonists.find(c => c.id === this._viewingColonistId);
+        if (!colonist) {
+            this._viewingColonistId = null;
+            return;
+        }
+        const html = this.buildColonistInfoHtml(colonist);
+        if (html !== this._lastColonistInfoHtml) {
+            this._lastColonistInfoHtml = html;
+            if (this.elements.infoPanel.matches(':hover')) {
+                this._pendingColonistInfoHtml = html;
+            } else {
+                this.elements.infoPanel.innerHTML = html;
+                this._pendingColonistInfoHtml = null;
+            }
         }
     }
 
@@ -388,10 +429,48 @@ export class UI {
         html += `<div class="info-row">Traits: ${traitSpans}</div>`;
         html += `<div class="info-row">Hunger: ${bar(colonist.needs.hunger)} Rest: ${bar(colonist.needs.rest)}</div>`;
         html += `<div class="info-row">Skills: ${Object.entries(SKILLS).map(([k, def]) => `<span class="skill-tip" data-tip="${def.description}">${def.name}:${colonist.skills[k] || 1}</span>`).join(' ')}</div>`;
+        const hasMagic = colonist.magicSkills && Object.values(colonist.magicSkills).some(v => v > 0);
+        if (hasMagic) {
+            html += `<div class="info-row"><span style="color:#aa88ff">Mana: ${bar(colonist.mana / colonist.maxMana * 100)} ${Math.floor(colonist.mana)}/${colonist.maxMana}</span></div>`;
+            html += `<div class="info-row">Magic: ${Object.entries(MAGIC_SKILLS).filter(([k]) => colonist.magicSkills[k] > 0).map(([k, def]) => `<span class="skill-tip" data-tip="${def.description}" style="color:#bb88ff">${def.name}:${colonist.magicSkills[k]}</span>`).join(' ')}</div>`;
+        }
         html += `<div class="info-row">Weapon: <span class="skill-tip" data-tip="${weaponTip}">${colonist.weapon?.name || 'Fists'}</span></div>`;
         html += `<div class="info-row">Armor: <span class="skill-tip" data-tip="${armorTip}">${colonist.armor?.name || 'None'}</span></div>`;
         html += `<div class="info-row">Tool: <span class="skill-tip" data-tip="${toolTip}">${colonist.tool?.name || 'None'}</span></div>`;
         html += `<div class="info-row">Artifact: <span class="skill-tip" data-tip="${artifactTip}">${colonist.artifact?.name || 'None'}</span></div>`;
+        if (colonist.equippedTome) {
+            const tomeDef = SPELL_TOMES[colonist.equippedTome];
+            const currentProgress = (colonist.tomeProgress && colonist.tomeProgress[colonist.equippedTome]) || 0;
+            const progress = Math.floor((currentProgress / tomeDef.learningWork) * 100);
+            html += `<div class="info-row"><span style="color:#bb88ff">Studying: ${tomeDef.name} (${progress}%)</span></div>`;
+        }
+        if (colonist.knownSpells && colonist.knownSpells.length > 0) {
+            html += `<div class="info-row" style="color:#aa88ff"><b>Known Spells:</b></div>`;
+            for (const spellKey of colonist.knownSpells) {
+                const spell = SPELLS[spellKey];
+                if (!spell) continue;
+                const onCooldown = colonist._spellCooldowns?.[spellKey] && this.game.tick - colonist._spellCooldowns[spellKey] < spell.cooldown;
+                const cdRemaining = onCooldown ? spell.cooldown - (this.game.tick - colonist._spellCooldowns[spellKey]) : 0;
+                const hasMana = colonist.mana >= spell.manaCost;
+                const isDisabled = colonist.disabledSpells && colonist.disabledSpells.includes(spellKey);
+                let spellHtml = '';
+                if (spell.castType === 'auto') {
+                    const checked = !isDisabled ? 'checked' : '';
+                    spellHtml += `<input type="checkbox" ${checked} onchange="window.game.toggleSpell(${colonist.id},'${spellKey}')" style="margin-right:4px;vertical-align:middle">`;
+                }
+                spellHtml += `<span style="color:${isDisabled ? '#666' : '#bb88ff'}">${spell.name}</span> <span style="color:#666;font-size:0.85em">(${spell.manaCost} mana, ${spell.cooldown}t cd)</span>`;
+                if (spell.castType === 'targeted') {
+                    const disabled = onCooldown || !hasMana;
+                    const reason = onCooldown ? `${cdRemaining}t` : !hasMana ? 'low mana' : '';
+                    spellHtml += disabled
+                        ? ` <span style="color:#666">[${reason}]</span>`
+                        : ` <button onclick="window.game.startSpellTargeting(${colonist.id},'${spellKey}')" style="font-size:0.8em">Cast</button>`;
+                } else {
+                    spellHtml += ` <span style="color:#555;font-size:0.8em">[auto${onCooldown ? `, ${cdRemaining}t` : ''}]</span>`;
+                }
+                html += `<div class="info-row" style="padding-left:8px">${spellHtml}</div>`;
+            }
+        }
         if (colonist.activeEffects && colonist.activeEffects.length > 0) {
             const effects = colonist.activeEffects.map(e => `<span style="color:#88ffaa">${e.type} (${e.expiresAt - this.game.tick}t)</span>`).join(', ');
             html += `<div class="info-row">Effects: ${effects}</div>`;
@@ -406,6 +485,7 @@ export class UI {
         html += this.buildArmorDropdown(colonist);
         html += this.buildToolDropdown(colonist);
         html += this.buildArtifactDropdown(colonist);
+        html += this.buildTomeDropdown(colonist);
         html += `<button onclick="window.game.autoEquipBest(${colonist.id})">Auto-equip Best</button>`;
         const others = this.game.colonists.filter(c => c.hp > 0 && c.id !== colonist.id);
         if (others.length > 0) {
@@ -424,6 +504,7 @@ export class UI {
     showColonistInfo(colonist) {
         this._switchToInfoTab();
         this._viewingRiftGate = false;
+        this._viewingColonistId = colonist.id;
         this.elements.infoPanel.innerHTML = this.buildColonistInfoHtml(colonist);
     }
 
@@ -497,6 +578,30 @@ export class UI {
         return html;
     }
 
+    buildTomeDropdown(colonist) {
+        const tomes = this.game.resources.tomes || [];
+        let html = `<select onchange="if(this.value==='unequip'){window.game.unequipTome(${colonist.id})}else if(this.value!==''){window.game.equipTome(${colonist.id},parseInt(this.value))}">`;
+        const currentTome = colonist.equippedTome ? SPELL_TOMES[colonist.equippedTome]?.name : 'None';
+        html += `<option value="">Tome: ${currentTome}</option>`;
+        if (colonist.equippedTome) {
+            html += `<option value="unequip">Unequip</option>`;
+        }
+        tomes.forEach((t, i) => {
+            const def = SPELL_TOMES[t.key];
+            if (!def) return;
+            const spell = SPELLS[def.spell];
+            const canStudy = (colonist.magicSkills[spell?.school] || 0) >= def.minSchoolLevel;
+            const alreadyKnown = colonist.knownSpells.includes(def.spell);
+            if (alreadyKnown) return;
+            html += `<option value="${i}" ${canStudy ? '' : 'disabled'}>${def.name}${canStudy ? '' : ` (need ${MAGIC_SKILLS[spell.school].name} ${def.minSchoolLevel})`}</option>`;
+        });
+        if (tomes.length === 0 && !colonist.equippedTome) {
+            html += `<option disabled>No tomes available</option>`;
+        }
+        html += `</select>`;
+        return html;
+    }
+
     getCraftOutputTip(outputKey) {
         if (WEAPONS[outputKey]) {
             const w = WEAPONS[outputKey];
@@ -536,6 +641,7 @@ export class UI {
 
     showAnimalInfo(animal) {
         this._switchToInfoTab();
+        this._viewingColonistId = null;
         let html = `<div class="info-header">${animal.type}</div>`;
         html += `<div class="info-row">HP: ${animal.hp}/${animal.maxHp}</div>`;
         html += `<div class="info-row">${animal.hostile ? 'Hostile' : 'Passive'}</div>`;
@@ -549,6 +655,7 @@ export class UI {
 
     showTileInfo(tile, x, y) {
         this._switchToInfoTab();
+        this._viewingColonistId = null;
         this._viewingRiftGate = (tile.structure === 'rift_gate');
         let html = `<div class="info-header">Tile (${x},${y})</div>`;
         html += `<div class="info-row">Terrain: ${tile.terrain}</div>`;
@@ -616,6 +723,8 @@ export class UI {
     showTileEntities(tile, x, y, colonists, animals, raiders = [], tamedAnimals = []) {
         this._switchToInfoTab();
         this._viewingRiftGate = (tile.structure === 'rift_gate');
+        this._viewingColonistId = (colonists.length === 1 && animals.length === 0 && raiders.length === 0 && tamedAnimals.length === 0)
+            ? colonists[0].id : null;
         let html = '';
 
         for (const r of raiders) {
@@ -736,6 +845,7 @@ export class UI {
 
     showMultiColonistInfo(colonists) {
         this._switchToInfoTab();
+        this._viewingColonistId = null;
         const draftedCount = colonists.filter(c => c.drafted).length;
         let html = `<div class="info-header">${colonists.length} Colonists Selected</div>`;
         html += `<div class="info-actions" style="margin-bottom:8px;">`;
@@ -924,7 +1034,12 @@ export class UI {
         }
         if (html !== this._lastHudHtml) {
             this._lastHudHtml = html;
-            this.elements.colonistHud.innerHTML = html;
+            if (this._colonistHudHovered) {
+                this._pendingHudHtml = html;
+            } else {
+                this.elements.colonistHud.innerHTML = html;
+                this._pendingHudHtml = null;
+            }
         }
     }
 
@@ -1316,6 +1431,21 @@ export class UI {
             for (const [type, count] of Object.entries(potionCounts)) {
                 const def = POTIONS[type];
                 html += `<div class="inv-row"><span class="inv-name">${def ? def.name : type}</span><span class="inv-amount">x${count}</span></div>`;
+            }
+        }
+
+        const tomes = this.game.resources.tomes;
+        if (tomes.length > 0) {
+            html += '<div class="info-row" style="color:#bb88ff;margin-top:8px;margin-bottom:4px;"><b>Spell Tomes:</b></div>';
+            const tomeCounts = {};
+            for (const t of tomes) {
+                tomeCounts[t.key] = (tomeCounts[t.key] || 0) + 1;
+            }
+            for (const [key, count] of Object.entries(tomeCounts)) {
+                const def = SPELL_TOMES[key];
+                const spell = def ? SPELLS[def.spell] : null;
+                const schoolName = spell ? MAGIC_SKILLS[spell.school]?.name : '';
+                html += `<div class="inv-row"><span class="inv-name">${def ? def.name : key}</span><span class="inv-amount">x${count}${schoolName ? ` (${schoolName})` : ''}</span></div>`;
             }
         }
 
