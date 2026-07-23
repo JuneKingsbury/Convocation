@@ -71,15 +71,24 @@ export class CombatSystem {
             return;
         }
 
-        if (game.tick - this.raidStartTick > RAID_CONFIG.timeout) {
+        // Individual flee: each raider flees when critically wounded
+        for (const raider of aliveRaiders) {
+            if (!raider.fleeing && raider.hp / raider.maxHp <= RAID_CONFIG.fleeHpFraction) {
+                raider.fleeing = true;
+            }
+        }
+
+        // Group rout: if 75% of the raid is dead or fleeing, the rest break
+        const initialCount = game.raiders.length;
+        const deadOrFleeing = initialCount - aliveRaiders.filter(r => !r.fleeing).length;
+        if (deadOrFleeing >= Math.ceil(initialCount * RAID_CONFIG.routThreshold)) {
             for (const raider of aliveRaiders) {
                 raider.fleeing = true;
             }
         }
 
-        const initialCount = game.raiders.length;
-        const fleeThreshold = Math.floor(initialCount * RAID_CONFIG.fleeThreshold);
-        if (aliveRaiders.length <= fleeThreshold) {
+        // Safety timeout: all remaining raiders flee after a long time
+        if (game.tick - this.raidStartTick > RAID_CONFIG.timeout) {
             for (const raider of aliveRaiders) {
                 raider.fleeing = true;
             }

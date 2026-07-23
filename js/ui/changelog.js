@@ -1,4 +1,9 @@
 export const CHANGELOG = [
+    { date: '2026-07-23', message: 'Performance: Map-based O(1) colonist/task lookups, reusable renderer buffers, precomputed night lighting grid' },
+    { date: '2026-07-23', message: 'Balance pass: ~2x longer mid-to-endgame (research costs, craft times, exploration durations, tome learning)' },
+    { date: '2026-07-23', message: 'Raider AI overhaul: individual flee at 25% HP, group rout at 75% casualties, longer safety timeout' },
+    { date: '2026-07-23', message: 'Dead colonists now sort to bottom of Colonists panel' },
+    { date: '2026-07-23', message: 'New games start at 6:00 AM instead of midnight' },
     { date: '2026-07-23', message: 'Fix trader UI bug and add QoL to exploration info panel and easier to use starting screen' },
     { date: '2026-07-23', message: 'Way better glossary and exploration systems' },
     { date: '2026-07-23', message: 'Several todo list items like wolf taming and golems' },

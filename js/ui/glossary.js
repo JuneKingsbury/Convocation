@@ -91,7 +91,7 @@ export const GLOSSARY = [
     {
         title: 'Seasons & Weather',
         entries: [
-            ['Seasons', '4 seasons per year, each ~600 ticks (~2 min at 1x speed):\n\n  Season  Temp       Growth  Special\n  Spring  10-20°     1.0x    Animals appear\n  Summer  20-35°     1.5x    Heat waves, fire risk, faster rot\n  Autumn  5-15°      0.8x    Animal migrations\n  Winter  -10 to 5°  None*   Snow, need warmth\n\n* Potatoes still grow in winter.'],
+            ['Seasons', '4 seasons per year, each 1500 ticks (~5 min at 1x speed):\n\n  Season  Temp       Growth  Special\n  Spring  10-20°     1.0x    Animals appear\n  Summer  20-35°     1.5x    Heat waves, fire risk, faster rot\n  Autumn  5-15°      0.8x    Animal migrations\n  Winter  -10 to 5°  None*   Snow, need warmth\n\n* Potatoes still grow in winter.'],
             ['Rain', 'Boosts crop growth 1.3x. Extinguishes fires.'],
             ['Thunderstorm', 'Can start fires via lightning.'],
             ['Blizzard', 'Stops all crop growth. Winter only.'],
@@ -117,7 +117,7 @@ export const GLOSSARY = [
             ['Ranged Magic', 'Colonists with Evocation spells (Magic Missile, Fireball, Chain Lightning) attack enemies at range automatically.'],
             ['Weapons', 'Fists (5 dmg), Wooden Club (10), Etched Axe (15), Runic Blade (22), Void Blade (30). Craft and equip for better defense.'],
             ['Armor', 'Void Armor (-30% damage taken). Craft with void essence. Equip from colonist info panel.'],
-            ['Raids', 'Raiders attack periodically (disabled in Peaceful Mode). Scale with colony wealth.'],
+            ['Raids', 'Raiders attack periodically (disabled in Peaceful Mode). Scale with colony wealth. Individual raiders flee below 25% HP; the group routs when 75% are dead or fleeing.'],
             ['Structure HP', 'Walls/doors/fences have HP. Enemies break through them. Auto-repairs when idle.'],
             ['Peaceful Mode', 'Disables raids, wolves, and pyromaniac fires. Void Nexus still works.'],
         ]
@@ -140,7 +140,7 @@ export const GLOSSARY = [
             ['Expeditions', 'Select colonists (and optional pack animals) and a dimension, then launch. Party walks to the gate, explores, and returns with loot. Watch the live event log to see what happens to your colonists in real-time.'],
             ['Live Event Log', 'While an expedition is active, click the Rift Gate to see a scrolling log of events: combat rounds, trap encounters, item discoveries, and ambient observations. Each dimension has unique events.'],
             ['Pack Animals', 'Tamed okapi can join expeditions as pack animals, reducing expedition duration by 25% each.'],
-            ['Dimensions', 'Each has unique events, traps, and rare encounters:\n\n  Crystal Caves   Diff 1  150-250t  Stone, Runite\n  Verdant Depths  Diff 1  100-180t  Wood, Wheat, Berries\n  Arcane Library  Diff 1  120-200t  Spell Tomes, Runite  (Arcane Studies)\n  Shadow Realm    Diff 2  250-400t  Void Essence, Runite (Deep Delving)'],
+            ['Dimensions', 'Each has unique events, traps, and rare encounters:\n\n  Crystal Caves   Diff 1  220-380t  Stone, Runite\n  Verdant Depths  Diff 1  150-280t  Wood, Wheat, Berries\n  Arcane Library  Diff 1  180-320t  Spell Tomes, Runite  (Arcane Studies)\n  Shadow Realm    Diff 2  400-650t  Void Essence, Runite (Deep Delving)'],
             ['Encounters', 'Combat encounters resolve round-by-round in real-time. Colonists attack with equipped weapons; enemies strike back. Traps deal damage to random party members. Discoveries provide bonus loot.'],
             ['No Permadeath', 'Defeated colonists return at 1 HP. Entire party defeated = return empty-handed.'],
         ]

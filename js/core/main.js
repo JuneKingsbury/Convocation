@@ -31,12 +31,12 @@ import { checkComplexStructures } from '../systems/complexBuildings.js';
 
 class Game {
     constructor() {
-        this.tick = 0;
+        this.tick = 74;
         this.paused = false;
         this.speed = 1;
         this.accumulator = 0;
         this.lastTime = 0;
-        this.timeOfDay = 50;
+        this.timeOfDay = 75;
         this.settings = {
             autoPauseHostile: true,
             autoPauseEvent: true,

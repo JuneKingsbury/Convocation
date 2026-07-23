@@ -293,7 +293,7 @@ export const COLONIST_NAMES = [
 export const WORK_CONFIG = {
     plantWork: 5,                // ticks to plant a crop
     harvestWork: 8,              // ticks to harvest a crop
-    researchWork: 20,            // ticks per research task cycle at research desk
+    researchWork: 25,            // ticks per research task cycle at research desk
     deconstructWork: 10,         // ticks to deconstruct a building
     tameWork: 20,                // ticks to tame an animal
     dangerousTameWork: 30,       // ticks to tame a dangerous animal (wolves)
@@ -352,15 +352,15 @@ export const BUILDINGS = {
     beast_circle:      { char: 'A', color: '#9cf642', cost: { wood: 6 }, work: 28, structureType: 'furniture', category: 'Production', research: 'beast_binding', description: 'Required for binding creatures. Bound animals produce resources.' },
     void_nexus:        { char: 'V', color: '#9933ff', cost: { runite: 5, stone: 6, planks: 4 }, work: 60, structureType: 'furniture', category: 'Defense', passable: { colonist: false, animal: false, enemy: false }, research: 'void_summoning', description: 'Start wave defense here. Defend it from enemies to earn void essence.' },
     arcane_sentinel:   { char: 'X', color: '#ff4444', cost: { stone: 5, planks: 3 }, work: 50, structureType: 'furniture', category: 'Defense', passable: { colonist: false, animal: false, enemy: false }, research: 'warding', power: { consumes: 3, damage: 12, range: 4 }, description: 'Auto-attacks enemies in range 4, 12 dmg. Consumes 3 mana.' },
-    void_wall:         { char: '▓', color: '#6622aa', cost: { stone: 3, void_essence: 2 }, work: 15, hp: 120, structureType: 'wall', category: 'Walls & Floors', passable: { colonist: false, animal: false, enemy: false }, breakable: true, research: 'void_forging', description: 'Reinforced wall (120 HP). Blocks enemies.' },
-    void_turret:       { char: 'Y', color: '#aa33ff', cost: { stone: 5, planks: 3, void_essence: 4 }, work: 55, structureType: 'furniture', category: 'Defense', passable: { colonist: false, animal: false, enemy: false }, research: 'void_forging', power: { consumes: 5, damage: 20, range: 5 }, description: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.' },
-    void_door:         { char: '▒', color: '#7733bb', cost: { stone: 3, planks: 2, void_essence: 3 }, work: 20, hp: 80, structureType: 'door', category: 'Walls & Floors', passable: { colonist: true, animal: false, enemy: false }, breakable: true, research: 'void_forging', description: 'Reinforced door (80 HP). Colonists pass through, enemies must break it.' },
+    void_wall:         { char: '▓', color: '#6622aa', cost: { stone: 3, void_essence: 3 }, work: 15, hp: 120, structureType: 'wall', category: 'Walls & Floors', passable: { colonist: false, animal: false, enemy: false }, breakable: true, research: 'void_forging', description: 'Reinforced wall (120 HP). Blocks enemies.' },
+    void_turret:       { char: 'Y', color: '#aa33ff', cost: { stone: 5, planks: 3, void_essence: 6 }, work: 55, structureType: 'furniture', category: 'Defense', passable: { colonist: false, animal: false, enemy: false }, research: 'void_forging', power: { consumes: 5, damage: 20, range: 5 }, description: 'Auto-attacks enemies in range 5, 20 dmg. Consumes 5 mana.' },
+    void_door:         { char: '▒', color: '#7733bb', cost: { stone: 3, planks: 2, void_essence: 4 }, work: 20, hp: 80, structureType: 'door', category: 'Walls & Floors', passable: { colonist: true, animal: false, enemy: false }, breakable: true, research: 'void_forging', description: 'Reinforced door (80 HP). Colonists pass through, enemies must break it.' },
     mana_crystal:      { char: 'W', color: '#aa44ff', cost: { wood: 8, stone: 4 }, work: 45, structureType: 'furniture', category: 'Arcane', passable: { colonist: false, animal: false, enemy: false }, research: 'ley_channeling', power: { generates: 10 }, description: 'Generates 10 mana for powering magical buildings.' },
     glowstone:         { char: 'L', color: '#ffff88', cost: { planks: 2, stone: 1 }, work: 14, structureType: 'furniture', category: 'Furniture', lightRadius: 10, research: 'luminance', power: { consumes: 2, radius: 5 }, description: 'Mana-powered light, radius 5. Consumes 2 mana.' },
     enchanting_table:  { char: 'P', color: '#bb88ff', cost: { planks: 4, stone: 3 }, work: 35, structureType: 'furniture', category: 'Production', research: 'arcane_infusion', power: { consumes: 4, speedMult: 2.0 }, description: '2x crafting speed. Consumes 4 mana.' },
     ember_ward:        { char: 'H', color: '#ff8844', cost: { stone: 4, planks: 2 }, work: 28, structureType: 'furniture', category: 'Arcane', research: 'ember_magic', power: { consumes: 3, warmRadius: 4 }, description: 'Warms nearby tiles (radius 4) in winter. Consumes 3 mana.' },
     ice_box:           { char: 'I', color: '#88ccff', cost: { runite: 2, stone: 4, planks: 2, void_essence: 2 }, work: 40, structureType: 'furniture', category: 'Furniture', research: 'alchemy', power: { consumes: 1 }, description: 'Magically chills food — reduces spoilage by 40%. Consumes 1 mana.' },
-    rift_gate:         { char: 'Ω', color: '#33ccff', cost: { runite: 4, stone: 6, planks: 4, void_essence: 6 }, work: 60, structureType: 'furniture', category: 'Arcane', passable: { colonist: false, animal: false, enemy: false }, research: 'planar_rift', power: { consumes: 6 }, description: 'Send exploration parties to alternate dimensions. Consumes 6 mana.' },
+    rift_gate:         { char: 'Ω', color: '#33ccff', cost: { runite: 4, stone: 6, planks: 4, void_essence: 8 }, work: 60, structureType: 'furniture', category: 'Arcane', passable: { colonist: false, animal: false, enemy: false }, research: 'planar_rift', power: { consumes: 6 }, description: 'Send exploration parties to alternate dimensions. Consumes 6 mana.' },
     golem_forge:       { char: 'Ğ', color: '#cc8833', cost: { stone: 8, runite: 4, planks: 4 }, work: 50, structureType: 'furniture', category: 'Production', research: 'golem_craft', description: 'Animate stone golems. Click to craft.' },
     forge_core:        { char: '⚒', color: '#ff8844', cost: { stone: 6, runite: 3, planks: 3 }, work: 40, structureType: 'furniture', category: 'Arcane', research: 'masterwork', description: 'Core of the Great Forge. Surround with walls + door to activate (2.5x equipment crafting).' },
     ritual_core:       { char: '◎', color: '#aa44ff', cost: { runite: 5, void_essence: 3, planks: 4 }, work: 50, structureType: 'furniture', category: 'Arcane', research: 'advanced_arcana', description: 'Core of the Ritual Circle. Place altars around it to activate (-30% spell cooldowns).' },
@@ -437,41 +437,41 @@ export const RECIPES = {
     craft_planks: { input: { wood: 2 }, output: { planks: 3 }, skill: 'crafting', ticks: 10, station: 'workbench', category: 'Materials' },
     craft_bricks: { input: { stone: 2 }, output: { bricks: 3 }, skill: 'crafting', ticks: 12, station: 'workbench', category: 'Materials' },
     craft_wooden_club: { input: { wood: 2, planks: 1 }, output: { wooden_club: 1 }, skill: 'crafting', ticks: 15, station: 'workbench', category: 'Equipment' },
-    craft_etched_axe: { input: { stone: 2, planks: 1 }, output: { etched_axe: 1 }, skill: 'crafting', ticks: 18, station: 'workbench', research: 'runecraft', category: 'Equipment' },
-    craft_runic_blade: { input: { runite: 2, planks: 1 }, output: { runic_blade: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'runeforging', category: 'Equipment' },
-    craft_void_blade: { input: { void_essence: 4, runite: 2, planks: 1 }, output: { void_blade: 1 }, skill: 'crafting', ticks: 30, station: 'workbench', research: 'void_forging', category: 'Equipment' },
-    craft_void_armor: { input: { void_essence: 3, bricks: 2, planks: 1 }, output: { void_armor: 1 }, skill: 'crafting', ticks: 25, station: 'workbench', research: 'void_forging', category: 'Equipment' },
+    craft_etched_axe: { input: { stone: 2, planks: 1 }, output: { etched_axe: 1 }, skill: 'crafting', ticks: 22, station: 'workbench', research: 'runecraft', category: 'Equipment' },
+    craft_runic_blade: { input: { runite: 2, planks: 1 }, output: { runic_blade: 1 }, skill: 'crafting', ticks: 40, station: 'workbench', research: 'runeforging', category: 'Equipment' },
+    craft_void_blade: { input: { void_essence: 6, runite: 2, planks: 1 }, output: { void_blade: 1 }, skill: 'crafting', ticks: 60, station: 'workbench', research: 'void_forging', category: 'Equipment' },
+    craft_void_armor: { input: { void_essence: 5, bricks: 2, planks: 1 }, output: { void_armor: 1 }, skill: 'crafting', ticks: 55, station: 'workbench', research: 'void_forging', category: 'Equipment' },
     craft_stone_pickaxe: { input: { stone: 2, planks: 1 }, output: { stone_pickaxe: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', category: 'Tools' },
-    craft_runic_pickaxe: { input: { runite: 2, planks: 1 }, output: { runic_pickaxe: 1 }, skill: 'crafting', ticks: 22, station: 'workbench', research: 'runeforging', category: 'Tools' },
+    craft_runic_pickaxe: { input: { runite: 2, planks: 1 }, output: { runic_pickaxe: 1 }, skill: 'crafting', ticks: 35, station: 'workbench', research: 'runeforging', category: 'Tools' },
     craft_woodcutter_axe: { input: { planks: 2, stone: 1 }, output: { woodcutter_axe: 1 }, skill: 'crafting', ticks: 16, station: 'workbench', category: 'Tools' },
     craft_harvesting_sickle: { input: { stone: 1, planks: 1, wood: 1 }, output: { harvesting_sickle: 1 }, skill: 'crafting', ticks: 14, station: 'workbench', research: 'druidcraft', category: 'Tools' },
     craft_wooden_wand: { input: { wood: 3, planks: 1 }, output: { wooden_wand: 1 }, skill: 'crafting', ticks: 12, station: 'workbench', research: 'arcane_studies', category: 'Equipment' },
-    craft_crystal_staff: { input: { stone: 3, planks: 2, runite: 1 }, output: { crystal_staff: 1 }, skill: 'crafting', ticks: 20, station: 'workbench', research: 'arcane_studies', category: 'Equipment' },
-    craft_runic_wand: { input: { runite: 2, planks: 2 }, output: { runic_wand: 1 }, skill: 'crafting', ticks: 22, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
-    craft_void_staff: { input: { void_essence: 3, runite: 2, planks: 2 }, output: { void_staff: 1 }, skill: 'crafting', ticks: 28, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
-    craft_boots_of_haste: { input: { void_essence: 2, planks: 2, runite: 1 }, output: { boots_of_haste: 1 }, skill: 'crafting', ticks: 28, station: 'workbench', research: 'void_forging', category: 'Artifacts' },
-    brew_health_potion: { input: { berries: 3, wheat: 1 }, output: { health_potion: 1 }, skill: 'cooking', ticks: 12, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
-    brew_speed_potion: { input: { corn: 2, potatoes: 2, berries: 1 }, output: { speed_potion: 1 }, skill: 'cooking', ticks: 15, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
+    craft_crystal_staff: { input: { stone: 3, planks: 2, runite: 1 }, output: { crystal_staff: 1 }, skill: 'crafting', ticks: 28, station: 'workbench', research: 'arcane_studies', category: 'Equipment' },
+    craft_runic_wand: { input: { runite: 2, planks: 2 }, output: { runic_wand: 1 }, skill: 'crafting', ticks: 35, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
+    craft_void_staff: { input: { void_essence: 5, runite: 2, planks: 2 }, output: { void_staff: 1 }, skill: 'crafting', ticks: 55, station: 'workbench', research: 'advanced_arcana', category: 'Equipment' },
+    craft_boots_of_haste: { input: { void_essence: 3, planks: 2, runite: 1 }, output: { boots_of_haste: 1 }, skill: 'crafting', ticks: 55, station: 'workbench', research: 'void_forging', category: 'Artifacts' },
+    brew_health_potion: { input: { berries: 3, wheat: 1 }, output: { health_potion: 1 }, skill: 'cooking', ticks: 16, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
+    brew_speed_potion: { input: { corn: 2, potatoes: 2, berries: 1 }, output: { speed_potion: 1 }, skill: 'cooking', ticks: 20, station: 'cauldron', research: 'alchemy', category: 'Food & Potions' },
     cook_meal: { input: { foodstuffs: 5 }, output: { food: 4 }, skill: 'cooking', ticks: 8, station: 'cauldron', category: 'Food & Potions' },
     craft_tome_spark: { input: { planks: 2, stone: 1 }, output: { tome_spark: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
     craft_tome_mend: { input: { planks: 2, berries: 2 }, output: { tome_mend: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
     craft_tome_quicken: { input: { planks: 2, stone: 1 }, output: { tome_quicken: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
     craft_tome_phase_step: { input: { planks: 2, stone: 1 }, output: { tome_phase_step: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
     craft_tome_nurture: { input: { planks: 2, wheat: 2 }, output: { tome_nurture: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
-    craft_tome_magic_missile: { input: { planks: 3, runite: 1 }, output: { tome_magic_missile: 1 }, skill: 'crafting', ticks: 20, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
-    craft_tome_heal: { input: { planks: 3, runite: 1, berries: 2 }, output: { tome_heal: 1 }, skill: 'crafting', ticks: 22, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
-    craft_tome_haste: { input: { planks: 4, runite: 2 }, output: { tome_haste: 1 }, skill: 'crafting', ticks: 25, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
-    craft_tome_warp: { input: { planks: 4, runite: 2, void_essence: 1 }, output: { tome_warp: 1 }, skill: 'crafting', ticks: 25, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
-    craft_tome_fireball: { input: { planks: 5, runite: 3, void_essence: 2 }, output: { tome_fireball: 1 }, skill: 'crafting', ticks: 30, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
-    craft_tome_shield: { input: { planks: 4, runite: 3, stone: 3 }, output: { tome_shield: 1 }, skill: 'crafting', ticks: 28, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
-    craft_tome_summon_familiar: { input: { planks: 5, runite: 3, void_essence: 3 }, output: { tome_summon_familiar: 1 }, skill: 'crafting', ticks: 32, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
-    craft_tome_circle_of_growth: { input: { planks: 4, runite: 2, wheat: 3 }, output: { tome_circle_of_growth: 1 }, skill: 'crafting', ticks: 26, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
-    craft_tome_level_field: { input: { planks: 5, runite: 4, void_essence: 3 }, output: { tome_level_field: 1 }, skill: 'crafting', ticks: 35, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_magic_missile: { input: { planks: 3, runite: 1 }, output: { tome_magic_missile: 1 }, skill: 'crafting', ticks: 30, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_heal: { input: { planks: 3, runite: 1, berries: 2 }, output: { tome_heal: 1 }, skill: 'crafting', ticks: 32, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_haste: { input: { planks: 4, runite: 2 }, output: { tome_haste: 1 }, skill: 'crafting', ticks: 38, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_warp: { input: { planks: 4, runite: 2, void_essence: 1 }, output: { tome_warp: 1 }, skill: 'crafting', ticks: 38, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_fireball: { input: { planks: 5, runite: 3, void_essence: 2 }, output: { tome_fireball: 1 }, skill: 'crafting', ticks: 50, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_shield: { input: { planks: 4, runite: 3, stone: 3 }, output: { tome_shield: 1 }, skill: 'crafting', ticks: 45, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_summon_familiar: { input: { planks: 5, runite: 3, void_essence: 3 }, output: { tome_summon_familiar: 1 }, skill: 'crafting', ticks: 55, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_circle_of_growth: { input: { planks: 4, runite: 2, wheat: 3 }, output: { tome_circle_of_growth: 1 }, skill: 'crafting', ticks: 40, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
+    craft_tome_level_field: { input: { planks: 5, runite: 4, void_essence: 3 }, output: { tome_level_field: 1 }, skill: 'crafting', ticks: 60, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
     craft_tome_foresight: { input: { planks: 2, berries: 1 }, output: { tome_foresight: 1 }, skill: 'crafting', ticks: 12, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
     craft_tome_fair_winds: { input: { planks: 3, runite: 1 }, output: { tome_fair_winds: 1 }, skill: 'crafting', ticks: 20, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
     craft_tome_merchants_omen: { input: { planks: 4, runite: 2 }, output: { tome_merchants_omen: 1 }, skill: 'crafting', ticks: 25, station: 'enchanting_table', research: 'arcane_studies', category: 'Tomes' },
-    craft_tome_ward_of_calamity: { input: { planks: 5, runite: 3, void_essence: 2 }, output: { tome_ward_of_calamity: 1 }, skill: 'crafting', ticks: 30, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
-    craft_tome_fortunate_discovery: { input: { planks: 5, runite: 4, void_essence: 3 }, output: { tome_fortunate_discovery: 1 }, skill: 'crafting', ticks: 35, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_ward_of_calamity: { input: { planks: 5, runite: 3, void_essence: 2 }, output: { tome_ward_of_calamity: 1 }, skill: 'crafting', ticks: 50, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
+    craft_tome_fortunate_discovery: { input: { planks: 5, runite: 4, void_essence: 3 }, output: { tome_fortunate_discovery: 1 }, skill: 'crafting', ticks: 60, station: 'enchanting_table', research: 'advanced_arcana', category: 'Tomes' },
 };
 
 // To add a weapon: add entry here + a recipe with output: { <key>: 1 }. Auto-detected on craft.
@@ -830,20 +830,20 @@ export const SPELL_TOMES = {
     tome_quicken: { name: 'Tome: Quicken', spell: 'quicken', learningWork: 60, minSchoolLevel: 0 },
     tome_phase_step: { name: 'Tome: Phase Step', spell: 'phase_step', learningWork: 60, minSchoolLevel: 0 },
     tome_nurture: { name: 'Tome: Nurture', spell: 'nurture', learningWork: 60, minSchoolLevel: 0 },
-    tome_magic_missile: { name: 'Tome: Magic Missile', spell: 'magic_missile', learningWork: 100, minSchoolLevel: 1 },
-    tome_fireball: { name: 'Tome: Fireball', spell: 'fireball', learningWork: 220, minSchoolLevel: 3 },
-    tome_haste: { name: 'Tome: Haste', spell: 'haste', learningWork: 180, minSchoolLevel: 2 },
-    tome_heal: { name: 'Tome: Heal', spell: 'heal', learningWork: 120, minSchoolLevel: 1 },
-    tome_shield: { name: 'Tome: Shield', spell: 'shield', learningWork: 200, minSchoolLevel: 3 },
-    tome_warp: { name: 'Tome: Warp', spell: 'warp', learningWork: 150, minSchoolLevel: 2 },
-    tome_summon_familiar: { name: 'Tome: Summon Familiar', spell: 'summon_familiar', learningWork: 240, minSchoolLevel: 3 },
-    tome_circle_of_growth: { name: 'Tome: Circle of Growth', spell: 'circle_of_growth', learningWork: 160, minSchoolLevel: 2 },
-    tome_level_field: { name: 'Tome: Level Field', spell: 'level_field', learningWork: 280, minSchoolLevel: 4 },
+    tome_magic_missile: { name: 'Tome: Magic Missile', spell: 'magic_missile', learningWork: 150, minSchoolLevel: 1 },
+    tome_fireball: { name: 'Tome: Fireball', spell: 'fireball', learningWork: 350, minSchoolLevel: 3 },
+    tome_haste: { name: 'Tome: Haste', spell: 'haste', learningWork: 280, minSchoolLevel: 2 },
+    tome_heal: { name: 'Tome: Heal', spell: 'heal', learningWork: 180, minSchoolLevel: 1 },
+    tome_shield: { name: 'Tome: Shield', spell: 'shield', learningWork: 320, minSchoolLevel: 3 },
+    tome_warp: { name: 'Tome: Warp', spell: 'warp', learningWork: 230, minSchoolLevel: 2 },
+    tome_summon_familiar: { name: 'Tome: Summon Familiar', spell: 'summon_familiar', learningWork: 380, minSchoolLevel: 3 },
+    tome_circle_of_growth: { name: 'Tome: Circle of Growth', spell: 'circle_of_growth', learningWork: 240, minSchoolLevel: 2 },
+    tome_level_field: { name: 'Tome: Level Field', spell: 'level_field', learningWork: 440, minSchoolLevel: 4 },
     tome_foresight: { name: 'Tome: Foresight', spell: 'foresight', learningWork: 60, minSchoolLevel: 0 },
-    tome_fair_winds: { name: 'Tome: Fair Winds', spell: 'fair_winds', learningWork: 100, minSchoolLevel: 1 },
-    tome_merchants_omen: { name: "Tome: Merchant's Omen", spell: 'merchants_omen', learningWork: 160, minSchoolLevel: 2 },
-    tome_ward_of_calamity: { name: 'Tome: Ward of Calamity', spell: 'ward_of_calamity', learningWork: 220, minSchoolLevel: 3 },
-    tome_fortunate_discovery: { name: 'Tome: Fortunate Discovery', spell: 'fortunate_discovery', learningWork: 280, minSchoolLevel: 4 },
+    tome_fair_winds: { name: 'Tome: Fair Winds', spell: 'fair_winds', learningWork: 150, minSchoolLevel: 1 },
+    tome_merchants_omen: { name: "Tome: Merchant's Omen", spell: 'merchants_omen', learningWork: 240, minSchoolLevel: 2 },
+    tome_ward_of_calamity: { name: 'Tome: Ward of Calamity', spell: 'ward_of_calamity', learningWork: 350, minSchoolLevel: 3 },
+    tome_fortunate_discovery: { name: 'Tome: Fortunate Discovery', spell: 'fortunate_discovery', learningWork: 440, minSchoolLevel: 4 },
 };
 
 // To add research: add entry here with requires:[] for prerequisites.
@@ -852,26 +852,26 @@ export const SPELL_TOMES = {
 export const RESEARCH = {
     runecraft: { name: 'Runecraft', cost: 50, requires: [], description: 'Etch runes into stone weapons' },
     druidcraft: { name: 'Druidcraft', cost: 80, requires: [], description: 'Unlock corn and potatoes' },
-    beast_binding: { name: 'Beast Binding', cost: 100, requires: ['druidcraft'], description: 'Bind and pen creatures' },
-    ley_channeling: { name: 'Ley Channeling', cost: 120, requires: ['runecraft'], description: 'Tap leylines for mana' },
-    luminance: { name: 'Luminance', cost: 80, requires: ['ley_channeling'], description: 'Mana-powered light' },
-    arcane_infusion: { name: 'Arcane Infusion', cost: 150, requires: ['ley_channeling'], description: 'Faster enchanted crafting' },
-    runeforging: { name: 'Runeforging', cost: 130, requires: ['runecraft'], description: 'Forge runic weapons' },
+    beast_binding: { name: 'Beast Binding', cost: 140, requires: ['druidcraft'], description: 'Bind and pen creatures' },
+    ley_channeling: { name: 'Ley Channeling', cost: 180, requires: ['runecraft'], description: 'Tap leylines for mana' },
+    luminance: { name: 'Luminance', cost: 100, requires: ['ley_channeling'], description: 'Mana-powered light' },
+    arcane_infusion: { name: 'Arcane Infusion', cost: 280, requires: ['ley_channeling'], description: 'Faster enchanted crafting' },
+    runeforging: { name: 'Runeforging', cost: 200, requires: ['runecraft'], description: 'Forge runic weapons' },
     alchemy: { name: 'Alchemy', cost: 60, requires: [], description: 'Cooking produces +2 bonus food per meal' },
-    warding: { name: 'Warding', cost: 100, requires: ['runecraft'], description: 'Conjure defensive wards' },
-    ember_magic: { name: 'Ember Magic', cost: 90, requires: ['ley_channeling'], description: 'Warmth wards for winter' },
-    brilliance: { name: 'Brilliance', cost: 160, requires: ['luminance'], description: 'Radiant beacon lights large areas' },
-    mana_weaving: { name: 'Mana Weaving', cost: 180, requires: ['arcane_infusion'], description: 'Weave mana into protective garb' },
-    pyroclasm: { name: 'Pyroclasm', cost: 200, requires: ['ember_magic', 'warding'], description: 'Fire ward incinerates nearby foes' },
-    verdant_growth: { name: 'Verdant Growth', cost: 140, requires: ['beast_binding', 'alchemy'], description: 'Grow rare herbs for potent brews' },
-    masterwork: { name: 'Masterwork', cost: 220, requires: ['runeforging', 'arcane_infusion'], description: 'Forge legendary enchanted weapons' },
-    void_summoning: { name: 'Void Summoning', cost: 150, requires: ['ley_channeling', 'warding'], description: 'Open portals to summon waves of enemies' },
-    void_forging: { name: 'Void Forging', cost: 180, requires: ['void_summoning', 'runeforging'], description: 'Forge void essence into powerful gear' },
-    planar_rift: { name: 'Planar Rift', cost: 200, requires: ['void_summoning', 'ley_channeling'], description: 'Open stable rifts for exploration expeditions' },
-    deep_delving: { name: 'Deep Delving', cost: 250, requires: ['planar_rift'], description: 'Access deeper, more dangerous dimensions' },
-    arcane_studies: { name: 'Arcane Studies', cost: 80, requires: ['runecraft'], description: 'Study and craft basic spell tomes' },
-    advanced_arcana: { name: 'Advanced Arcana', cost: 160, requires: ['arcane_studies', 'arcane_infusion'], description: 'Craft advanced spell tomes' },
-    golem_craft: { name: 'Golem Craft', cost: 200, requires: ['arcane_infusion', 'void_forging'], description: 'Animate stone golems to serve as tireless workers' },
+    warding: { name: 'Warding', cost: 150, requires: ['runecraft'], description: 'Conjure defensive wards' },
+    ember_magic: { name: 'Ember Magic', cost: 120, requires: ['ley_channeling'], description: 'Warmth wards for winter' },
+    brilliance: { name: 'Brilliance', cost: 260, requires: ['luminance'], description: 'Radiant beacon lights large areas' },
+    mana_weaving: { name: 'Mana Weaving', cost: 350, requires: ['arcane_infusion'], description: 'Weave mana into protective garb' },
+    pyroclasm: { name: 'Pyroclasm', cost: 400, requires: ['ember_magic', 'warding'], description: 'Fire ward incinerates nearby foes' },
+    verdant_growth: { name: 'Verdant Growth', cost: 250, requires: ['beast_binding', 'alchemy'], description: 'Grow rare herbs for potent brews' },
+    masterwork: { name: 'Masterwork', cost: 450, requires: ['runeforging', 'arcane_infusion'], description: 'Forge legendary enchanted weapons' },
+    void_summoning: { name: 'Void Summoning', cost: 300, requires: ['ley_channeling', 'warding'], description: 'Open portals to summon waves of enemies' },
+    void_forging: { name: 'Void Forging', cost: 380, requires: ['void_summoning', 'runeforging'], description: 'Forge void essence into powerful gear' },
+    planar_rift: { name: 'Planar Rift', cost: 400, requires: ['void_summoning', 'ley_channeling'], description: 'Open stable rifts for exploration expeditions' },
+    deep_delving: { name: 'Deep Delving', cost: 550, requires: ['planar_rift'], description: 'Access deeper, more dangerous dimensions' },
+    arcane_studies: { name: 'Arcane Studies', cost: 90, requires: ['runecraft'], description: 'Study and craft basic spell tomes' },
+    advanced_arcana: { name: 'Advanced Arcana', cost: 300, requires: ['arcane_studies', 'arcane_infusion'], description: 'Craft advanced spell tomes' },
+    golem_craft: { name: 'Golem Craft', cost: 420, requires: ['arcane_infusion', 'void_forging'], description: 'Animate stone golems to serve as tireless workers' },
 };
 
 // Auto-derive unlocks from the 'research' field on buildings, recipes, and crops.
@@ -921,10 +921,10 @@ export const TAMED_ANIMALS = Object.fromEntries(
 );
 
 export const GOLEM_TYPES = {
-    farmer_golem:  { name: 'Farmer Golem', char: 'G', color: '#55aa33', hp: 150, speed: 0.3, specialty: 'farming', skillLevel: 6, cost: { stone: 10, runite: 3, void_essence: 2 }, craftTicks: 50 },
-    miner_golem:   { name: 'Miner Golem', char: 'G', color: '#888888', hp: 180, speed: 0.25, specialty: 'building', skillLevel: 6, cost: { stone: 12, runite: 4, void_essence: 2 }, craftTicks: 55 },
-    combat_golem:  { name: 'Combat Golem', char: 'G', color: '#cc4444', hp: 250, speed: 0.35, specialty: 'combat', damage: 20, cost: { stone: 15, runite: 5, void_essence: 4 }, craftTicks: 65 },
-    hauler_golem:  { name: 'Hauler Golem', char: 'G', color: '#bbaa55', hp: 120, speed: 0.5, specialty: 'hauling', skillLevel: 8, cost: { stone: 8, runite: 2, void_essence: 1 }, craftTicks: 40 },
+    farmer_golem:  { name: 'Farmer Golem', char: 'G', color: '#55aa33', hp: 150, speed: 0.3, specialty: 'farming', skillLevel: 6, cost: { stone: 10, runite: 3, void_essence: 2 }, craftTicks: 80 },
+    miner_golem:   { name: 'Miner Golem', char: 'G', color: '#888888', hp: 180, speed: 0.25, specialty: 'building', skillLevel: 6, cost: { stone: 12, runite: 4, void_essence: 2 }, craftTicks: 90 },
+    combat_golem:  { name: 'Combat Golem', char: 'G', color: '#cc4444', hp: 250, speed: 0.35, specialty: 'combat', damage: 20, cost: { stone: 15, runite: 5, void_essence: 4 }, craftTicks: 110 },
+    hauler_golem:  { name: 'Hauler Golem', char: 'G', color: '#bbaa55', hp: 120, speed: 0.5, specialty: 'hauling', skillLevel: 8, cost: { stone: 8, runite: 2, void_essence: 1 }, craftTicks: 65 },
 };
 
 // Raid system tuning. Used by combat.js. Raiders spawn at map edges and attack colonists.
@@ -937,8 +937,9 @@ export const RAID_CONFIG = {
     raiderHp: 60,                // hit points per raider
     raiderDamage: 6,             // base damage per hit (+ weapon bonus)
     raiderSpeed: 0.4,            // movement speed (lower = slower)
-    fleeThreshold: 0.5,          // remaining fraction of raiders that triggers retreat
-    timeout: 150,                // ticks after which remaining raiders flee
+    fleeHpFraction: 0.25,        // individual raiders flee when their HP drops below this fraction
+    routThreshold: 0.75,         // group rout when 75% of raiders are dead or fleeing
+    timeout: 600,                // ticks after which remaining raiders flee (safety valve)
 };
 
 // Trade values for bartering system. Used by events.js caravan trades.
@@ -965,7 +966,7 @@ export const TRADER_EXCLUSIVE_ITEMS = {
 export const DIMENSIONS = {
     crystal_caves: {
         name: 'Crystal Caves', difficulty: 1,
-        duration: [150, 250], encounters: 3,
+        duration: [220, 380], encounters: 3,
         loot: [
             { resource: 'stone', weight: 40, amount: [5, 12] },
             { resource: 'runite', weight: 30, amount: [2, 5] },
@@ -998,7 +999,7 @@ export const DIMENSIONS = {
     },
     verdant_depths: {
         name: 'Verdant Depths', difficulty: 1,
-        duration: [100, 180], encounters: 2,
+        duration: [150, 280], encounters: 2,
         loot: [
             { resource: 'wood', weight: 50, amount: [8, 15] },
             { resource: 'wheat', weight: 20, amount: [5, 10] },
@@ -1031,7 +1032,7 @@ export const DIMENSIONS = {
     },
     shadow_realm: {
         name: 'Shadow Realm', difficulty: 2,
-        duration: [250, 400], encounters: 5,
+        duration: [400, 650], encounters: 5,
         loot: [
             { resource: 'void_essence', weight: 40, amount: [3, 7] },
             { resource: 'runite', weight: 25, amount: [3, 6] },
@@ -1066,7 +1067,7 @@ export const DIMENSIONS = {
     },
     arcane_library: {
         name: 'Arcane Library', difficulty: 1,
-        duration: [120, 200], encounters: 2,
+        duration: [180, 320], encounters: 2,
         loot: [
             { resource: 'tome_magic_missile', weight: 20, amount: [1, 1] },
             { resource: 'tome_heal', weight: 20, amount: [1, 1] },
@@ -1105,7 +1106,7 @@ export const DIMENSIONS = {
 };
 
 export const EXPLORATION_CONFIG = {
-    returnTimeMult: 1.2,
+    returnTimeMult: 1.3,
     encounterSpacing: 0.2,
     baseFistDamage: 5,
     combatRoundTicks: 8,

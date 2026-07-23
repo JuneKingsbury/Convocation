@@ -218,7 +218,7 @@ Wolves are a special case. The taming UI shows your success chance and warns abo
 Melee combat is 1-tile range. Damage = base + weapon bonus. Colonists auto-defend when attacked. Colonists with Evocation spells (Magic Missile, Fireball, Chain Lightning) attack at range automatically.
 
 ### Raids
-Raiders attack periodically (disabled in Peaceful Mode), scaling with colony wealth. They march toward the colony center, breaking through structures if needed, and flee at 40% strength or after a timeout.
+Raiders attack periodically (disabled in Peaceful Mode), scaling with colony wealth. They pathfind toward colonists, breaking through structures if needed. Individual raiders flee when their HP drops below 25%. If 75% of the raiding party is dead or fleeing, the rest rout. A long safety timeout ensures raiders eventually leave even in stalemates.
 
 ### Wave Defense (Void Nexus)
 Build a Void Nexus after researching Void Summoning, then click it to start a wave challenge. Each wave is harder (more enemies, more HP). Enemies pathfind to the nexus and will break through walls.
@@ -283,10 +283,10 @@ As your party explores, small events occur randomly:
 
 | Dimension | Difficulty | Duration | Loot | Rare Encounters | Research |
 |---|---|---|---|---|---|
-| Crystal Caves | 1 | 150-250 | Stone, Runite | Resonating chambers, dwarven caches | — |
-| Verdant Depths | 1 | 100-180 | Wood, Wheat, Berries | Fertile seed caches, druid herb stashes | — |
-| Arcane Library | 1 | 120-200 | Spell Tomes, Runite | Headmaster vaults, enchanting caches | Arcane Studies |
-| Shadow Realm | 2 | 250-400 | Void Essence, Runite | Collapsing void crystals, sealed reliquaries | Deep Delving |
+| Crystal Caves | 1 | 220-380 | Stone, Runite | Resonating chambers, dwarven caches | — |
+| Verdant Depths | 1 | 150-280 | Wood, Wheat, Berries | Fertile seed caches, druid herb stashes | — |
+| Arcane Library | 1 | 180-320 | Spell Tomes, Runite | Headmaster vaults, enchanting caches | Arcane Studies |
+| Shadow Realm | 2 | 400-650 | Void Essence, Runite | Collapsing void crystals, sealed reliquaries | Deep Delving |
 
 Each dimension has unique ambient text, trap descriptions, discovery messages, and rare encounters that can only happen there.
 
@@ -339,7 +339,7 @@ Build an Arcanum and assign colonists to study. They generate study points over 
 
 ## Seasons & Weather
 
-The year cycles through 4 seasons (~600 ticks each, about 2 minutes real-time at 1x speed).
+The year cycles through 4 seasons (1500 ticks each, about 5 minutes real-time at 1x speed).
 
 | Season | Temperature | Crop Growth | Special |
 |---|---|---|---|
