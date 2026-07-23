@@ -23,6 +23,20 @@ export const CONFIG = {
     STOCKPILE_ALERTS: { wood: 5, stone: 5, food: 5 },
 };
 
+// Characters and colors for non-building tiles (farms, snow, entities, designations).
+// These get merged with BUILDINGS chars/colors to form TILE_CHARS and TILE_COLORS.
+const BASE_TILE_CHARS = {
+    farm_empty: '=', farm_growing: '%', farm_ready: '*',
+    snow: '*',
+};
+
+const BASE_TILE_COLORS = {
+    farm_empty: '#664400', farm_growing: '#55aa22', farm_ready: '#ffdd00',
+    colonist: '#ffff00', raider: '#ff3333', deer: '#bb8855', rabbit: '#ccaa88', wolf: '#666666',
+    snow: '#ffffff', snowBg: '#888888', cursor: '#ffffff',
+    designation_chop: '#ff8800', designation_mine: '#8888ff', designation_build: '#88ff88', designation_deconstruct: '#ff4444',
+};
+
 // To add an event: add an entry here with an 'effect' type. Data-driven effects
 // are handled automatically. Supported effects:
 //   'deposit'       - places resources on the map (see meteorite, windfall, forest_growth)
@@ -612,20 +626,6 @@ export const WAVE_CONFIG = {
 // ----------------------------------------------------------------------------
 // Game world config
 // ----------------------------------------------------------------------------
-
-// Characters and colors for non-building tiles (farms, snow, entities, designations).
-// These get merged with BUILDINGS chars/colors to form TILE_CHARS and TILE_COLORS.
-const BASE_TILE_CHARS = {
-    farm_empty: '=', farm_growing: '%', farm_ready: '*',
-    snow: '*',
-};
-
-const BASE_TILE_COLORS = {
-    farm_empty: '#664400', farm_growing: '#55aa22', farm_ready: '#ffdd00',
-    colonist: '#ffff00', raider: '#ff3333', deer: '#bb8855', rabbit: '#ccaa88', wolf: '#666666',
-    snow: '#ffffff', snowBg: '#888888', cursor: '#ffffff',
-    designation_chop: '#ff8800', designation_mine: '#8888ff', designation_build: '#88ff88', designation_deconstruct: '#ff4444',
-};
 
 export const SEASONS = ['spring', 'summer', 'autumn', 'winter'];
 
