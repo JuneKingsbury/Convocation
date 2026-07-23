@@ -849,29 +849,36 @@ export const SPELL_TOMES = {
 // To add research: add entry here with requires:[] for prerequisites.
 // Buildings, recipes, and crops gate themselves via their own 'research' field — no need to list them here.
 // The 'unlocks' object is auto-derived below from those fields.
+export const RESEARCH_TABS = [
+    { key: 'foundations', name: 'Foundations & Nature' },
+    { key: 'arcane', name: 'Arcane & Mana' },
+    { key: 'crafting', name: 'Crafting & Lore' },
+    { key: 'void', name: 'Void & Exploration' },
+];
+
 export const RESEARCH = {
-    runecraft: { name: 'Runecraft', cost: 50, requires: [], description: 'Etch runes into stone weapons' },
-    druidcraft: { name: 'Druidcraft', cost: 80, requires: [], description: 'Unlock corn and potatoes' },
-    beast_binding: { name: 'Beast Binding', cost: 140, requires: ['druidcraft'], description: 'Bind and pen creatures' },
-    ley_channeling: { name: 'Ley Channeling', cost: 180, requires: ['runecraft'], description: 'Tap leylines for mana' },
-    luminance: { name: 'Luminance', cost: 100, requires: ['ley_channeling'], description: 'Mana-powered light' },
-    arcane_infusion: { name: 'Arcane Infusion', cost: 280, requires: ['ley_channeling'], description: 'Faster enchanted crafting' },
-    runeforging: { name: 'Runeforging', cost: 200, requires: ['runecraft'], description: 'Forge runic weapons' },
-    alchemy: { name: 'Alchemy', cost: 60, requires: [], description: 'Cooking produces +2 bonus food per meal' },
-    warding: { name: 'Warding', cost: 150, requires: ['runecraft'], description: 'Conjure defensive wards' },
-    ember_magic: { name: 'Ember Magic', cost: 120, requires: ['ley_channeling'], description: 'Warmth wards for winter' },
-    brilliance: { name: 'Brilliance', cost: 260, requires: ['luminance'], description: 'Radiant beacon lights large areas' },
-    mana_weaving: { name: 'Mana Weaving', cost: 350, requires: ['arcane_infusion'], description: 'Weave mana into protective garb' },
-    pyroclasm: { name: 'Pyroclasm', cost: 400, requires: ['ember_magic', 'warding'], description: 'Fire ward incinerates nearby foes' },
-    verdant_growth: { name: 'Verdant Growth', cost: 250, requires: ['beast_binding', 'alchemy'], description: 'Grow rare herbs for potent brews' },
-    masterwork: { name: 'Masterwork', cost: 450, requires: ['runeforging', 'arcane_infusion'], description: 'Forge legendary enchanted weapons' },
-    void_summoning: { name: 'Void Summoning', cost: 300, requires: ['ley_channeling', 'warding'], description: 'Open portals to summon waves of enemies' },
-    void_forging: { name: 'Void Forging', cost: 380, requires: ['void_summoning', 'runeforging'], description: 'Forge void essence into powerful gear' },
-    planar_rift: { name: 'Planar Rift', cost: 400, requires: ['void_summoning', 'ley_channeling'], description: 'Open stable rifts for exploration expeditions' },
-    deep_delving: { name: 'Deep Delving', cost: 550, requires: ['planar_rift'], description: 'Access deeper, more dangerous dimensions' },
-    arcane_studies: { name: 'Arcane Studies', cost: 90, requires: ['runecraft'], description: 'Study and craft basic spell tomes' },
-    advanced_arcana: { name: 'Advanced Arcana', cost: 300, requires: ['arcane_studies', 'arcane_infusion'], description: 'Craft advanced spell tomes' },
-    golem_craft: { name: 'Golem Craft', cost: 420, requires: ['arcane_infusion', 'void_forging'], description: 'Animate stone golems to serve as tireless workers' },
+    runecraft: { name: 'Runecraft', cost: 50, requires: [], tab: 'foundations', description: 'Etch runes into stone weapons' },
+    druidcraft: { name: 'Druidcraft', cost: 80, requires: [], tab: 'foundations', description: 'Unlock corn and potatoes' },
+    alchemy: { name: 'Alchemy', cost: 60, requires: [], tab: 'foundations', description: 'Cooking produces +2 bonus food per meal' },
+    beast_binding: { name: 'Beast Binding', cost: 140, requires: ['druidcraft'], tab: 'foundations', description: 'Bind and pen creatures' },
+    verdant_growth: { name: 'Verdant Growth', cost: 250, requires: ['beast_binding', 'alchemy'], tab: 'foundations', description: 'Grow rare herbs for potent brews' },
+    ley_channeling: { name: 'Ley Channeling', cost: 180, requires: ['runecraft'], tab: 'arcane', description: 'Tap leylines for mana' },
+    luminance: { name: 'Luminance', cost: 100, requires: ['ley_channeling'], tab: 'arcane', description: 'Mana-powered light' },
+    brilliance: { name: 'Brilliance', cost: 260, requires: ['luminance'], tab: 'arcane', description: 'Radiant beacon lights large areas' },
+    ember_magic: { name: 'Ember Magic', cost: 120, requires: ['ley_channeling'], tab: 'arcane', description: 'Warmth wards for winter' },
+    arcane_infusion: { name: 'Arcane Infusion', cost: 280, requires: ['ley_channeling'], tab: 'arcane', description: 'Faster enchanted crafting' },
+    mana_weaving: { name: 'Mana Weaving', cost: 350, requires: ['arcane_infusion'], tab: 'arcane', description: 'Weave mana into protective garb' },
+    pyroclasm: { name: 'Pyroclasm', cost: 400, requires: ['ember_magic', 'warding'], tab: 'arcane', description: 'Fire ward incinerates nearby foes' },
+    arcane_studies: { name: 'Arcane Studies', cost: 90, requires: ['runecraft'], tab: 'crafting', description: 'Study and craft basic spell tomes' },
+    advanced_arcana: { name: 'Advanced Arcana', cost: 300, requires: ['arcane_studies', 'arcane_infusion'], tab: 'crafting', description: 'Craft advanced spell tomes' },
+    runeforging: { name: 'Runeforging', cost: 200, requires: ['runecraft'], tab: 'crafting', description: 'Forge runic weapons' },
+    masterwork: { name: 'Masterwork', cost: 450, requires: ['runeforging', 'arcane_infusion'], tab: 'crafting', description: 'Forge legendary enchanted weapons' },
+    golem_craft: { name: 'Golem Craft', cost: 420, requires: ['arcane_infusion', 'void_forging'], tab: 'crafting', description: 'Animate stone golems to serve as tireless workers' },
+    warding: { name: 'Warding', cost: 150, requires: ['runecraft'], tab: 'void', description: 'Conjure defensive wards' },
+    void_summoning: { name: 'Void Summoning', cost: 300, requires: ['ley_channeling', 'warding'], tab: 'void', description: 'Open portals to summon waves of enemies' },
+    void_forging: { name: 'Void Forging', cost: 380, requires: ['void_summoning', 'runeforging'], tab: 'void', description: 'Forge void essence into powerful gear' },
+    planar_rift: { name: 'Planar Rift', cost: 400, requires: ['void_summoning', 'ley_channeling'], tab: 'void', description: 'Open stable rifts for exploration expeditions' },
+    deep_delving: { name: 'Deep Delving', cost: 550, requires: ['planar_rift'], tab: 'void', description: 'Access deeper, more dangerous dimensions' },
 };
 
 // Auto-derive unlocks from the 'research' field on buildings, recipes, and crops.

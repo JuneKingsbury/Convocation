@@ -1,4 +1,4 @@
-import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, SPELL_TOMES, SPELLS, FOODSTUFFS, WORK_CONFIG, GOLEM_TYPES, TRADE_VALUES, TRADER_MARKUP, TRADER_DISCOUNT, TRADER_EXCLUSIVE_ITEMS, COMPLEX_STRUCTURES } from '../core/config.js';
+import { CONFIG, TRAITS, BUILDINGS, BUILD_CATEGORIES, TILE_CHARS, TILE_COLORS, RESEARCH, RESEARCH_TABS, ANIMALS, TAMED_ANIMALS, WAVE_CONFIG, RECIPE_CATEGORIES, WEAPONS, ARMORS, TOOLS, ARTIFACTS, POTIONS, SKILLS, MAGIC_SKILLS, MANA_CONFIG, SPELL_TOMES, SPELLS, FOODSTUFFS, WORK_CONFIG, GOLEM_TYPES, TRADE_VALUES, TRADER_MARKUP, TRADER_DISCOUNT, TRADER_EXCLUSIVE_ITEMS, COMPLEX_STRUCTURES } from '../core/config.js';
 import { getComplexStructureAt } from '../systems/complexBuildings.js';
 import { getTameChance } from '../entities/taming.js';
 import { getAvailableRecipes } from '../systems/crafting.js';
@@ -12,6 +12,7 @@ export class UI {
         this.researchPanelVisible = false;
         this.inventoryVisible = false;
         this._invTab = 'resources';
+        this._researchTab = 'foundations';
         this.tamingPanelVisible = false;
         this.settingsPanelVisible = false;
         this.elements = {};
@@ -58,6 +59,22 @@ export class UI {
                 this._craftTab = tab.dataset.craftTab;
                 this._lastCraftHtml = '';
                 this.updateCraftPanel();
+            }
+        });
+
+        this.elements.researchPanel.addEventListener('click', (e) => {
+            const tab = e.target.closest('[data-research-tab]');
+            if (tab) {
+                this._researchTab = tab.dataset.researchTab;
+                this._lastResearchHtml = null;
+                this.updateResearchPanel();
+                return;
+            }
+            const badge = e.target.closest('.research-cross-tab[data-jump-tab]');
+            if (badge) {
+                this._researchTab = badge.dataset.jumpTab;
+                this._lastResearchHtml = null;
+                this.updateResearchPanel();
             }
         });
 
@@ -1218,11 +1235,21 @@ export class UI {
 
     updateResearchPanel() {
         const research = this.game.research;
+        const activeTab = this._researchTab || 'foundations';
         let html = '<div class="panel-close" data-panel-close="research">&times;</div><h3>Research</h3>';
         html += `<div class="info-row" style="color:#aa88ff; font-weight:bold; margin-bottom:6px;">Study Points: ${Math.floor(research.studyPoints)}</div>`;
-        html += `<div class="info-row" style="color:#888; margin-bottom:8px;">Colonists generate study points at a Research Desk. Spend them to unlock new knowledge.</div>`;
 
-        const layers = this._buildResearchLayers();
+        html += '<div class="research-tabs">';
+        for (const tab of RESEARCH_TABS) {
+            const tabKeys = Object.keys(RESEARCH).filter(k => RESEARCH[k].tab === tab.key);
+            const done = tabKeys.filter(k => research.completed.has(k)).length;
+            const active = tab.key === activeTab ? ' active' : '';
+            html += `<button class="research-tab-btn${active}" data-research-tab="${tab.key}">${tab.name} (${done}/${tabKeys.length})</button>`;
+        }
+        html += '</div>';
+
+        const tabKeys = Object.keys(RESEARCH).filter(k => RESEARCH[k].tab === activeTab);
+        const layers = this._buildResearchLayers(tabKeys);
         html += `<div class="research-tree">`;
         html += `<svg class="research-lines" id="research-lines"></svg>`;
         for (let depth = 0; depth < layers.length; depth++) {
@@ -1237,10 +1264,24 @@ export class UI {
                 else if (canAfford) cls += ' affordable';
                 else if (available) cls += ' available';
                 else cls += ' locked';
-                html += `<div class="${cls}" data-key="${key}" data-requires="${tech.requires.join(',')}">`;
+                const sameTabReqs = tech.requires.filter(r => RESEARCH[r]?.tab === activeTab);
+                html += `<div class="${cls}" data-key="${key}" data-requires="${sameTabReqs.join(',')}">`;
                 html += `<div class="research-node-name">${tech.name}</div>`;
                 html += `<div class="research-node-desc">${tech.description}</div>`;
                 html += `<div class="research-node-cost">${completed ? 'Researched' : `${tech.cost} pts`}</div>`;
+                const crossTabReqs = tech.requires.filter(r => RESEARCH[r]?.tab !== activeTab);
+                if (crossTabReqs.length > 0) {
+                    html += '<div class="research-cross-tab-row">';
+                    for (const req of crossTabReqs) {
+                        const reqTech = RESEARCH[req];
+                        const reqTab = RESEARCH_TABS.find(t => t.key === reqTech.tab);
+                        const reqCompleted = research.completed.has(req);
+                        const reqAvailable = !reqCompleted && reqTech.requires.every(r => research.completed.has(r));
+                        const badgeColor = reqCompleted ? '#66cc66' : reqAvailable ? '#cc8833' : '#666';
+                        html += `<span class="research-cross-tab" data-jump-tab="${reqTech.tab}" style="border-color:${badgeColor}; color:${badgeColor}">${reqTech.name} (${reqTab.name} →)</span>`;
+                    }
+                    html += '</div>';
+                }
                 if (canAfford) {
                     html += `<button class="research-node-btn" onclick="window.game.startResearch('${key}')">Research</button>`;
                 }
@@ -1278,20 +1319,21 @@ export class UI {
     }
 
     _getResearchFamily(key) {
+        const activeTab = this._researchTab || 'foundations';
         const family = new Set([key]);
-        // Ancestors
         const findAncestors = (k) => {
             const tech = RESEARCH[k];
             if (!tech) return;
             for (const req of tech.requires) {
+                if (RESEARCH[req]?.tab !== activeTab) continue;
                 family.add(req);
                 findAncestors(req);
             }
         };
         findAncestors(key);
-        // Descendants
         const findDescendants = (k) => {
             for (const [childKey, childTech] of Object.entries(RESEARCH)) {
+                if (childTech.tab !== activeTab) continue;
                 if (childTech.requires.includes(k) && !family.has(childKey)) {
                     family.add(childKey);
                     findDescendants(childKey);
@@ -1316,34 +1358,22 @@ export class UI {
             for (const path of svg.querySelectorAll('path')) {
                 path.classList.add('dimmed');
             }
-            // Redraw highlighted connections
-            this._highlightResearchPaths(tree, family, key);
+            this._highlightResearchPaths(tree, family);
         }
     }
 
-    _highlightResearchPaths(tree, family, hoveredKey) {
+    _highlightResearchPaths(tree, family) {
         const svg = document.getElementById('research-lines');
         if (!svg) return;
         const paths = svg.querySelectorAll('path');
         const nodes = tree.querySelectorAll('.research-node[data-key]');
-        const nodeRects = {};
-        const treeRect = tree.getBoundingClientRect();
-        for (const node of nodes) {
-            const r = node.getBoundingClientRect();
-            nodeRects[node.dataset.key] = {
-                cx: r.left + r.width / 2 - treeRect.left,
-                top: r.top - treeRect.top,
-                bottom: r.bottom - treeRect.top
-            };
-        }
-        // Mark paths as highlighted if both endpoints are in the family
         let idx = 0;
         for (const node of nodes) {
             const key = node.dataset.key;
             const requires = node.dataset.requires;
             if (!requires) continue;
             for (const req of requires.split(',')) {
-                if (!req || !nodeRects[req] || !nodeRects[key]) { idx++; continue; }
+                if (!req) { idx++; continue; }
                 if (family.has(key) && family.has(req)) {
                     paths[idx]?.classList.remove('dimmed');
                     paths[idx]?.classList.add('highlighted');
@@ -1368,58 +1398,32 @@ export class UI {
         }
     }
 
-    _buildResearchLayers() {
+    _buildResearchLayers(tabKeys) {
+        const tabSet = new Set(tabKeys);
         const depths = {};
         function getDepth(key) {
             if (depths[key] !== undefined) return depths[key];
             const tech = RESEARCH[key];
-            if (!tech || tech.requires.length === 0) {
+            if (!tech) { depths[key] = 0; return 0; }
+            const sameTabReqs = tech.requires.filter(r => tabSet.has(r));
+            if (sameTabReqs.length === 0) {
                 depths[key] = 0;
                 return 0;
             }
-            const d = 1 + Math.max(...tech.requires.map(r => getDepth(r)));
+            const d = 1 + Math.max(...sameTabReqs.map(r => getDepth(r)));
             depths[key] = d;
             return d;
         }
-        for (const key of Object.keys(RESEARCH)) getDepth(key);
-        const maxDepth = Math.max(...Object.values(depths), 0);
+        for (const key of tabKeys) getDepth(key);
+        const maxDepth = Math.max(...tabKeys.map(k => depths[k] || 0), 0);
         const layers = [];
         for (let i = 0; i <= maxDepth; i++) layers.push([]);
-        for (const [key, d] of Object.entries(depths)) layers[d].push(key);
+        for (const key of tabKeys) layers[depths[key] || 0].push(key);
 
-        // Barycenter heuristic: sort each layer so nodes are near their parents
-        for (let i = 1; i < layers.length; i++) {
-            const parentPositions = {};
-            for (let j = 0; j < layers[i - 1].length; j++) {
-                parentPositions[layers[i - 1][j]] = j;
-            }
-            layers[i].sort((a, b) => {
-                const aReqs = RESEARCH[a].requires;
-                const bReqs = RESEARCH[b].requires;
-                const aCenter = aReqs.length > 0 ? aReqs.reduce((s, r) => s + (parentPositions[r] ?? 0), 0) / aReqs.length : 0;
-                const bCenter = bReqs.length > 0 ? bReqs.reduce((s, r) => s + (parentPositions[r] ?? 0), 0) / bReqs.length : 0;
-                return aCenter - bCenter;
-            });
-        }
-
-        // Also sort layer 0 so their children cluster well
-        const childCount = {};
-        for (const key of layers[0]) childCount[key] = 0;
-        if (layers.length > 1) {
-            for (const key of layers[1]) {
-                for (const req of RESEARCH[key].requires) {
-                    if (childCount[req] !== undefined) childCount[req]++;
-                }
-            }
-        }
-        layers[0].sort((a, b) => childCount[b] - childCount[a]);
-
-        // Re-run barycenter using positions from ALL ancestor layers
         for (let i = 1; i < layers.length; i++) {
             const allPositions = {};
             for (let l = 0; l < i; l++) {
                 for (let j = 0; j < layers[l].length; j++) {
-                    // Normalize position to 0-1 range for cross-layer comparison
                     allPositions[layers[l][j]] = layers[l].length > 1 ? j / (layers[l].length - 1) : 0.5;
                 }
             }

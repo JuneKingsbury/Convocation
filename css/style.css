@@ -968,6 +968,59 @@ body {
     border-radius: 3px;
 }
 
+.research-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #444;
+    flex-wrap: wrap;
+}
+
+.research-tab-btn {
+    padding: 5px 10px;
+    font-family: inherit;
+    font-size: 0.85em;
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: #888;
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+    transition: background 0.15s, color 0.15s;
+}
+
+.research-tab-btn:hover {
+    color: #ccc;
+    background: #1a1a2e;
+}
+
+.research-tab-btn.active {
+    color: #aa88ff;
+    background: #1a1a2e;
+    border-color: #444;
+}
+
+.research-cross-tab-row {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: center;
+}
+
+.research-cross-tab {
+    font-size: 0.7em;
+    padding: 1px 5px;
+    border: 1px solid;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.research-cross-tab:hover {
+    background: #2a2a4a;
+}
+
 /* === RESEARCH TREE === */
 
 .research-tree {
